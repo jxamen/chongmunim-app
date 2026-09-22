@@ -49,7 +49,9 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 | | 회비 체크·미납 안내 · 공지 · 행사 · 예산·작년 · 결산서 PDF · 공개 링크 · 장부 파일 가져오기 |
 
 서버가 막는 것은 `plan_required`(403) · 초대 인원은 `plan_member_limit` — 앱은 `plan_required` 를 받으면 토스트 대신
-구독 안내(`src/screens/Plan.tsx` PlanAsk)를 띄운다(store `fail`). 여러 장 · PDF · 회원의 가운데 카메라는 앱이 먼저 막는다.
+구독 안내(`src/screens/Plan.tsx` PlanAsk)를 띄운다(store `fail`). **적을 것이 있는 화면은 들어올 때 막는다** — 여러 장 · PDF ·
+회원의 가운데 카메라 · 회비 · 예산 · 마감 · 장부 가져오기, 그리고 공지 쓰기 · 행사 만들기(2026-09-23 A32 시험: 제목 · 내용을 다 적고
+보내기에서 막혀 헛수고였다). 누르는 순간 끝나는 것(공개 링크 스위치)은 서버 403 에 맡긴다.
 문구·목록은 `src/cm/plan.ts` 한 곳.
 
 ## 영수증 보내기 (2026-09-22 태훈님)
@@ -149,10 +151,18 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
                   RTDN 토픽 projects/chongmunim-d7971/topics/Play-Store-Notifications — 테스트 알림 수신 확인(2026-09-22)
                   RC 자격 증명 3개 중 1개(package name not found)는 첫 AAB 업로드 뒤 다시 검사
   해외 가격        스토어마다 다르게 둔다(App Store 미국 $2.99 · Play $4.09 — 2026-09-23 대표님 결정 「그대로 두기」). 한국은 둘 다 ₩5,500
-  테스터           Play 내부 테스트 「총무님 내부 테스트」 목록 · 라이선스 테스터 jxamen@gmail.com(RESPOND_NORMALLY — 시험 결제, 청구 없음)
+  테스터           Play 내부 테스트 「총무님 내부 테스트」 목록 · 라이선스 테스터 jxamen@gmail.com · ourteam.kr@gmail.com(RESPOND_NORMALLY — 시험 결제, 청구 없음)
                   참여 링크 https://play.google.com/apps/internaltest/4701002911810070114
-  남은 것         ASC 유료 앱 계약 — W-8BEN-E 제출(활성), 은행 · 국내 세금 처리 대기 → 그전엔 RC 의 App Store 상품이 「Could not check」 /
-                  안드로이드 실제 결제 시험(대표님 폰) / 구독 심사 스크린샷
+                  **참여 링크는 `?authuser=그계정@gmail.com` 을 붙여 연다** — 안 붙이면 폰 크롬이 기본 계정으로 열어 초대된 계정도
+                  「not yet been invited」 가 뜬다(2026-09-23 총무님 · 영테크 둘 다 여기서 40분 잃었다). 플레이스토어 앱의 활성 계정도 같아야 한다
+                  새 앱의 **첫 출시는 내부 테스트라도 구글 검토**를 거친다 — 테스터 페이지에 `(unreviewed)` 면 기다리는 것 말고 할 일이 없다
+  안드로이드 결제  **끝**(2026-09-23 앱빌드 A32 · ourteam.kr · 내부 테스트 1.0.0 vc2) — 결제 → 갱신 → 해지 → 만료 → 구매 복원 한 바퀴 확인.
+                  cm_subscriptions 1행(sandbox) · cm_groups.plan_until 이 갱신마다 5분씩 밀림 · 해지 뒤 멈춤 · 만료 뒤 앱이 무료로 복귀.
+                  **만료 뒤에도 cm_groups.plan 은 pro 로 남는 게 정상** — 판단은 plan_until 로만 한다(Club::isPro, 직접 비교하는 곳 없음).
+                  어떤 이벤트가 왔는지는 `grep "chongmunim revenuecat" storage/logs/laravel.log`(서버 8c81125) — cm_subscriptions.updated_at 은
+                  웹훅마다 같은 값을 다시 써서 움직이므로 그것으로는 알 수 없다
+  남은 것         ASC 유료 앱 계약 — W-8BEN-E 제출(활성), 은행 · 국내 세금 처리 대기(앱관리) → 그전엔 RC 의 App Store 상품이 「Could not check」,
+                  아이폰 결제 시험도 못 한다 / 구독 심사 스크린샷
 ```
 
 ### 아직 없는 것
