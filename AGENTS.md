@@ -153,8 +153,11 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
 - **구글 OAuth 게시 상태**가 「테스트 중」 — 다른 앱(꾹테크)과 같다. 테스트 사용자 외에는 구글 로그인이 안 되니 출시 전에 게시한다
 - **구글 Android OAuth 클라이언트·카카오 키 해시** — 시험판(빌드 맥 디버그 키)은 등록 요청 중(2026-09-22, 윈도우 자동화 세션):
   SHA-1 `83:FA:C4:D3:93:72:A3:B7:F2:FB:14:11:27:E2:FE:FD:79:9C:3A:D9` · 카카오 키 해시 `g/rE05Nyo7fy+xQRJ+L+/XmcOtk=`(계열 앱 시험판 공용 디버그 키).
-  **스토어 판은 지문이 둘 더** — ① EAS 업로드 키(총무님 EAS 에 안드로이드 키스토어가 아직 없다 → 사람이 `eas credentials -p android` 로 한 번 만든다)
-  ② Play 앱 서명 키(첫 AAB 뒤 Play Console › 앱 무결성). 설치 경로마다 실제로 서명한 키가 등록돼야 로그인이 된다
+  **스토어 판은 지문이 둘 더** — 설치 경로마다 실제로 서명한 키가 등록돼야 로그인이 된다
+  ① EAS 업로드 키(2026-09-22 태훈님이 맥에서 만듦, Build Credentials XpMvDSU4f8) — SHA-1 `0F:29:B8:A2:03:6D:D4:20:F8:B1:1E:DE:8C:40:30:F4:F2:18:D2:3E`
+     SHA-256 `94:3F:C0:97:…:CE:9F:A8:60` · 카카오 키 해시 `Dym4ogNt1CD4sR7ejEAw9PIY0j4=`. Firebase 에 등록함(총무님 세션, REST).
+     Android OAuth 클라이언트 · 카카오 키 해시는 웹 콘솔이라 자동화에 부탁함
+  ② Play 앱 서명 키 — 첫 AAB(versionCode 2, 51d5308) 내부 테스트 업로드 뒤 Play Console › 앱 무결성. 받으면 Firebase · OAuth · 카카오에 등록하고 google-services.json 을 새로 받는다
 - **구글 드라이브에서 고르기**(장부 가져오기) — 구글 클라우드 Picker·Drive API · API 키(→ `app_configs` 'picker') · 웹 클라이언트 JS 원본·리디렉션
   `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 키가 없으면 앱이 「준비하고 있어요」
 - **어드민 약관·개인정보 기본본** — 등록 안 함. 총무님 전용 문안은 서버 페이지(`cm/legal/*`, 위 머리말)로 대신한다
