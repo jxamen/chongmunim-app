@@ -71,7 +71,8 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 
 ## 쓰던 장부 파일 가져오기 (2026-09-22 사용자 결정 「b로 해」)
 
-설정 › 모임 정보 › 「쓰던 장부 파일로 가져오기」 — 엑셀(.xlsx)·CSV·PDF 또는 구글 시트 링크.
+설정 › 모임 정보 › 「쓰던 장부 파일로 가져오기」 — 폰에 있는 엑셀(.xlsx)·CSV·PDF 또는 **공개된**(「링크가 있는 모든 사용자」) 구글 시트 링크.
+드라이브에서 고르기는 뺐다(2026-09-23 대표님 — 아래 「아직 없는 것」).
 서버(`ChongmunimImportController`)가 파일을 공용 OCR 큐에 **kind=ledger** 로 넣고, 맥 워커(영테크 `receipt-analyzer` 브랜치
 `analyzer/`, 텍스트 Qwen · PDF 는 VL)가 날짜·구분·항목·내용·금액·행사로 푼다. 워커 결과 계약은 컨트롤러 머리 주석에 있다.
 확인 표(`LedgerPreview`)가 다른 시트와 겹친 줄 · 이미 장부에 있는 줄 · 날짜 없는 줄을 꺼 두고, 항목을 이 모임 것에 맞추고,
@@ -185,8 +186,10 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   → Firebase 에 네 키(디버그 · 업로드 · 현재 · 이전) SHA-1/256 등록, Android OAuth 클라이언트 네 개(자동화), google-services.json 새로 받음(2026-09-22).
     카카오 키 해시 네 개도 넣음(자동화, 앱 1584900 › Android)
   첫 AAB: versionCode 2(51d5308) — Play 내부 테스트 게시(테스터 미지정)
-- **구글 드라이브에서 고르기**(장부 가져오기) — **구글 로그인 화면이 곧 파일 고르기**(`trigger_onepick=true`, Google Picker for desktop and
-  mobile apps, 2026-09-23). 페이지 속 Picker(iframe · API 키)는 아이폰 앱 안 브라우저에서 로그인 뒤 멈춰서(대표님 「먹통」) 버렸다.
-  서버가 코드를 토큰으로 바꾼다 — 웹 클라이언트 id · **비밀**(`app_configs.social.google`)이 있어야 하고, 리디렉션
-  `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 없으면 앱이 「준비하고 있어요」
+- ~~구글 드라이브에서 고르기~~ — **뺐다**(2026-09-23 대표님 「Google 드라이브 기능 빼자 파일 찾기도 힘들고 되게 불편하네」).
+  앱 `fromDrive`·단추, 서버 `ChongmunimPickerController`·`cm/picker`·`imports/google`, 방침의 드라이브 문구를 지웠다
+  (앱 PR #21 · 서버 3f1df06 — 되돌리려면 revert, 단 **고르는 화면이 쓰기 편해야** 다시 넣는다).
+  가는 길은 iframe Picker(아이폰에서 쿠키로 먹통) → 로그인 화면이 곧 고르기(`trigger_onepick`)였고, 마지막 판은 동작했지만 쓰기 불편했다.
+  남은 길은 **폰에 있는 파일 고르기**와 **공개된 구글 시트 링크**(OAuth 없이 export 로 받는다) — 그래서 서버가 구글에 요구하는 범위에
+  `drive.file` 이 **없다**(동의 화면 게시에 민감 범위 심사가 붙지 않는다)
 - **어드민 약관·개인정보 기본본** — 등록 안 함. 총무님 전용 문안은 서버 페이지(`cm/legal/*`, 위 머리말)로 대신한다

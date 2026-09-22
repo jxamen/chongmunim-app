@@ -3,16 +3,15 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+
 import { useApp, useLoad } from '../store';
-import { API_BASE } from '../config';
+
 import * as cm from '../cm/api';
 import { amountInput, kstNow, mdInput, mdWord, readAmount, readWhen, whenLong, won } from '../cm/format';
 import { isPro } from '../cm/plan';
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
 import { sheetFileId } from '../cm/importRows';
-import { codeOf } from '../cm/errors';
 import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
 import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
@@ -495,36 +494,6 @@ export function GroupEditScreen() {
       }
       open({ kind: 'import', id: imp.id });
     } catch (e) {
-      // 받은 링크가 공개가 아니면(남이 나에게만 공유) 구글 로그인으로 그 시트를 연다 — 남의 시트 공유는 내가 못 바꾼다(2026-09-22 태훈님)
-      const id = how === 'sheet' ? sheetFileId(sheetUrl) : null;
-      if (id && codeOf(e) === 'sheet_private') {
-        say('공개 링크가 아니라서 구글 계정으로 열어요');
-        setSheetUrl('');
-        await fromDrive(id);
-        return;
-      }
-      fail(e);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  /*
-   | 구글 드라이브에서 고르기 — 링크를 복사해 붙이지 않아도 된다(2026-09-22 태훈님). 폰 브라우저로 서버 페이지를 열면 구글 로그인
-   | (고른 파일만 읽는 권한) → 내 드라이브 목록(구글 Picker) → 고르면 서버가 받아 가져오기에 맡기고 chongmunim://import/{id} 로
-   | 돌려보낸다 → 확인 표를 연다. 로그인은 앱 안 웹뷰에서 구글이 막아서 폰 브라우저(인증 세션)로 연다.
-   | fileId 가 있으면(받은 링크가 공개가 아닐 때) 목록 대신 그 시트 하나만 띄운다.
-   */
-  const fromDrive = async (fileId?: string) => {
-    setSending(true);
-    try {
-      const ticket = await cm.googlePickerTicket(group.id);
-      const f = fileId ? `&f=${encodeURIComponent(fileId)}` : '';
-      const r = await WebBrowser.openAuthSessionAsync(`${API_BASE}/cm/picker?t=${encodeURIComponent(ticket)}${f}`, 'chongmunim://import');
-      if (r.type !== 'success') return;
-      const m = /^chongmunim:\/\/import\/([\w-]+)/.exec(r.url);
-      if (m && m[1] !== 'cancel') open({ kind: 'import', id: m[1] });
-    } catch (e) {
       fail(e);
     } finally {
       setSending(false);
@@ -586,17 +555,16 @@ export function GroupEditScreen() {
               <Txt size="tiny" tone="sub">구글 시트 · 엑셀(.xlsx) · CSV · PDF 를 날짜 · 항목 · 금액으로 풀어 드려요. 확인한 줄만 넣어요.</Txt>
             </View>
           </View>
-          <Btn label="구글 드라이브에서 고르기" loading={sending} onPress={() => { void fromDrive(); }} />
-          <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>구글에 로그인하면 내 시트 목록이 떠요 · 고른 파일만 읽어요</Txt>
-          <Btn label="폰에 있는 파일 고르기" tone="ghost" loading={sending} onPress={() => { void sendLedger('file'); }} />
-          {/* 드라이브에서 고르기와 링크 넣기 둘 다 — 남이 준 링크도 있다(2026-09-22 태훈님 「2가지 다 돼야돼」) */}
+          <Btn label="폰에 있는 파일 고르기" loading={sending} onPress={() => { void sendLedger('file'); }} />
+          {/* 구글 드라이브에서 고르기는 뺐다(2026-09-23 대표님 「Google 드라이브 기능 빼자 파일 찾기도 힘들고 되게 불편하네」) —
+              다시 넣으려면 고르는 화면이 쓰기 편해야 한다. 링크 넣기는 파일을 찾을 일이 없어 남긴다 */}
           <Sep />
-          <Txt bold>받은 구글 시트 링크로 가져오기</Txt>
+          <Txt bold>구글 시트 링크로 가져오기</Txt>
           <Field value={sheetUrl} onChangeText={setSheetUrl} placeholder="https://docs.google.com/spreadsheets/…" autoCapitalize="none"
             autoCorrect={false} inputStyle={{ fontSize: F.small, fontWeight: '400' }} />
           <Btn label="링크로 가져오기" tone="ghost" disabled={!sheetFileId(sheetUrl)} loading={sending}
             onPress={() => { void sendLedger('sheet'); }} />
-          <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>나에게만 공유된 시트면 구글 로그인으로 이어서 열어요</Txt>
+          <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>공유가 「링크가 있는 모든 사용자」인 시트를 읽어요 · 아니면 파일로 내려받아 올려 주세요</Txt>
         </Card>
         <Card style={{ gap: S.md }}>
           <Txt bold>{lastYear}년 항목별 집행 붙여넣기</Txt>
