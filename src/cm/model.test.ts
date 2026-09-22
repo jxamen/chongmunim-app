@@ -52,7 +52,9 @@ describe('서버 응답이 어긋나도 화면이 멈추지 않는다(05 §5-6)'
 
   it('영수증 중복 — 바로 이 영수증(같은 사진)일 때만 used, 없으면 false(비슷한 것은 막지 않는다)', () => {
     const same = toReceipt({ receipt: { id: 'a', duplicate: { occurredAt: '2026-09-21 14:14', amount: 32400, used: true } } });
-    expect(same.duplicate).toEqual({ occurredAt: '2026-09-21 14:14', amount: 32400, used: true });
+    expect(same.duplicate).toEqual({ occurredAt: '2026-09-21 14:14', amount: 32400, used: true, on: 'entry' });
+    // 지급 요청에 쓰인 비슷한 영수증이면 on: request(문구가 「이미 지급 요청한 영수증 같아요」)
+    expect(toReceipt({ receipt: { id: 'c', duplicate: { requestId: 7, occurredAt: '2026-09-21 14:14', amount: 1 } } }).duplicate?.on).toBe('request');
     const like = toReceipt({ receipt: { id: 'b', duplicate: { occurredAt: '2026-09-21 14:14', amount: 32400 } } });
     expect(like.duplicate?.used).toBe(false);
   });

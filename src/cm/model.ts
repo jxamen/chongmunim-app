@@ -241,7 +241,8 @@ export type Receipt = {
   /** 같은 가게에 지난번 붙인 항목 — 칩을 미리 찍어 둘 뿐이다(제안이지 확정이 아니다) */
   suggestCategoryId: number | null;
   /** 비슷한 영수증을 이미 적었다 — `used` 면 **바로 이 영수증**(같은 사진)이라 다시 적을 수 없다 */
-  duplicate: { occurredAt: string; amount: number; used: boolean } | null; imageUrl: string | null;
+  /** 비슷한 영수증이 이미 쓰인 곳 — 장부 줄(entry) 또는 지급 요청(request). used: 바로 이 영수증이 쓰였다 */
+  duplicate: { occurredAt: string; amount: number; used: boolean; on: 'entry' | 'request' } | null; imageUrl: string | null;
 };
 
 /** 보낸 영수증 한 장 — **서버가 기록한다**(receipts/pending, 2026-09-22 태훈님 「올라간 영수증은 서버에 기록 안 하나?」) */
@@ -271,7 +272,7 @@ export function toReceipt(j: unknown): Receipt {
       .filter((i) => i.name !== ''),
     merchant: str(o.merchant), needsCheck: o.needsCheck !== false, suggestCategoryId: idOrNull(o.suggestCategoryId),
     candidates: arr(o.candidates).filter((c): c is string => typeof c === 'string' && c !== ''),
-    duplicate: d ? { occurredAt: str(d.occurredAt) ?? '', amount: num(d.amount), used: d.used === true } : null,
+    duplicate: d ? { occurredAt: str(d.occurredAt) ?? '', amount: num(d.amount), used: d.used === true, on: d.requestId ? 'request' : 'entry' } : null,
     imageUrl: str(o.imageUrl),
   };
 }
