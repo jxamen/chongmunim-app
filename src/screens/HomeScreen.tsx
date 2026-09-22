@@ -11,6 +11,7 @@ import * as cm from '../cm/api';
 import { entrySub, entryTitle, mdWord, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
 import { setRemindSnapshot } from '../push';
+import * as receiptQueue from '../receiptQueue';
 import { Ask, Body, Card, Chip, Failed, Head, LedgerRow, Loading, Sep, Soft, Text, Title, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
@@ -25,6 +26,17 @@ export function HomeScreen() {
   const { data, error, loading, reload } = useLoad(cm.home);
   const manager = group ? isManager(group.me.role) : false;
   const [offer, setOffer] = useState(false);
+  // 보내 놓고 아직 기록 안 한 영수증(읽기 줄) — 「나중에 기록」
+  const [queued, setQueued] = useState<receiptQueue.QItem[]>([]);
+  const gid = group?.id ?? 0;
+  useEffect(() => {
+    if (!gid) return;
+    const sync = () => setQueued(receiptQueue.list(gid));
+    sync();
+
+    return receiptQueue.subscribe(sync);
+  }, [gid]);
+  const queuedReading = queued.filter((q) => q.state === 'sending' || q.state === 'reading').length;
 
   // 재방문 로컬 알림이 쓸 사실을 들고 있게 한다 — 앱이 뒤로 가는 순간엔 네트워크를 기다릴 수 없다(push.ts)
   useEffect(() => {
@@ -103,6 +115,14 @@ export function HomeScreen() {
         {h.pending.count > 0 ? (
           <Soft pill={`${h.pending.count}건`} title={manager ? '지급 요청이 기다려요' : '지급 요청을 처리하는 중이에요'}
             sub={`합계 ${won(h.pending.sum)}원`} onPress={() => open({ kind: 'requests' })} />
+        ) : null}
+
+        {/* 보낸 영수증 — 「나중에 기록」을 고른 것. 다 읽히면 여기서 이어서 기록한다(2026-09-22 태훈님) */}
+        {queued.length ? (
+          <Soft pill={`${queued.length}장`}
+            title={queuedReading ? `영수증 ${queuedReading}장을 읽고 있어요` : `영수증 ${queued.length}장이 기록을 기다려요`}
+            sub={queuedReading ? '다 읽히면 여기서 알려 드려요 · 지금 눌러 확인해도 돼요' : '눌러서 확인하고 한 번에 기록해요'}
+            onPress={() => open({ kind: 'record', start: 'pending' })} />
         ) : null}
 
         {/* 가져오는 장부 파일 — 분석이 끝나면 여기서 알린다(기획 「가져오기는 관문이 아니라 보너스」) */}

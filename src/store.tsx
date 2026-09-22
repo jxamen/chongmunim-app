@@ -20,6 +20,7 @@ import { isDeadSession } from './deadSession';
 import { funnel, track } from './track';
 import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
 import { billingLogin } from './billing';
+import * as receiptQueue from './receiptQueue';
 import * as cm from './cm/api';
 import type { Audience, BudgetLine, Entry, Group, GroupItem } from './cm/model';
 import { codeOf, errorText } from './cm/errors';
@@ -31,7 +32,7 @@ export type Tab = 'home' | 'ledger' | 'club' | 'settings';
 
 /** 탭 위에 겹쳐 뜨는 화면 — 맨 위 한 장만 그린다. 뒤로가기는 한 장씩 */
 export type Page =
-  | { kind: 'record'; start: 'scan' | 'album' | 'manual' }
+  | { kind: 'record'; start: 'scan' | 'album' | 'manual' | 'pending' }
   | { kind: 'requests' }
   | { kind: 'event'; id: number }
   | { kind: 'eventNew' }
@@ -244,6 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const clearLocal = useCallback(async () => {
     setSession(null);
     void resetRemind();   // 남의 모임 알림이 이 폰에 남지 않게
+    receiptQueue.reset();   // 보냈지만 기록 안 한 영수증도(저장 키는 clearAccount 가)
     await storage.clearAccount();
     setMember(null);
     setGroup(null);
