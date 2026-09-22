@@ -16,7 +16,11 @@ import { track } from '../track';
 import { LEGAL_BASE } from '../config';
 import { Ask, Btn, Field, Text, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
+import { AppleMark, GoogleMark, KakaoMark } from '../ui/BrandMark';
 import { BRAND, F, R, S, useT } from '../ui/theme';
+
+/** 버튼 왼쪽 표시 — 무엇으로 로그인하는지 글자보다 그림이 먼저 읽힌다 */
+const MARK: Record<Provider, React.ComponentType<{ size?: number }>> = { kakao: KakaoMark, google: GoogleMark, apple: AppleMark };
 
 export function LoginScreen() {
   const { signInWith, guestStart, busy } = useApp();
@@ -38,12 +42,18 @@ export function LoginScreen() {
       </View>
 
       <View style={{ gap: S.sm }}>
-        {providers.map((p) => (
-          <Pressable key={p} onPress={() => tap(p)} disabled={busy}
-            style={({ pressed }) => [st.sns, { backgroundColor: BRAND[p].bg, borderColor: BRAND[p].border }, pressed && k.pressed]}>
-            <Text style={{ color: BRAND[p].fg, fontSize: F.body, fontWeight: '800' }}>{BRAND[p].label}</Text>
-          </Pressable>
-        ))}
+        {providers.map((p) => {
+          const Mark = MARK[p];
+
+          return (
+            <Pressable key={p} onPress={() => tap(p)} disabled={busy} accessibilityRole="button" accessibilityLabel={BRAND[p].label}
+              style={({ pressed }) => [st.sns, { backgroundColor: BRAND[p].bg, borderColor: BRAND[p].border }, pressed && k.pressed]}>
+              {/* 로고는 왼쪽에 고정, 글자는 가운데 — 이름 길이가 달라도 세 버튼의 글자가 어긋나지 않게(당근캐시와 같다) */}
+              <View style={st.mark}><Mark size={20} /></View>
+              <Text style={{ color: BRAND[p].fg, fontSize: F.body, fontWeight: '800' }}>{BRAND[p].label}</Text>
+            </Pressable>
+          );
+        })}
         <Btn label={providers.length ? '로그인 없이 둘러보기' : '시작하기'} tone={providers.length ? 'ghost' : 'main'} loading={busy}
           onPress={() => { if (!isRestarting()) setConsentOpen(true); }} />
         <Txt tone="dim" size="tiny" style={{ textAlign: 'center' }}>둘러보다가 나중에 카카오·구글·애플로 이어 쓸 수 있어요</Txt>
@@ -112,6 +122,7 @@ const st = StyleSheet.create({
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: S.sm },
   brand: { fontSize: 38, fontWeight: '900', letterSpacing: -1, marginTop: S.sm },
   sns: { height: 52, borderRadius: R.button, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  mark: { position: 'absolute', left: 18 },
   consent: { borderWidth: 1, borderRadius: R.card, padding: S.lg, gap: S.md },
   check: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });
