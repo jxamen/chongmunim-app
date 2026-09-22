@@ -19,6 +19,15 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 | 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
 | 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
+## 쓰던 장부 파일 가져오기 (2026-09-22 사용자 결정 「b로 해」)
+
+설정 › 모임 정보 › 「쓰던 장부 파일로 가져오기」 — 엑셀(.xlsx)·CSV·PDF 또는 구글 시트 링크.
+서버(`ChongmunimImportController`)가 파일을 공용 OCR 큐에 **kind=ledger** 로 넣고, 맥 워커(영테크 `receipt-analyzer` 브랜치
+`analyzer/`, 텍스트 Qwen · PDF 는 VL)가 날짜·구분·항목·내용·금액·행사로 푼다. 워커 결과 계약은 컨트롤러 머리 주석에 있다.
+확인 표(`LedgerPreview`)가 다른 시트와 겹친 줄 · 이미 장부에 있는 줄 · 날짜 없는 줄을 꺼 두고, 항목을 이 모임 것에 맞추고,
+원본 소계·이월과 **시트별로** 대조한다. **사람이 고른 줄만** 넣고(`src/cm/importRows.ts`), 넣은 것은 한 번에 되돌린다.
+분석은 몇 분 걸린다 — 화면을 떠나도 되고 홈 띠가 알린다. 워커가 없거나 실패해도 붙여넣기·기초 잔액은 늘 열려 있다.
+
 ## 공용 패키지 (vendor tgz, `file:` 설치)
 
 `@jcurve/auth` 2.1.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.4.1 — 원본 `..\..\jcurve-packages\packages\<이름>`.

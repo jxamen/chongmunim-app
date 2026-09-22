@@ -42,6 +42,7 @@ export type Page =
   | { kind: 'categories' }
   | { kind: 'profile' }
   | { kind: 'groupEdit' }
+  | { kind: 'import'; id: string }
   | { kind: 'transfer' }
   | { kind: 'groups' }
   | { kind: 'budgetLine'; line: BudgetLine; year: number };

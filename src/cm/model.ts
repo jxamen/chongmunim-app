@@ -105,6 +105,8 @@ export type Home = {
   notice: NoticeBrief | null;
   recent: Entry[];
   categories: Names;
+  /** 가져오는 장부 파일 — 읽는 중이거나 확인을 기다리는 것(총무·관리자에게만 온다) */
+  import: { id: string; status: 'reading' | 'ready'; fileName: string | null; rows: number | null } | null;
 };
 
 export function toHome(j: unknown): Home {
@@ -123,7 +125,16 @@ export function toHome(j: unknown): Home {
       reads: num(n.reads), recipients: num(n.recipients), readByMe: bool(n.readByMe) } : null,
     recent: entries(o.recent),
     categories: toNames(o.categories),
+    import: toPendingImport(o.import),
   };
+}
+
+function toPendingImport(v: unknown): Home['import'] {
+  const i = obj(v);
+  const status = i.status === 'reading' || i.status === 'ready' ? i.status : null;
+  if (!status || !str(i.id)) return null;
+
+  return { id: str(i.id) as string, status, fileName: str(i.fileName), rows: idOrNull(i.rows) };
 }
 
 export type MonthGroup = { direction: Direction; categoryId: number | null; name: string | null; count: number; sum: number; entries: Entry[] };
@@ -384,5 +395,108 @@ export function toTidy(j: unknown): Tidy {
     eventCheck: { events: arr(e.events).map((v) => ({ id: num(obj(v).id), name: str(obj(v).name) ?? '' })).filter((v) => v.id > 0), entries: entries(e.entries) },
     reconcile: { book: num(r.book), done: bool(r.done),
       last: last ? { period: str(last.period) ?? '', bank: num(last.bank), book: num(last.book), diff: num(last.diff) } : null },
+  };
+}
+
+/* ── 장부 파일 가져오기 ── */
+
+export type ImportStatus = 'reading' | 'ready' | 'failed' | 'done' | 'undone' | 'canceled';
+
+/** 확인 표 한 줄 — 서버 `LedgerPreview` 가 워커 결과를 이 모임 말로 옮긴 것. `pick` 은 기본 선택일 뿐이다 */
+export type ImportRow = {
+  i: number; date: string | null; direction: Direction; amount: number;
+  /** 원본 항목 이름 · 맞춘 이 모임 항목(없으면 새로 만들 이름) */
+  category: string | null; categoryId: number | null;
+  memo: string | null; merchant: string | null;
+  event: string | null; eventId: number | null;
+  sheet: string | null; ref: string | null;
+  /** sheet = 다른 시트에 같은 거래가 또 있음(한 번만 센다) · ledger = 이미 장부에 같은 날·같은 금액 */
+  dup: 'sheet' | 'ledger' | null; dupOf: number | null; pick: boolean;
+};
+export type ImportCheck = { code: string; sheet: string | null; side: Direction | null; expected: number | null; got: number | null };
+export type ImportPreview = {
+  verdict: 'confirmed' | 'review'; checks: ImportCheck[]; rows: ImportRow[];
+  categories: { direction: Direction; name: string; categoryId: number | null; count: number; sum: number }[];
+  events: { name: string; eventId: number | null; count: number }[];
+  opening: { amount: number; date: string | null } | null;
+  closing: { amount: number } | null;
+  sourceTotals: { in: number | null; out: number | null };
+  totals: { in: number; out: number };
+  skipped: { sheet: string | null; ref: string | null; text: string | null; reason: string | null }[];
+  counts: { rows: number; sheetDup: number; ledgerDup: number; noDate: number; dropped: number };
+};
+export type LedgerImport = {
+  id: string; status: ImportStatus; source: 'file' | 'sheet'; fileName: string | null;
+  verdict: 'confirmed' | 'review' | null; error: string | null; committed: number; createdAt: string;
+  preview: ImportPreview | null;
+  currentOpening: { amount: number; date: string | null } | null;
+};
+
+const IMPORT_STATUS: ImportStatus[] = ['reading', 'ready', 'failed', 'done', 'undone', 'canceled'];
+const dirOrNull = (v: unknown): Direction | null => (v === 'in' || v === 'out' ? v : null);
+const ymd = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+
+export function toImport(j: unknown): LedgerImport {
+  const o = obj(obj(j).import);
+  const p = o.preview ? obj(o.preview) : null;
+  const co = o.currentOpening ? obj(o.currentOpening) : null;
+
+  return {
+    id: str(o.id) ?? '',
+    status: IMPORT_STATUS.includes(o.status as ImportStatus) ? (o.status as ImportStatus) : 'failed',
+    source: o.source === 'sheet' ? 'sheet' : 'file',
+    fileName: str(o.fileName),
+    verdict: o.verdict === 'confirmed' || o.verdict === 'review' ? o.verdict : null,
+    error: str(o.error),
+    committed: num(o.committed),
+    createdAt: str(o.createdAt) ?? '',
+    preview: p ? toPreview(p) : null,
+    currentOpening: co ? { amount: num(co.amount), date: ymd(co.date) } : null,
+  };
+}
+
+function toPreview(p: J): ImportPreview {
+  const st = obj(p.sourceTotals);
+  const t = obj(p.totals);
+  const c = obj(p.counts);
+  const op = p.opening ? obj(p.opening) : null;
+  const cl = p.closing ? obj(p.closing) : null;
+
+  return {
+    verdict: p.verdict === 'confirmed' ? 'confirmed' : 'review',
+    checks: arr(p.checks).map((x) => {
+      const k = obj(x);
+
+      return { code: str(k.code) ?? '', sheet: str(k.sheet), side: dirOrNull(k.side), expected: idOrNull(k.expected), got: idOrNull(k.got) };
+    }),
+    rows: arr(p.rows).map((x): ImportRow | null => {
+      const r = obj(x);
+      const d = dirOrNull(r.direction);
+      if (!d || num(r.amount) <= 0) return null;
+
+      return {
+        i: num(r.i), date: ymd(r.date), direction: d, amount: num(r.amount),
+        category: str(r.category), categoryId: idOrNull(r.categoryId), memo: str(r.memo), merchant: str(r.merchant),
+        event: str(r.event), eventId: idOrNull(r.eventId), sheet: str(r.sheet), ref: str(r.ref),
+        dup: r.dup === 'sheet' || r.dup === 'ledger' ? r.dup : null, dupOf: idOrNull(r.dupOf), pick: r.pick === true,
+      };
+    }).filter((r): r is ImportRow => r !== null),
+    categories: arr(p.categories).map((x) => {
+      const k = obj(x);
+
+      return { direction: dirOrNull(k.direction) ?? 'out', name: str(k.name) ?? '', categoryId: idOrNull(k.categoryId), count: num(k.count), sum: num(k.sum) };
+    }).filter((k) => k.name !== ''),
+    events: arr(p.events).map((x) => ({ name: str(obj(x).name) ?? '', eventId: idOrNull(obj(x).eventId), count: num(obj(x).count) }))
+      .filter((e) => e.name !== ''),
+    opening: op ? { amount: num(op.amount), date: ymd(op.date) } : null,
+    closing: cl ? { amount: num(cl.amount) } : null,
+    sourceTotals: { in: idOrNull(st.in), out: idOrNull(st.out) },
+    totals: { in: num(t.in), out: num(t.out) },
+    skipped: arr(p.skipped).map((x) => {
+      const s = obj(x);
+
+      return { sheet: str(s.sheet), ref: str(s.ref), text: str(s.text), reason: str(s.reason) };
+    }),
+    counts: { rows: num(c.rows), sheetDup: num(c.sheetDup), ledgerDup: num(c.ledgerDup), noDate: num(c.noDate), dropped: num(c.dropped) },
   };
 }

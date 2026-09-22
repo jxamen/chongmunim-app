@@ -9,6 +9,7 @@ import { EventNewScreen, EventScreen } from './EventScreen';
 import { ComposeScreen, NoticeScreen } from './NoticeScreens';
 import { TidyScreen } from './TidyScreen';
 import { GroupsScreen } from './GroupsScreen';
+import { ImportScreen } from './ImportScreen';
 import {
   BudgetLineScreen, CategoriesScreen, EntryScreen, GroupEditScreen, MembersScreen, ProfileScreen, ReceiptScreen, TransferScreen,
 } from './ManageScreens';
@@ -28,6 +29,7 @@ export function PageView({ page }: { page: Page }) {
     case 'categories': return <CategoriesScreen />;
     case 'profile': return <ProfileScreen />;
     case 'groupEdit': return <GroupEditScreen />;
+    case 'import': return <ImportScreen id={page.id} />;
     case 'transfer': return <TransferScreen />;
     case 'groups': return <GroupsScreen asPage />;
     case 'budgetLine': return <BudgetLineScreen line={page.line} year={page.year} />;
