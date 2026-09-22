@@ -14,6 +14,7 @@ import * as cm from '../cm/api';
 import { signed, won } from '../cm/format';
 import { isManager, type Closing } from '../cm/model';
 import { isPro } from '../cm/plan';
+import { pushLine } from '../cm/pushText';
 import { Ask, Body, Btn, Card, Failed, Head, KV, Loading, MenuRow, Sep, Soft, Toggle, Txt, s as k } from '../ui/kit';
 import { S } from '../ui/theme';
 
@@ -41,8 +42,9 @@ export function CloseBar({ kind, refKey, label }: { kind: Closing['kind']; refKe
   const close = async () => {
     setBusy(true);
     try {
-      const c = await cm.closeNow(group.id, { kind, ref: refKey, notify });
-      say(notify ? `${c.title}을 회원들에게 보냈어요 · 이제 잠겼어요` : `${label}을 마감했어요 · 이제 잠겼어요`);
+      const r = await cm.closeNow(group.id, { kind, ref: refKey, notify });
+      // 몇 명에게 갔는지까지 — 마감한 나는 빠지고, 알림을 안 켠 사람은 못 받는다(2026-09-22 태훈님 「마감을 했는데도 알림이 안 와」)
+      say(notify ? `${r.closing.title}을 보냈어요 · ${pushLine(r.push)}` : `${label}을 마감했어요 · 이제 잠겼어요`);
       bump();
     } catch (e) {
       fail(e);

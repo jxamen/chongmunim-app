@@ -10,6 +10,7 @@ import {
   toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
  toRecipients, toClosing, toClosings } from './model';
 import type { CommitRow } from './importRows';
+import { toPush } from './pushText';
 
 const g = (gid: number, path = ''): string => `cm/g/${gid}${path ? '/' + path : ''}`;
 const q = (params: Record<string, string | number | undefined>): string => {
@@ -75,8 +76,12 @@ export const cancelRequest = (gid: number, id: number) => api.post(g(gid, `reque
 
 /* ── 행사 ── */
 export const events = async (gid: number) => toEvents(await api.get(g(gid, 'events')));
-export const addEvent = async (gid: number, b: { name: string; startsOn?: string; endsOn?: string; budget?: number; notify?: boolean }) =>
-  toEventDetail(await api.post(g(gid, 'events'), b));
+/** 만든 행사 + 알렸으면 보낸 결과(push) */
+export const addEvent = async (gid: number, b: { name: string; startsOn?: string; endsOn?: string; budget?: number; notify?: boolean }) => {
+  const j = await api.post(g(gid, 'events'), b);
+
+  return { ...toEventDetail(j), push: toPush((j as { push?: unknown }).push) };
+};
 export const event = async (gid: number, id: number) => toEventDetail(await api.get(g(gid, `events/${id}`)));
 export const updateEvent = async (gid: number, id: number, b: { name?: string; budget?: number; status?: 'open' | 'closed' }) =>
   toEventDetail(await api.put(g(gid, `events/${id}`), b));
@@ -130,8 +135,17 @@ export const notices = async (gid: number) => toNotices(await api.get(g(gid, 'no
 export const audienceCount = (gid: number, audience: Audience, period?: string) =>
   api.get<{ count: number; withApp: number }>(g(gid, 'notices/audience') + q({ audience, period }));
 export type NoticeInput = { title: string; body: string; audience: Audience; period?: string; push: boolean; draft?: boolean };
-export const addNotice = async (gid: number, b: NoticeInput) => toNotice(await api.post(g(gid, 'notices'), b));
-export const saveNotice = async (gid: number, id: number, b: NoticeInput) => toNotice(await api.put(g(gid, `notices/${id}`), b));
+/** 쓴 공지 + 보냈으면 결과(push — 임시저장이면 null) */
+export const addNotice = async (gid: number, b: NoticeInput) => {
+  const j = await api.post(g(gid, 'notices'), b);
+
+  return { notice: toNotice(j), push: toPush((j as { push?: unknown }).push) };
+};
+export const saveNotice = async (gid: number, id: number, b: NoticeInput) => {
+  const j = await api.put(g(gid, `notices/${id}`), b);
+
+  return { notice: toNotice(j), push: toPush((j as { push?: unknown }).push) };
+};
 export const notice = async (gid: number, id: number) => toNotice(await api.get(g(gid, `notices/${id}`)));
 /** 받는 사람 — 이름 · 알림 결과 · 읽은 시각(총무·관리자) */
 export const noticeRecipients = async (gid: number, id: number) => toRecipients(await api.get(g(gid, `notices/${id}/recipients`)));
@@ -140,7 +154,10 @@ export const noticeRecipients = async (gid: number, id: number) => toRecipients(
 /** 지금 잠긴 것들(풀지 않은 마감) */
 export const closings = async (gid: number) => toClosings(await api.get(g(gid, 'closings')));
 /** 마감하고 알리기 — 결산을 굳히고 공지+푸시(notify 끄면 잠그기만) */
-export const closeNow = async (gid: number, b: { kind: 'month' | 'year' | 'event'; ref: string; notify?: boolean }) =>
-  toClosing(await api.post(g(gid, 'closings'), b));
+export const closeNow = async (gid: number, b: { kind: 'month' | 'year' | 'event'; ref: string; notify?: boolean }) => {
+  const j = await api.post(g(gid, 'closings'), b);
+
+  return { closing: toClosing(j), push: toPush((j as { push?: unknown }).push) };
+};
 export const closing = async (gid: number, id: number) => toClosing(await api.get(g(gid, `closings/${id}`)));
 export const reopenClosing = (gid: number, id: number) => api.post(g(gid, `closings/${id}/reopen`));

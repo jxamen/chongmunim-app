@@ -16,6 +16,7 @@ import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, 
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
 import { CloseBar } from './Closing';
+import { pushLine } from '../cm/pushText';
 import { DateField } from '../ui/DateField';
 import { F, S, useT } from '../ui/theme';
 
@@ -120,7 +121,7 @@ export function EventNewScreen() {
     try {
       const ymd = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
       const d = await cm.addEvent(group.id, { name: name.trim(), startsOn: ymd(date), endsOn: ymd(endDate), budget: readAmount(budget) ?? 0, notify });
-      if (notify) say('행사를 만들고 회원들에게 알렸어요 · 공지에도 남았어요');
+      if (notify) say(`행사를 만들고 알렸어요 · ${pushLine(d.push)}`);
       bump();
       back();
       open({ kind: 'event', id: d.event.id });

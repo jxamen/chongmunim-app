@@ -11,6 +11,7 @@ import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { isNight, kstNow, monthWord } from '../cm/format';
 import { isManager, type Audience, type PushResult } from '../cm/model';
+import { pushLine } from '../cm/pushText';
 import { Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Sep, Soft, Toggle, Txt, s as k } from '../ui/kit';
 import { S } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
@@ -122,9 +123,9 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
     setBusy(true);
     const b = { title: title.trim(), body: body.trim(), audience, period: audience === 'unpaid' ? period : undefined, push, draft };
     try {
-      if (draftId) await cm.saveNotice(group.id, draftId, b);
-      else await cm.addNotice(group.id, b);
-      say(draft ? '임시저장했어요' : `${n}명에게 보냈어요`);
+      const r = draftId ? await cm.saveNotice(group.id, draftId, b) : await cm.addNotice(group.id, b);
+      // 공지는 늘 남는다 — 알림은 켠 사람에게만 간다(몇 명에게 갔는지까지)
+      say(draft ? '임시저장했어요' : push && r.push ? `공지를 올렸어요 · ${pushLine(r.push)}` : `${n}명에게 공지를 올렸어요`);
       bump();
       back();
     } catch (e) {
