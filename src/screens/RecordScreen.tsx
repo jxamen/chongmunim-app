@@ -35,6 +35,7 @@ import { track } from '../track';
 import { Ask, Body, Btn, Card, Chip, Choices, Field, Head, Sep, Soft, Tabs, Text, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { BankField } from '../ui/BankField';
+import { DateField } from '../ui/DateField';
 import { ScanIntro } from '../ui/ScanIntro';
 import * as storage from '../storage';
 import { F, S, useT } from '../ui/theme';
@@ -573,7 +574,7 @@ function ShotCard({ shot, single, manager, categories, events, onPatch, onRemove
                 </View>
               ) : null}
               <View style={[k.row, { gap: S.sm }]}>
-                <Field style={{ flex: 1.3 }} value={f.date} onChangeText={(v) => { set({ date: v }); onDateChange(v); }} placeholder="2026-09-21" maxLength={10} inputStyle={{ fontSize: 15.5 }} />
+                <DateField style={{ flex: 1.3 }} value={f.date} onChange={(v) => { set({ date: v }); onDateChange(v); }} />
                 <Field style={{ flex: 0.9 }} value={f.time} onChangeText={(v) => set({ time: v })} placeholder="14:14" maxLength={5} inputStyle={{ fontSize: 15.5 }} />
               </View>
               <Field value={f.amount} onChangeText={(v) => set({ amount: amountInput(v) })} keyboardType="number-pad" placeholder="금액"
@@ -656,12 +657,12 @@ function ManualForm({ form, setForm, direction, manager, note, onDirection, cate
           right={<Txt style={{ color: T.deep }}>✎</Txt>} />
         <Sep style={{ marginVertical: 3 }} />
         <View style={[k.row, { gap: S.sm }]}>
-          <Field style={{ flex: 1.3 }} value={form.date} onChangeText={onDate} placeholder="2026-09-21" maxLength={10} inputStyle={{ fontSize: 15.5 }} />
+          <DateField style={{ flex: 1.3 }} value={form.date} onChange={onDate} />
           <Field style={{ flex: 0.9 }} value={form.time} onChangeText={(v) => set({ time: v })} placeholder="14:14" maxLength={5} inputStyle={{ fontSize: 15.5 }} />
         </View>
         <Field value={form.amount} onChangeText={(v) => set({ amount: amountInput(v) })} keyboardType="number-pad" placeholder="금액"
           inputStyle={{ fontSize: 22, fontWeight: '900' }} right={<Txt tone="sub">원</Txt>} />
-        <Txt size="tiny" tone="dim">{when ? whenLong(when) : '날짜는 2026-09-21 처럼 적어요'}</Txt>
+        <Txt size="tiny" tone="dim">{when ? whenLong(when) : '날짜를 골라 주세요'}</Txt>
       </Card>
 
       {events.length > 0 && direction === 'out' ? (

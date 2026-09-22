@@ -14,6 +14,7 @@ import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { BankField } from '../ui/BankField';
+import { DateField } from '../ui/DateField';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -79,7 +80,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
         {dues ? <Soft title="회비 기록이에요" sub="금액·날짜는 모임 › 회비에서 바꿔 주세요. 지우면 그 달 납부도 취소돼요" /> : null}
         <Field label={entry.direction === 'in' ? '누구에게 · 무엇' : '상호'} value={merchant} onChangeText={setMerchant} maxLength={60} />
         <View style={[k.row, { gap: S.sm }]}>
-          <Field label="날짜" style={{ flex: 1.3 }} value={date} onChangeText={setDate} editable={!dues} maxLength={10} inputStyle={{ fontSize: F.body }} />
+          <DateField label="날짜" style={{ flex: 1.3 }} value={date} onChange={setDate} disabled={dues} />
           <Field label="시각" style={{ flex: 0.9 }} value={time} onChangeText={setTime} editable={!dues} maxLength={5} placeholder="—" inputStyle={{ fontSize: F.body }} />
         </View>
         <Field label="금액" value={amount} onChangeText={(v) => setAmount(amountInput(v))} editable={!dues} keyboardType="number-pad"
@@ -520,7 +521,7 @@ export function GroupEditScreen() {
             </View>
           </View>
           <Field label="기초 잔액" value={opening} onChangeText={(v) => setOpening(amountInput(v))} keyboardType="number-pad" placeholder="예) 1,150,400" right={<Txt tone="sub">원</Txt>} />
-          <Field label="기초일(선택)" value={openingDate} onChangeText={setOpeningDate} placeholder="2026-01-01" maxLength={10} inputStyle={{ fontSize: F.body }} />
+          <DateField label="기초일(선택)" value={openingDate} onChange={setOpeningDate} optional placeholder="이날 이전 잔액이 기초 잔액" />
         </Card>
         <Btn label="저장" loading={busy} disabled={!name.trim() || (duesOn && !readAmount(dues))} onPress={() => { void save(); }} />
         <Card style={{ gap: S.md }}>

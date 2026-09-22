@@ -16,6 +16,7 @@ import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, 
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
 import { CloseBar } from './Closing';
+import { DateField } from '../ui/DateField';
 import { F, S, useT } from '../ui/theme';
 
 export function EventScreen({ id }: { id: number }) {
@@ -140,8 +141,8 @@ export function EventNewScreen() {
         </Card>
         <Field label="행사 이름" value={name} onChangeText={setName} placeholder="예) 가을 체육대회" maxLength={40} />
         <View style={[k.row, { gap: S.sm }]}>
-          <Field label="시작" style={k.grow} value={date} onChangeText={setDate} placeholder="2026-10-10" maxLength={10} inputStyle={{ fontSize: F.body }} />
-          <Field label="끝(선택)" style={k.grow} value={endDate} onChangeText={setEndDate} placeholder="2026-10-12" maxLength={10} inputStyle={{ fontSize: F.body }} />
+          <DateField label="시작" style={k.grow} value={date} onChange={(v) => { setDate(v); if (endDate && v && endDate < v) setEndDate(''); }} />
+          <DateField label="끝(선택)" style={k.grow} value={endDate} onChange={setEndDate} optional min={date || undefined} placeholder="하루 행사면 비워요" />
         </View>
         <Txt size="tiny" tone="dim">기간 안에 찍힌 영수증에는 이 행사를 먼저 골라 둬요.</Txt>
         <Field label="행사 예산(없으면 비워 두세요)" value={budget} onChangeText={(v) => setBudget(amountInput(v))} keyboardType="number-pad"

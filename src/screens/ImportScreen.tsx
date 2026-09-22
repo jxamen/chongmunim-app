@@ -21,6 +21,7 @@ import { Amount, Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loadi
 import { Mascot } from '../ui/Mascot';
 import { S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
+import { DateField } from '../ui/DateField';
 
 /** 한 번에 그리는 줄 수 — 몇 년 치(수천 줄)도 버벅이지 않게 나눠 보인다 */
 const PAGE = 150;
@@ -360,7 +361,7 @@ function EditRow({ d, options, onClose, onSave }: {
       }]}>
       <Tabs items={[{ id: 'out', label: '지출' }, { id: 'in', label: '수입' }]} value={direction} onChange={(v) => { setDirection(v); setCategoryId(null); }} />
       <View style={[k.row, { gap: S.sm }]}>
-        <Field style={{ flex: 1.3 }} value={date} onChangeText={setDate} placeholder="2026-09-21" maxLength={10} />
+        <DateField style={{ flex: 1.3 }} value={date} onChange={setDate} />
         <Field style={{ flex: 1 }} value={amount} onChangeText={(v) => setAmount(amountInput(v))} keyboardType="number-pad" placeholder="금액" />
       </View>
       <Field value={memo} onChangeText={setMemo} placeholder="내용" maxLength={200} />
