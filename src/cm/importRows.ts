@@ -17,6 +17,13 @@ export function ledgerExt(name: string): LedgerExt | 'xls' | null {
   return ext === 'xlsx' || ext === 'csv' || ext === 'pdf' || ext === 'xls' ? ext : null;
 }
 
+/** 구글 시트 링크의 파일 id — 시트 링크가 아니면 null(서버 `fromSheet` 와 같은 규칙: docs.google.com/spreadsheets/d/{id}) */
+export function sheetFileId(url: string): string | null {
+  const m = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,100})/.exec(url.trim());
+
+  return m ? m[1] : null;
+}
+
 export type Draft = {
   i: number; pick: boolean; date: string | null; direction: Direction; amount: number;
   /** 둘 다 null 이면 미분류. categoryName 은 새로 만들 항목 이름 */
