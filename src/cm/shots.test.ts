@@ -32,11 +32,11 @@ describe('보낼 몸 — 못 보내는 카드는 null', () => {
   it('읽는 중 · 못 읽음 · 이미 적은 그 사진 · 금액 없음은 보내지 않는다', () => {
     expect(shotBody({ ...ready(rc()), state: 'reading' })).toBeNull();
     expect(shotBody({ ...ready(rc()), state: 'failed' })).toBeNull();
-    expect(shotBody(ready(rc({ duplicate: { occurredAt: '2026-09-21 14:14', amount: 32400, used: true } })))).toBeNull();
+    expect(shotBody(ready(rc({ duplicate: { occurredAt: '2026-09-21 14:14', amount: 32400, used: true, on: 'entry' } })))).toBeNull();
     expect(shotBody(ready(rc({ total: null })))).toBeNull();
   });
   it('비슷한 영수증(같은 사진은 아님)은 보낸다', () => {
-    expect(shotBody(ready(rc({ duplicate: { occurredAt: '2026-09-21 14:14', amount: 32400, used: false } })))).not.toBeNull();
+    expect(shotBody(ready(rc({ duplicate: { occurredAt: '2026-09-21 14:14', amount: 32400, used: false, on: 'entry' } })))).not.toBeNull();
   });
   it('금액·날짜를 고치면 「영수증과 다름」', () => {
     const s = ready(rc());

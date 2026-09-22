@@ -138,8 +138,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const say = useCallback((text: string) => {
     setToast(text);
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    // 긴 말은 더 오래(최대 5초) — 두 줄짜리가 다 읽기 전에 사라졌다(2026-09-22 태훈님)
-    toastTimer.current = setTimeout(() => setToast(null), Math.min(5000, Math.max(2400, 1200 + text.length * 70)));
+    // 적어도 3초, 긴 말은 더 오래(최대 5초) — 두 줄짜리가 다 읽기 전에 사라졌다(2026-09-22 태훈님), 한 줄도 2.3초는 짧았다(A32)
+    toastTimer.current = setTimeout(() => setToast(null), Math.min(5000, Math.max(3000, 1500 + text.length * 100)));
   }, []);
   const showPlan = useCallback((why: PlanReason = 'general') => { track('plan_view', { why }); setPlanAsk(why); }, []);
   const closePlan = useCallback(() => setPlanAsk(null), []);

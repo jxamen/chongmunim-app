@@ -595,7 +595,9 @@ function ShotCard({ shot, single, manager, categories, events, onPatch, onRemove
 
       {shot.state === 'ready' && shot.note ? <Soft tone="warn" title={shot.note} /> : null}
       {rc?.duplicate ? (
-        <Soft tone="warn" title={used ? '이미 장부에 적은 영수증이에요' : '이미 올린 영수증 같아요'}
+        <Soft tone="warn"
+          title={used ? '이미 장부에 적은 영수증이에요'
+            : rc.duplicate.on === 'request' ? '이미 지급 요청한 영수증 같아요' : '장부에 이미 적은 영수증 같아요'}
           sub={`${whenLong(rc.duplicate.occurredAt)} · ${won(rc.duplicate.amount)}원 — ${used ? '이 장은 빼고 적어요' : '그래도 적을 수 있어요'}`} />
       ) : null}
 
