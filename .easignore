@@ -1,0 +1,10 @@
+# EAS 는 git 루트를 올린다 — 디자인 원본·문서는 빌드에 필요 없다(05 §6-6)
+node_modules/
+.expo/
+dist/
+web-build/
+design/
+docs/
+ios/
+android/
+homepage/

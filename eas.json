@@ -1,0 +1,65 @@
+{
+  "cli": {
+    "version": ">= 22.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      },
+      "channel": "development",
+      "env": {
+        "OTA_CHANNEL": "development"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "preview",
+      "env": {
+        "OTA_CHANNEL": "preview"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "channel": "production",
+      "env": {
+        "OTA_CHANNEL": "production"
+      }
+    },
+    "testflight": {
+      "extends": "production",
+      "channel": "testflight",
+      "env": {
+        "OTA_CHANNEL": "testflight"
+      }
+    },
+    "android-test": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "testflight",
+      "env": {
+        "OTA_CHANNEL": "testflight"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {}
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "279587750736",
+    "project_id": "chongmunim-d7971",
+    "storage_bucket": "chongmunim-d7971.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:279587750736:android:157daaf115a16f2b386255",
+        "android_client_info": {
+          "package_name": "kr.co.jcurve.chongmunim"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "279587750736-1ktgbrua5pjih1npv3g5h9tbe9t3ioui.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNG8MZvw9xq7Le8AFeuP4oV87Rhuw1iBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "279587750736-1ktgbrua5pjih1npv3g5h9tbe9t3ioui.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "279587750736-gulso497ilpe3givj7r7bprnph4s0lg9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "kr.co.jcurve.chongmunim"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

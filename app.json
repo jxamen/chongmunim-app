@@ -1,0 +1,144 @@
+{
+  "expo": {
+    "name": "총무님",
+    "slug": "chongmunim",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "chongmunim",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F4FAF8",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "kr.co.jcurve.chongmunim",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "총무님",
+        "CFBundleName": "총무님",
+        "CFBundleDevelopmentRegion": "ko",
+        "CFBundleAllowMixedLocalizations": true
+      },
+      "usesAppleSignIn": true,
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "android": {
+      "package": "kr.co.jcurve.chongmunim",
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#2FB28F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#F4FAF8"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          },
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraMavenRepos": [
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ],
+            "extraProguardRules": "# 카카오 로그인이 R8 난독화에서 앱을 죽인다(용돈캡슐 app.json 과 같은 규칙, 2026-09-18 꼬꼬농장 실기기 확인)\n-keepattributes Signature\n-keepattributes Exceptions\n-keepattributes *Annotation*\n-keepattributes InnerClasses\n-keepattributes EnclosingMethod\n-keepclassmembers,allowshrinking,allowobfuscation interface * { @retrofit2.http.* <methods>; }\n-dontwarn retrofit2.**\n-keep class com.kakao.sdk.**.model.* { <fields>; }\n-keep class * extends com.google.gson.TypeAdapter\n-keepclassmembers class * { @com.google.gson.annotations.SerializedName <fields>; }\n-dontwarn com.kakao.sdk.**\n-keep,allowobfuscation,allowshrinking interface retrofit2.Call\n-keep,allowobfuscation,allowshrinking class retrofit2.Response\n-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation\n-keepattributes AnnotationDefault",
+            "gradleProperties": {
+              "org.gradle.jvmargs": "-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+            }
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#148066",
+          "defaultChannel": "chongmunim"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "영수증 사진을 고르기 위해 사진에 접근해요.",
+          "cameraPermission": "영수증을 찍기 위해 카메라를 사용해요.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "영수증을 찍고 모양을 바로잡기 위해 카메라를 사용해요."
+        }
+      ],
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "expo-font",
+      [
+        "@react-native-kakao/core",
+        {
+          "nativeAppKey": "2e519559d34fa6fd107cf3a3f23cb284",
+          "android": {
+            "authCodeHandlerActivity": true
+          },
+          "ios": {
+            "handleKakaoOpenUrl": true
+          }
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.279587750736-gulso497ilpe3givj7r7bprnph4s0lg9"
+        }
+      ],
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "disableSPM": true
+          }
+        }
+      ],
+      "@react-native-firebase/analytics"
+    ],
+    "extra": {
+      "appSlug": "chongmunim",
+      "apiBase": "https://api.j-curve.co.kr/v1/chongmunim",
+      "legalBase": "https://chongmunim.j-curve.co.kr/legal",
+      "publicKey": "ZANRRxH3H7eoRYHIVc80eDE6WH7j1pPLHny5rK3T",
+      "kakaoNativeAppKey": "2e519559d34fa6fd107cf3a3f23cb284",
+      "kakaoAppId": "1584900",
+      "googleWebClientId": "279587750736-1ktgbrua5pjih1npv3g5h9tbe9t3ioui.apps.googleusercontent.com",
+      "googleIosClientId": "279587750736-gulso497ilpe3givj7r7bprnph4s0lg9.apps.googleusercontent.com",
+      "eas": {
+        "projectId": ""
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://ota.j-curve.co.kr/chongmunim/manifest",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "owner": "matthew80"
+  }
+}

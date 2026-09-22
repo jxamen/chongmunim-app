@@ -1,0 +1,25 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.DS_Store
+ios/
+android/
+public/canvaskit.wasm
+design/receipt_mascot_30_transparent.zip
+
+# 공개 저장소에 올리지 않는 것(2026-09-22 사용자 결정) — 기획서·시안, 공용 패키지 원본(vendor tgz), 다른 세션 저장소
+design/
+docs/
+모임 장부 앱 기획.md
+vendor/
+homepage/
+*.log
+.env
+.env.*
