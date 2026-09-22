@@ -30,7 +30,7 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 
 ## 구독 (2026-09-22 사용자 결정)
 
-**모임마다 월 4,900원. 무료는 계속 쓸 수 있다(체험 없음).** `plan` 칸이 생길 때 **있던 모임은 모두 pro**, 새 모임은 free.
+**모임마다 월 5,500원**(처음 4,900원 → 앱스토어 가격표에 없어 5,500원, 2026-09-22 태훈님). **무료는 계속 쓸 수 있다(체험 없음).** `plan` 칸이 생길 때 **있던 모임은 모두 pro**, 새 모임은 free.
 
 **결제는 RevenueCat**(2026-09-22 태훈님 「구독은 레비뉴캣으로」) — 앱 `src/billing.ts` · 서버 `Billing`(jcurve-api).
 - 사는 사람 = 회원 한 명, RC 사용자 `cm-{회원번호}`. 상품 `chongmunim_pro_monthly`(iOS) · `chongmunim_pro`/`monthly`(Play), 권한 `pro`, 오퍼링 `default`
@@ -128,6 +128,15 @@ Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2
   Play Console    앱 ID 4972498678274145678 · 「총무님 - 스마트 모임 회비 장부·정산」 · 무료
   App Store       Apple ID 6814784833 · 「총무님 - 스마트 모임 회비 장부」 · 부제 「스마트한 모임 총무, 회비·장부·영수증 정산」 · SKU chongmunim
   (앱 콘텐츠 · 앱 개인정보 · 스크린샷 · 빌드는 아직 — 값은 머리말의 약관 페이지 주소와 개인정보처리방침을 따른다)
+
+RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
+  공개 SDK 키      appl_tBVEmLFyiDhOYDoZlVAaBfCkMXl(iOS) · goog_yNmmzULLtNjuJrIjVJOFUjSFFUt(Android) ← app.json extra.revenuecatIos/Android
+  권한 · 오퍼링     pro(총무님 구독) · default(현재) = $rc_monthly 하나
+  App Store       .p8 앱 내 구입 키 등록 · 구독 그룹 「총무님 구독」 22404322 · chongmunim_pro_monthly(Apple ID 6814796573, 1개월, 175개국)
+                  가격표에 ₩4,900 이 없어 **₩5,500**(태훈님 결정 — Play 도 같은 값). 앱 화면의 결제 단추는 스토어 priceString
+  Play            서비스 계정 revenuecat-play@chongmunim-d7971 JSON 등록. Play 상품 chongmunim_pro/monthly 는 첫 AAB 뒤
+  웹훅            …/v1/chongmunim/cm/revenuecat · 두 환경 · 모든 이벤트. 비밀 키(V1) · 웹훅 인증값은 배포가 app_configs 에(파일로 받음)
+  남은 것         ASC 유료 앱 계약 서명(「신규」) · 은행 · 세금 / 서비스 계정 Pub/Sub 역할 + Play Console 초대 / 구독 심사 스크린샷
 ```
 
 ### 아직 없는 것
