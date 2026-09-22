@@ -12,9 +12,10 @@ import { barPercent, dayShort, isNight, kstNow, monthWord, shiftMonth, won } fro
 import { isManager, type Dues, type DuesRow, type Notice, type RosterItem } from '../cm/model';
 import { copy, shareText } from '../share';
 import { track } from '../track';
-import { Ask, Body, Btn, Card, Chip, Empty, Failed, Head, Loading, Sep, Soft, Tabs, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Btn, Card, Chip, Empty, Failed, Head, Loading, Sep, Soft, Tabs, Text, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
-import { S, useT } from '../ui/theme';
+import { Hero } from '../ui/Hero';
+import { F, S, useT } from '../ui/theme';
 import { EventsTab } from './LedgerScreen';
 
 type Sub = 'dues' | 'notice' | 'event' | 'people';
@@ -24,10 +25,20 @@ export function ClubScreen() {
   const { group } = useApp();
   const [sub, setSub] = useState<Sub>('dues');
   const manager = group ? isManager(group.me.role) : false;
+  const T = useT();
 
   return (
     <View style={{ flex: 1 }}>
-      <Head title="모임" right={group ? <Chip label={`회원 ${group.members}명`} /> : null} />
+      <Head title="모임" />
+      {/* 히어로 띠 — 모임 이름과 사람 수(2026-09-22 태훈님 「모임 설정에도 히어로」). 전에 머리 칩이던 회원 수가 여기로 */}
+      {group ? (
+        <Hero mood="cheer" mascot={70} style={{ marginHorizontal: S.lg, marginBottom: 4 }}>
+          <Text style={{ fontSize: F.title, fontWeight: '900', color: T.deep }} numberOfLines={1}>{group.name}</Text>
+          <Txt size="small" tone="sub" numberOfLines={1}>
+            {[`회원 ${group.members}명`, group.owner ? `총무 ${group.owner}` : null, `나는 ${ROLE[group.me.role]}`].filter(Boolean).join(' · ')}
+          </Txt>
+        </Hero>
+      ) : null}
       <Tabs items={[{ id: 'dues', label: '회비' }, { id: 'notice', label: '공지' }, { id: 'event', label: '행사' }, { id: 'people', label: '회원' }]}
         value={sub} onChange={setSub} />
       {sub === 'dues' ? (manager ? <DuesTab /> : <MyDues />)
