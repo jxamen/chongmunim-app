@@ -32,7 +32,7 @@ export const EAS_PROJECT_ID =
  * 사람이 읽는 약관·정책 주소 — **총무님 홈페이지**(`chongmunim.j-curve.co.kr/legal`).
  * 어드민 주소를 쓰지 않는다(로그인·CF 에 막히고 어드민 주소가 공개된다 — 13 문서 사고 14).
  */
-export const LEGAL_BASE = extra.legalBase || 'https://chongmunim.j-curve.co.kr/legal';
+export const LEGAL_BASE = extra.legalBase || 'https://api.j-curve.co.kr/v1/chongmunim/cm/legal';
 
 export const KAKAO_NATIVE_APP_KEY = extra.kakaoNativeAppKey || '';
 export const GOOGLE_WEB_CLIENT_ID = extra.googleWebClientId || '';
