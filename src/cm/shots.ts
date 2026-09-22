@@ -50,6 +50,33 @@ export function formFrom(rc: Receipt, today: string): ShotForm {
   };
 }
 
+/** 읽기 줄(`receiptQueue`)의 한 장 — 카드가 보는 만큼만 */
+export type Queued = { key: string; uri: string; state: 'sending' | 'reading' | 'ready' | 'failed'; note: string | null; receipt: Receipt | null; review: boolean };
+
+/**
+ * 줄의 상태로 카드를 맞춘다 — 줄에 있는 차례대로. **이미 읽혀 사람이 보고 있는 카드는 그대로 둔다**(고친 값 · 저장 실패 사유를
+ * 지우지 않게). 새로 읽힌 장만 영수증 값으로 채우고, 행사는 사람이 고르기 전이면 날짜로 제안한다(`suggest`).
+ */
+export function mergeShots(cur: Shot[], queue: Queued[], today: string, suggest: (ymd: string | null) => number | null): Shot[] {
+  return queue.map((q) => {
+    const old = cur.find((s) => s.key === q.key);
+    if (old && old.state === 'ready' && q.state === 'ready') return old;
+    const base = old ?? newShot(q.key, q.uri, today);
+    if (q.state === 'ready' && q.receipt) {
+      const f = formFrom(q.receipt, today);
+
+      return {
+        ...base, uri: q.uri, state: 'ready', receipt: q.receipt,
+        note: q.review ? '몇 칸은 자신이 없어요. 한 번 봐 주세요' : null,
+        editing: q.review,   // 자신 없는 영수증은 칸을 열어 둔다
+        form: { ...f, eventId: base.eventTouched ? base.form.eventId : suggest(/^\d{4}-\d{2}-\d{2}$/.test(f.date) ? f.date : null) },
+      };
+    }
+
+    return { ...base, uri: q.uri, state: q.state === 'failed' ? 'failed' : 'reading', note: q.note, editing: false };
+  });
+}
+
 /** 이미 장부에 적은 바로 그 영수증(같은 사진) — 서버가 receipt_used 로 거절한다 */
 export const isUsed = (s: Shot): boolean => !!s.receipt?.duplicate?.used;
 

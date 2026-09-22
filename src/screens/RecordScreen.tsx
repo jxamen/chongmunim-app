@@ -3,9 +3,10 @@
  *
  *  1. 찍기    문서 스캐너(`react-native-document-scanner-plugin`, 영테크와 같은 부품) — 테두리를 잡아 반듯하게 편다.
  *             앨범에서 고를 수도 있다(`expo-image-picker`). 웹 미리보기는 앨범만. **여러 장을 한 번에**(최대 10장, 2026-09-22 태훈님).
- *  2. 읽기    `@jcurve/ocr` — `preparePhoto`(1600·방향) → `submit`(번호) → `status`. OCR 은 회원당 분당 30회라
- *             올리기·결과 보기가 모두 2.1초 간격으로 줄을 선다(`pacer`). 한 장이면 전처럼 10~15초.
- *  3. 옮기기  끝나면 `POST cm/g/{gid}/receipts {ocrJobId}` — 총무님 전용 표로(사진도 서버가 복사해 보관).
+ *  2. 살피기  **보내기 전에 한 장씩 본다**(2026-09-22 태훈님) — 시계 방향 회전 · 180° 뒤집기 · 빼기. 돌리면 픽셀을 돌려 새 파일로
+ *             저장한다(영테크 turnReceiptImage 와 같은 방식). 한 장이어도 같다. 「N장 전송하기」를 눌러야 올라간다.
+ *  3. 읽기    전송하면 읽기 줄(`receiptQueue` — 화면과 떨어져 돈다)에 선다: 올리기 → 워커 → 총무님 표로 옮기기.
+ *             그리고 묻는다 — **지금 기록**(이 화면에서 읽히는 대로 확인) / **나중에 기록**(닫고, 다 읽히면 홈 띠에서 이어서).
  *  4. 확인    읽은 값은 **확인 카드**로 보인다 — 입력칸이 아니라 글자로(2026-09-22 태훈님 「알아서 채워지는데 매번 입력 창이
  *             뜨는 게 이상」). 항목·행사는 제안이 미리 골라진 칩, 상호·날짜·금액은 「고치기」를 눌렀을 때만 칸이 열린다.
  *             상호는 OCR 을 믿지 않는다(확인 필요 + 후보 칩). 금액·날짜를 다르게 적으면 장부에 「영수증과 다름」이 붙는다.
@@ -16,9 +17,10 @@
  * 총무가 기록할 때와 회원이 요청할 때 **같은 화면**이다 — 다른 건 마지막 버튼과 회원의 「받을 계좌」 칸뿐(기획 「요청 폼은 네 칸이다」).
  * 항목은 같은 가게에 지난번 붙인 것을, 행사는 기간에 드는(없으면 하나뿐인) 진행 중 행사를 **미리 찍어 둔다** — 제안일 뿐이다.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Platform, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { amountInput, kstNow, readAmount, readWhen, whenLong, won } from '../cm/format';
@@ -26,10 +28,9 @@ import { isManager, type Category, type ClubEvent } from '../cm/model';
 import { chipOrder, suggestEvent } from '../cm/rules';
 import { codeOf, errorText } from '../cm/errors';
 import {
-  MAX_SHOTS, emptyForm, formFrom, isEdited, isUsed, itemsLine, newShot, pacer, shotBody, type Shot, type ShotForm,
+  MAX_SHOTS, emptyForm, isEdited, isUsed, itemsLine, mergeShots, shotBody, type Shot, type ShotForm,
 } from '../cm/shots';
-import { ocr, ocrMessage, preparePhoto, verdictMessage, type OcrResult } from '../ocr';
-import { holdWebFile } from '../upload';
+import * as queue from '../receiptQueue';
 import { isPro } from '../cm/plan';
 import { track } from '../track';
 import { Ask, Body, Btn, Card, Chip, Choices, Field, Head, Sep, Soft, Tabs, Text, Txt, s as k } from '../ui/kit';
@@ -41,14 +42,33 @@ import * as storage from '../storage';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
-type Step = 'pick' | 'shots' | 'manual';
+type Step = 'pick' | 'review' | 'shots' | 'manual';
 type Picked = { uri: string; file?: Blob | null };
+type Draft = Picked & { key: string };
 
-/** 읽기 실패를 사람 말로 — 영수증 읽기 쪽 사유는 OCR 문구, 나머지는 공통 문구 */
-const readError = (code: string): string =>
-  (code === 'ocr_disabled' || code === 'ocr_failed' || code === 'timeout' || code === 'bad_response' ? ocrMessage(code) : errorText(code));
+/**
+ * 사진을 돌려 **새 파일로** 저장한다 — 보이는 것만이 아니라 올라가는 픽셀도(영테크 turnReceiptImage 와 같은 방식).
+ * 웹 미리보기는 올릴 파일(Blob)도 새것으로 바꾼다.
+ */
+async function turn(d: Draft, deg: 90 | 180): Promise<Draft> {
+  const ctx = ImageManipulator.manipulate(d.uri);
+  try {
+    ctx.rotate(deg);
+    const img = await ctx.renderAsync();
+    try {
+      const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.9 });
+      const file = Platform.OS === 'web' ? await (await fetch(out.uri)).blob() : d.file;
 
-export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) {
+      return { ...d, uri: out.uri, file };
+    } finally {
+      img.release();
+    }
+  } finally {
+    ctx.release();
+  }
+}
+
+export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | 'pending' }) {
   const { group, back, bump, say, open, reloadGroup } = useApp();
   const kb = useKeyboardPad();
   const manager = group ? isManager(group.me.role) : false;
@@ -56,9 +76,13 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   const evs = useLoad(cm.events);
   const today = kstNow().ymd;
 
-  const [step, setStep] = useState<Step>(start === 'manual' ? 'manual' : 'pick');
+  // 홈의 「기록 기다림」에서 왔으면 바로 카드로
+  const [step, setStep] = useState<Step>(start === 'manual' ? 'manual' : start === 'pending' ? 'shots' : 'pick');
   const [note, setNote] = useState<string | null>(null);          // 고르기 화면의 안내(못 읽은 까닭 등)
-  const [shots, setShots] = useState<Shot[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);                 // 읽기 줄에 선 장(이 모임) — receiptQueue 를 따라간다
+  const [drafts, setDrafts] = useState<Draft[]>([]);              // 보내기 전에 살피는 장
+  const [turning, setTurning] = useState<string | null>(null);    // 돌리는 중인 장
+  const [sent, setSent] = useState<number | null>(null);          // 방금 보낸 장 수 — 지금 기록 / 나중에 기록
   // 영수증 없이 적기
   const [direction, setDirection] = useState<'out' | 'in'>('out');
   const [form, setForm] = useState<ShotForm>(emptyForm(today));
@@ -74,16 +98,34 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   const [intro, setIntro] = useState(false);            // 안드로이드 첫 스캔 안내
   const [scanFailed, setScanFailed] = useState(false);  // 스캐너가 안 열렸다 — 일반 촬영 버튼
 
-  const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
   const shotsRef = useRef(shots);
   shotsRef.current = shots;
   const evsRef = useRef<ClubEvent[]>([]);
   evsRef.current = evs.data ?? [];
-  const webFiles = useRef(new Map<string, Blob | null>());
-  const pace = useMemo(() => pacer(2100), []);
   // 무료는 한 번에 한 장(2026-09-22 태훈님) — 여러 장은 구독
   const maxShots = isPro(group) ? MAX_SHOTS : 1;
+
+  // 읽기 줄을 따라간다 — 올리는 중 · 읽는 중 · 읽음 · 못 읽음. 사람이 보고 있는 카드는 그대로(mergeShots)
+  const gid = group?.id ?? 0;
+  useEffect(() => {
+    if (!gid) return;
+    const sync = () => setShots((cur) => mergeShots(cur, queue.list(gid), today, (d) => suggestEvent(evsRef.current, d)));
+    sync();
+
+    return queue.subscribe(sync);
+    // 모임이 바뀔 때만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gid]);
+  // 카드를 다 빼면(또는 다 기록하면) 고르기로 — 홈에서 왔으면 줄을 받아 온 뒤에만
+  const hadShots = useRef(false);
+  if (shots.length) hadShots.current = true;
+  useEffect(() => {
+    if (step === 'shots' && shots.length === 0 && (start !== 'pending' || hadShots.current)) setStep('pick');
+  }, [step, shots.length, start]);
+  // 살피던 장을 다 빼면 — 카드가 있으면 카드로, 없으면 고르기로(전송해서 비운 때는 묻는 창이 정한다)
+  useEffect(() => {
+    if (step === 'review' && drafts.length === 0 && sent === null) setStep(shotsRef.current.length ? 'shots' : 'pick');
+  }, [step, drafts.length, sent]);
 
   const categoriesOf = (dir: 'in' | 'out'): Category[] => chipOrder((cats.data ?? []).filter((c) => !c.hidden && c.kind === dir));
   // 행사 칸은 진행 중인 행사가 있을 때만(시안 2)
@@ -101,32 +143,47 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   }, [evs.data]);
 
   const patch = (key: string, fn: (s: Shot) => Shot) => setShots((cur) => cur.map((s) => (s.key === key ? fn(s) : s)));
-  const failShot = (key: string, why: string) => patch(key, (s) => ({ ...s, state: 'failed', note: why, editing: false }));
-  const remove = (key: string) => {
-    setShots((cur) => {
-      const left = cur.filter((s) => s.key !== key);
-      if (left.length === 0) setStep('pick');
+  /** 카드 빼기 — 읽기 줄에서도 뺀다 */
+  const remove = (key: string) => queue.remove([key]);
 
-      return left;
-    });
-    webFiles.current.delete(key);
-  };
+  /* ── 1. 찍기 · 고르기 → 2. 살피기 ── */
 
-  /* ── 1. 찍기 · 고르기 ── */
-
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
   const take = (list: Picked[]) => {
-    const room = maxShots - shotsRef.current.length;
-    if (room <= 0) { say(`한 번에 ${maxShots}장까지예요`); return; }
+    const room = maxShots - shotsRef.current.length - draftsRef.current.length;
+    if (room <= 0) { say(maxShots === 1 ? '무료는 한 번에 한 장이에요 · 먼저 기록하고 다음 장을 올려 주세요' : `한 번에 ${maxShots}장까지예요`); return; }
     if (list.length > room) {
-      say(maxShots === 1 ? '무료는 한 번에 한 장이에요 · 첫 장만 올렸어요 · 여러 장은 구독에서' : `${maxShots}장까지만 올려요 · 나머지는 기록한 뒤에 다시 골라 주세요`);
+      say(maxShots === 1 ? '무료는 한 번에 한 장이에요 · 첫 장만 골랐어요 · 여러 장은 구독에서' : `${maxShots}장까지만 올려요 · 나머지는 기록한 뒤에 다시 골라 주세요`);
     }
     const stamp = Date.now();
-    const picked = list.slice(0, room).map((p, i) => ({ ...p, key: `${stamp}-${i}` }));
-    for (const p of picked) webFiles.current.set(p.key, p.file ?? null);
     setNote(null);
-    setShots((cur) => [...cur, ...picked.map((p) => newShot(p.key, p.uri, today))]);
-    setStep('shots');
-    void readAll(picked);
+    setDrafts((cur) => [...cur, ...list.slice(0, room).map((p, i) => ({ ...p, key: `${stamp}-${i}` }))]);
+    setStep('review');
+  };
+
+  /** 한 장 돌리기 — 시계 방향 90° 또는 180° */
+  const rotate = async (key: string, deg: 90 | 180) => {
+    const d = draftsRef.current.find((x) => x.key === key);
+    if (!d || turning) return;
+    setTurning(key);
+    try {
+      const next = await turn(d, deg);
+      setDrafts((cur) => cur.map((x) => (x.key === key ? next : x)));
+    } catch {
+      say('사진을 돌리지 못했어요 · 다시 해 주세요');
+    } finally {
+      setTurning(null);
+    }
+  };
+
+  /** 전송 — 읽기 줄에 세우고, 지금 기록할지 나중에 기록할지 묻는다(한 장이어도 같다) */
+  const sendDrafts = () => {
+    if (!group || !drafts.length) return;
+    track('receipt_submit', { batch: drafts.length });
+    void queue.add(group.id, drafts);
+    setSent(drafts.length);
+    setDrafts([]);
   };
 
   const scan = async () => {
@@ -190,74 +247,6 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── 2·3. 읽기 · 옮기기 — 올리기를 모두 한 뒤 결과를 차례로 돌아가며 본다 ── */
-
-  const settle = async (key: string, jobId: string, result: OcrResult) => {
-    if (!group) return;
-    if (result.verdict === 'rejected') { failShot(key, verdictMessage(result)); return; }
-    try {
-      const rc = await cm.attachReceipt(group.id, jobId);
-      if (!alive.current) return;
-      const f = formFrom(rc, today);
-      const review = result.verdict === 'review';
-      patch(key, (s) => ({
-        ...s, state: 'ready', receipt: rc, note: review ? '몇 칸은 자신이 없어요. 한 번 봐 주세요' : null,
-        editing: review,   // 자신 없는 영수증은 칸을 열어 둔다
-        form: { ...f, eventId: s.eventTouched ? s.form.eventId : suggestEvent(evsRef.current, ymd(f.date)) },
-      }));
-    } catch (e) {
-      failShot(key, readError(codeOf(e)));
-    }
-  };
-
-  const readAll = async (picked: { key: string; uri: string }[]) => {
-    if (!group) return;
-    const jobs: { key: string; id: string; until: number }[] = [];
-    for (const [i, p] of picked.entries()) {
-      if (!alive.current) return;
-      track('receipt_submit', { batch: picked.length });
-      try {
-        const prepared = await preparePhoto({ uri: p.uri });
-        let id = '';
-        for (let tries = 0; ; tries++) {
-          await pace();
-          if (Platform.OS === 'web') holdWebFile(webFiles.current.get(p.key) ?? null);
-          try {
-            id = await ocr.submit(prepared);
-            break;
-          } catch (e) {
-            /*
-             | 한도(429) — OCR 한도는 실제로 **IP 기준**이라 같은 와이파이의 다른 기기와 나눠 쓴다(배포 2026-09-22).
-             | 조금 쉬었다 다시 올린다(세 번까지). 다른 오류는 그대로 던진다.
-             */
-            if (!/429|too_many|throttle|rate/i.test(codeOf(e)) || tries >= 2) throw e;
-            await new Promise((r) => setTimeout(r, 15_000));
-          }
-        }
-        // 워커는 한 장씩 읽는다 — 뒤에 선 장일수록 기다림을 늘려 준다
-        jobs.push({ key: p.key, id, until: Date.now() + 60_000 + i * 15_000 });
-      } catch (e) {
-        const code = codeOf(e);
-        // 앱 관리에서 영수증 읽기가 꺼져 있으면(ocr_disabled) 직접 적는다
-        if (code === 'ocr_disabled') { setShots([]); setNote(ocrMessage(code)); setStep('manual'); return; }
-        failShot(p.key, readError(code));
-      }
-    }
-    const queue = [...jobs];
-    while (queue.length) {
-      if (!alive.current) return;
-      const j = queue.shift()!;
-      if (!shotsRef.current.some((s) => s.key === j.key)) continue;   // 뺀 장
-      await pace();
-      let st: Awaited<ReturnType<typeof ocr.status>> | null = null;
-      try { st = await ocr.status(j.id); } catch { /* 한도(429)·끊김 — 다음 차례에 다시 본다 */ }
-      if (st?.status === 'done' && st.result) { await settle(j.key, j.id, st.result); continue; }
-      if (st?.status === 'failed') { failShot(j.key, ocrMessage('ocr_failed')); continue; }
-      if (Date.now() > j.until) { failShot(j.key, ocrMessage('timeout')); continue; }
-      queue.push(j);
-    }
-  };
-
   /* ── 4. 기록 ── */
 
   const bank = () => ({ name: bankName.trim() || null, account: bankAccount.trim() || null, holder: bankHolder.trim() || null });
@@ -319,12 +308,14 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
     const word = manager ? `${done.size > 1 ? `${done.size}장을 ` : ''}장부에 적었어요` : `${done.size > 1 ? `${done.size}건 ` : ''}지급 요청을 보냈어요`;
     // 못 읽은 장만 남았으면 닫는다 — 다시 찍으면 되니까
     if (left.every((s) => s.state === 'failed' && !why[s.key])) {
+      queue.remove([...done, ...left.map((s) => s.key)]);   // 기록한 장 · 못 읽은 장 모두 줄에서 — 홈 띠에 남지 않게
       say(left.length ? `${word} · 못 읽은 ${left.length}장은 뺐어요` : manager ? word : `${word} · 총무님이 확인하면 알려 드려요`);
       back();
 
       return;
     }
     setShots(left.map((s) => (why[s.key] ? { ...s, note: why[s.key] } : s)));
+    queue.remove([...done]);
     say(`${word} · 남은 ${left.length}장을 확인해 주세요`);
   };
 
@@ -403,10 +394,43 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
                   : '테두리를 잡아 반듯하게 펴 드려요. 날짜와 금액은 알아서 읽어요.\n무료는 한 번에 한 장씩 올려요.')}
               </Txt>
             </Card>
+            {shots.length ? (
+              <Soft pill={`${shots.length}장`} title="기록을 기다리는 영수증이 있어요" sub="눌러서 확인하고 기록해요" onPress={() => setStep('shots')} />
+            ) : null}
             {Platform.OS !== 'web' ? <Btn label="영수증 찍기" onPress={() => { void scan(); }} /> : null}
             {scanFailed ? <Btn label="일반 촬영으로 찍기" tone="ghost" onPress={() => { void plainCamera(); }} /> : null}
             <Btn label="앨범에서 고르기" tone={Platform.OS === 'web' ? 'main' : 'ghost'} onPress={() => { void album(); }} />
             <Btn label="영수증 없이 적기" tone="ghost" onPress={() => { setNote(null); setStep('manual'); }} />
+          </>
+        ) : null}
+
+        {/* 보내기 전에 한 장씩 — 돌리기 · 빼기, 그리고 전송(2026-09-22 태훈님) */}
+        {step === 'review' ? (
+          <>
+            <Txt size="small" tone="sub" style={{ lineHeight: 20 }}>보내기 전에 한 장씩 봐 주세요. 옆으로 눕거나 거꾸로 찍혔으면 돌려서 보내야 잘 읽혀요.</Txt>
+            {drafts.map((d, i) => (
+              <Card key={d.key} style={{ gap: S.sm }}>
+                <View style={[k.row, { gap: 8 }]}>
+                  <Txt bold style={k.grow}>{`${i + 1} / ${drafts.length}`}</Txt>
+                  <Pressable onPress={() => setDrafts((cur) => cur.filter((x) => x.key !== d.key))} hitSlop={8} accessibilityRole="button">
+                    <Txt size="small" tone="sub">빼기</Txt>
+                  </Pressable>
+                </View>
+                <Image source={{ uri: d.uri }} resizeMode="contain" style={{ width: '100%', height: 280, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.04)' }} />
+                <View style={[k.row, { gap: S.sm }]}>
+                  <Btn small tone="ghost" label="↻ 시계 방향" style={k.grow} loading={turning === d.key} disabled={turning !== null}
+                    onPress={() => { void rotate(d.key, 90); }} />
+                  <Btn small tone="ghost" label="180° 뒤집기" style={k.grow} disabled={turning !== null} onPress={() => { void rotate(d.key, 180); }} />
+                </View>
+              </Card>
+            ))}
+            {drafts.length + shots.length < maxShots ? (
+              <View style={[k.row, { gap: S.sm }]}>
+                {Platform.OS !== 'web' ? <Btn small tone="ghost" label="+ 더 찍기" style={k.grow} onPress={() => { void scan(); }} /> : null}
+                <Btn small tone="ghost" label="+ 앨범에서 더" style={k.grow} onPress={() => { void album(); }} />
+              </View>
+            ) : null}
+            <Btn label={`${drafts.length}장 전송하기`} disabled={!drafts.length || turning !== null} onPress={sendDrafts} />
           </>
         ) : null}
 
@@ -434,7 +458,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
             onDate={(d) => setForm((f) => ({ ...f, date: d, eventId: manualTouched || direction !== 'out' ? f.eventId : suggestEvent(evsRef.current, ymd(d)) }))} />
         ) : null}
 
-        {step !== 'pick' ? (
+        {step === 'shots' || step === 'manual' ? (
           <>
             {!manager ? (
               <Card style={{ gap: S.sm }}>
@@ -468,7 +492,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
                   </Txt>
                 ) : null}
                 {shots.length === 1 ? (
-                  <Pressable onPress={() => { setShots([]); setStep('pick'); }} style={{ alignSelf: 'center', padding: S.sm }}>
+                  <Pressable onPress={() => { queue.remove(shots.map((s) => s.key)); setStep('pick'); }} style={{ alignSelf: 'center', padding: S.sm }}>
                     <Txt size="small" tone="sub">다시 찍기</Txt>
                   </Pressable>
                 ) : null}
@@ -489,6 +513,14 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
         buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setAddCatFor(null) }, { label: '만들기', onPress: () => { void addCategory(); } }]}>
         <Field value={newCat} onChangeText={setNewCat} placeholder={addCatFor === 'manual' && direction === 'in' ? '예) 후원금' : '예) 경조사비'} maxLength={20} autoFocus />
       </Ask>
+
+      {/* 전송 뒤 — 지금 기록 / 나중에 기록(2026-09-22 태훈님). 닫으면 지금 기록 */}
+      <Ask open={sent !== null} title={`영수증 ${sent ?? 0}장을 보냈어요`} mood="receipt" onClose={() => { setSent(null); setStep('shots'); }}
+        body={'한 장에 10~15초쯤 걸려요.\n지금 여기서 읽히는 대로 기록할까요?\n나중에 하면 다 읽혔을 때 홈에 「기록 기다림」으로 모아 둘게요.'}
+        buttons={[
+          { label: '나중에 기록', tone: 'ghost', onPress: () => { setSent(null); say('다 읽히면 홈에서 이어서 기록해요 · 그동안 다른 일을 하셔도 돼요'); back(); } },
+          { label: '지금 기록', onPress: () => { setSent(null); setStep('shots'); } },
+        ]} />
 
       <ScanIntro open={intro} onClose={() => setIntro(false)}
         onContinue={() => { setIntro(false); void storage.set('cm.scanIntro', '1'); void openScanner(); }} />

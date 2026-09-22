@@ -26,6 +26,7 @@ export const ACCOUNT_KEYS = [
   'cm.member',         // 화면에 쓰는 회원 정보
   'cm.group',          // 마지막으로 본 모임 id
   'cm.remindSnap',     // 로컬 알림이 쓸 홈 요약(home.remind) — 그 모임의 것이라 계정과 같이 지운다
+  'cm.receiptQueue',   // 보냈지만 아직 기록 안 한 영수증(작업 번호 · 읽은 값) — 앱을 껐다 켜도 이어서 읽는다(receiptQueue.ts)
 ] as const;
 
 export type DeviceKey = (typeof DEVICE_KEYS)[number];
