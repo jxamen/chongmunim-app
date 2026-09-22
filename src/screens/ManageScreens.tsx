@@ -454,9 +454,16 @@ export function GroupEditScreen() {
   const [openingDate, setOpeningDate] = useState(group?.openingDate ?? '');
   const [busy, setBusy] = useState(false);
   const [paste, setPaste] = useState('');
+  const [leave, setLeave] = useState(false);
   const lastYear = kstNow().year - 1;
   const parsed = parsePasted(paste);
   if (!group) return null;
+
+  const openingAmount = (opening.trim().startsWith('−') || opening.trim().startsWith('-') ? -1 : 1) * (readAmount(opening) ?? 0);
+  const openingDay = /^\d{4}-\d{2}-\d{2}$/.test(openingDate) ? openingDate : null;
+  /* 적어 둔 것이 조용히 사라지지 않게 — 저장하지 않고 닫으면 묻는다(2026-09-23 A32 시험 「모임 이름이 저장되지 않는다」) */
+  const edited = name.trim() !== group.name || (duesOn ? readAmount(dues) ?? 0 : 0) !== (group.duesAmount ?? 0)
+    || openingAmount !== (group.openingBalance ?? 0) || openingDay !== (group.openingDate ?? null);
 
   /* 작년 항목별 집행 — 시트에서 항목·금액 두 열을 복사해 붙인 것(기획 「붙여넣기가 핵심이다」) */
   const importLines = async () => {
@@ -529,8 +536,7 @@ export function GroupEditScreen() {
     try {
       await cm.updateGroup(group.id, {
         name: name.trim(), duesAmount: duesOn ? readAmount(dues) ?? 0 : 0,
-        openingBalance: (opening.trim().startsWith('−') || opening.trim().startsWith('-') ? -1 : 1) * (readAmount(opening) ?? 0),
-        openingDate: /^\d{4}-\d{2}-\d{2}$/.test(openingDate) ? openingDate : null,
+        openingBalance: openingAmount, openingDate: openingDay,
       });
       await reloadGroup();
       say('저장했어요');
@@ -544,7 +550,7 @@ export function GroupEditScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Head title="모임 정보" onClose={back} />
+      <Head title="모임 정보" onClose={() => { if (edited) setLeave(true); else back(); }} />
       <Body bottom={kb > 0 ? kb + 24 : 120}>
         <View style={{ height: 2 }} />
         <Field label="모임 이름" value={name} onChangeText={setName} maxLength={40} />
@@ -557,6 +563,21 @@ export function GroupEditScreen() {
             <Field value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="예) 40,000" right={<Txt tone="sub">원</Txt>} />
           ) : <Txt size="tiny" tone="dim">회비 칸에 납부 체크·미납 안내가 뜨지 않아요. 나중에 언제든 바꿀 수 있어요.</Txt>}
         </View>
+        <Card style={{ gap: S.md }}>
+          <View style={[k.row, { gap: 10 }]}>
+            <Mascot mood="stack" size={46} />
+            <View style={k.grow}>
+              <Txt bold>과거 데이터 가져오기</Txt>
+              <Txt size="tiny" tone="sub">앱을 쓰기 전 통장에 있던 돈을 기초 잔액으로 적어요. 모든 이월이 여기서 시작해요.</Txt>
+            </View>
+          </View>
+          <Field label="기초 잔액" value={opening} onChangeText={(v) => setOpening(amountInput(v))} keyboardType="number-pad" placeholder="예) 1,150,400" right={<Txt tone="sub">원</Txt>} />
+          <DateField label="기초일(선택)" value={openingDate} onChange={setOpeningDate} optional placeholder="이날 이전 잔액이 기초 잔액" />
+        </Card>
+        {/* 이 단추 하나가 이름 · 회비 · 기초 잔액을 함께 보낸다 — 적는 칸 바로 밑에 둔다.
+            사이에 가져오기 카드가 끼어 있으면 기초 잔액 칸의 단추처럼 보여, 이름을 적고 저장하지 않고 닫는다
+            (2026-09-23 A32 시험 — 「모임 이름이 저장되지 않는다」의 원인) */}
+        <Btn label="모임 정보 저장" loading={busy} disabled={!name.trim() || (duesOn && !readAmount(dues))} onPress={() => { void save(); }} />
         <Card style={{ gap: S.md }}>
           <View style={[k.row, { gap: 10 }]}>
             <Mascot mood="calculator" size={46} />
@@ -578,18 +599,6 @@ export function GroupEditScreen() {
           <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>나에게만 공유된 시트면 구글 로그인으로 이어서 열어요</Txt>
         </Card>
         <Card style={{ gap: S.md }}>
-          <View style={[k.row, { gap: 10 }]}>
-            <Mascot mood="stack" size={46} />
-            <View style={k.grow}>
-              <Txt bold>과거 데이터 가져오기</Txt>
-              <Txt size="tiny" tone="sub">앱을 쓰기 전 통장에 있던 돈을 기초 잔액으로 적어요. 모든 이월이 여기서 시작해요.</Txt>
-            </View>
-          </View>
-          <Field label="기초 잔액" value={opening} onChangeText={(v) => setOpening(amountInput(v))} keyboardType="number-pad" placeholder="예) 1,150,400" right={<Txt tone="sub">원</Txt>} />
-          <DateField label="기초일(선택)" value={openingDate} onChange={setOpeningDate} optional placeholder="이날 이전 잔액이 기초 잔액" />
-        </Card>
-        <Btn label="저장" loading={busy} disabled={!name.trim() || (duesOn && !readAmount(dues))} onPress={() => { void save(); }} />
-        <Card style={{ gap: S.md }}>
           <Txt bold>{lastYear}년 항목별 집행 붙여넣기</Txt>
           <Txt size="tiny" tone="sub">쓰던 시트에서 「항목」 열과 「금액」 열을 같이 복사해 아래에 붙이세요. 합계·소계 줄은 알아서 빼요. 다음 해 예산의 근거로 쓰여요.</Txt>
           <Field value={paste} onChangeText={setPaste} multiline placeholder={'식비\t921,000\n물품·비품\t687,400'} inputStyle={{ minHeight: 110, fontSize: F.small }} />
@@ -609,6 +618,11 @@ export function GroupEditScreen() {
           <Btn label={`${lastYear}년 집행으로 넣기`} tone="ghost" disabled={parsed.lines.length === 0} loading={busy} onPress={() => { void importLines(); }} />
         </Card>
       </Body>
+
+      <Ask open={leave} title="저장하지 않고 닫을까요?" mood="thinking" onClose={() => setLeave(false)}
+        body="모임 이름 · 회비 · 기초 잔액에 적은 것이 사라져요."
+        buttons={[{ label: '그냥 닫기', tone: 'ghost', onPress: () => { setLeave(false); back(); } },
+          { label: '저장하고 닫기', onPress: () => { setLeave(false); void save(); } }]} />
     </View>
   );
 }
