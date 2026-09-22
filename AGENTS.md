@@ -4,6 +4,10 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 # 총무님 — 모임 총무용 회비·영수증 장부 (2026-09-22 시작)
 
 **리워드 앱이 아니다.** 광고(AdMob)·포인트·미션·앱모아보기(apphub)를 쓰지 않는다.
+**사용자를 추적하지 않는다(ATT 없음).** `expo-tracking-transparency`·`NSUserTrackingUsageDescription` 을 넣지 않고, Firebase Analytics 는
+`withoutAdIdSupport: true`(app.json 플러그인 → Podfile `$RNFirebaseAnalyticsWithoutAdIdSupport`)로 광고 식별자 지원을 뺀다 — 기본 빌드는
+`FirebaseAnalytics/IdentitySupport` 가 ATT 를 참조해서 애플이 「ATT 를 쓰는데 요청이 안 보인다」(2.1)로 반려한다(머니트리 2026-09-21).
+App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 기획은 `docs/01-기획.md`, 화면 시안은 `design/chongmunim-app.html`, 캐릭터는 `design/receipt_mascot_30_transparent/`.
 
 ## 확정값
