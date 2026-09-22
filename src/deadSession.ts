@@ -13,3 +13,12 @@ export function isDeadSession(e: unknown): boolean {
 
   return status === 401 && code === 'unauthorized';
 }
+
+/**
+ * 이 401 로 로그인을 지워도 되나 — **세션을 실어 보낸 요청**이고, 그 사이 다른 세션으로 바뀌지 않았을 때만.
+ * 세션 없이 나간 요청(로그인 전 · 로그아웃 직후)의 401 은 「로그인이 풀렸어요」가 아니다(2026-09-22 꼬꼬 — 당근 · 영테크에서
+ * 재설치 직후 로그인 전 요청의 401 로 그 창이 떴고, 총무님도 로그인 전 cm/groups 401 이 서버 기록에 있었다).
+ */
+export function expiresSession(sentToken: string | null, nowToken: string | null, e: unknown): boolean {
+  return sentToken !== null && sentToken === nowToken && isDeadSession(e);
+}

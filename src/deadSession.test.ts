@@ -1,7 +1,23 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isDeadSession } from './deadSession';
+import { expiresSession, isDeadSession } from './deadSession';
+
+describe('expiresSession — 세션을 실어 보낸 요청의 401 만 만료', () => {
+  const dead = { code: 'unauthorized', status: 401 };
+  it('로그인 전(세션 없이 보낸) 요청의 401 은 만료가 아니다', () => {
+    expect(expiresSession(null, null, dead)).toBe(false);
+  });
+  it('실어 보낸 세션이 지금 세션과 같으면 만료', () => {
+    expect(expiresSession('tok-a', 'tok-a', dead)).toBe(true);
+  });
+  it('그 사이 다시 로그인해 세션이 바뀌었으면 만료가 아니다', () => {
+    expect(expiresSession('tok-a', 'tok-b', dead)).toBe(false);
+  });
+  it('401 이 아니면 만료가 아니다', () => {
+    expect(expiresSession('tok-a', 'tok-a', { code: 'network', status: 0 })).toBe(false);
+  });
+});
 
 describe('앱을 열 때', () => {
   it('회원 확인 실패를 이것으로 가른다 — 아무 실패나 로그아웃으로 보지 않는다', () => {

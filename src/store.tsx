@@ -12,7 +12,7 @@ import { AppState, Linking, Platform } from 'react-native';
 import { autoApply, onUpdateReady, startupSettled } from '@jcurve/updates';
 import * as storage from './storage';
 import {
-  completeSignup, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
+  completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
   type AuthResult, type Member, type Session,
 } from './api';
 import { auth, isCancel, setServerProviders, signInGuest, type Provider } from './auth';
@@ -191,6 +191,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /** 로그인된 뒤 — 모임 목록을 보고 들어갈 곳을 정한다 */
   const landing = useCallback(async () => {
+    // 세션 없이 모임 목록을 부르지 않는다 — 로그인 전 cm/groups 401 이 서버 기록에 있었다(2026-09-22 꼬꼬)
+    if (!currentToken()) {
+      setPhase('login');
+
+      return;
+    }
     const list = await cm.myGroups();
     setGroups(list);
     if (list.length === 0) {
