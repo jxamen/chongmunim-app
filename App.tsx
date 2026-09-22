@@ -28,6 +28,9 @@ import { LedgerScreen } from './src/screens/LedgerScreen';
 import { ClubScreen } from './src/screens/ClubScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { PageView } from './src/screens/pages';
+import { PlanAsk } from './src/screens/Plan';
+import { isPro } from './src/cm/plan';
+import { isManager } from './src/cm/model';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -113,6 +116,7 @@ function Root({ fonts }: { fonts: boolean }) {
           : phase === 'signup' ? <SignupScreen />
             : phase === 'groups' ? <GroupsScreen />
               : <Main />}
+      {phase === 'main' ? <PlanAsk /> : null}
       <Toast text={toast} />
     </View>
   );
@@ -138,7 +142,7 @@ const TABS: { id: Tab; label: string; Icon: (p: { color: string }) => React.Reac
 ];
 
 function Main() {
-  const { tab, setTab, pages, back, open, updateReady, updateNotice } = useApp();
+  const { tab, setTab, pages, back, open, updateReady, updateNotice, group, showPlan } = useApp();
   const T = useT();
   const insets = useSafeAreaInsets();
   const pad = tabBottomPad(Platform.OS, insets.bottom, S.sm);
@@ -188,7 +192,9 @@ function Main() {
         <View style={[s.nav, { paddingBottom: pad, borderTopColor: T.line }]}>
           {TABS.slice(0, 2).map((t) => <TabButton key={t.id} {...t} on={tab === t.id} onPress={() => setTab(t.id)} />)}
           <View style={s.fabWrap}>
-            <Pressable onPress={() => open({ kind: 'record', start: 'scan' })} accessibilityLabel="영수증 찍기"
+            {/* 무료 모임의 회원은 같이 보기만 — 지급 요청은 구독(2026-09-22 태훈님) */}
+            <Pressable onPress={() => { if (group && !isManager(group.me.role) && !isPro(group)) showPlan('request'); else open({ kind: 'record', start: 'scan' }); }}
+              accessibilityLabel="영수증 찍기"
               style={({ pressed }) => [s.fab, { backgroundColor: T.deep }, pressed && { transform: [{ scale: 0.96 }] }]}>
               <CameraIcon color="#FFFFFF" />
             </Pressable>

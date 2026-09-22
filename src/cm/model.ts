@@ -27,10 +27,14 @@ export const toGroups = (j: unknown): GroupItem[] =>
     .filter((g) => g.id > 0);
 
 export type NotifyPrefs = { notice: boolean; dues: boolean; request: boolean };
-export type Me = { id: number; name: string; role: Role; bankName: string | null; bankAccount: string | null; bankHolder: string | null; notify: NotifyPrefs };
+export type Me = { id: number; name: string; role: Role; bankName: string | null; bankAccount: string | null; bankHolder: string | null; notify: NotifyPrefs;
+  /** 생일 「MM-DD」(월·일만) */
+  birthday: string | null };
 export type Group = {
   id: number; name: string; owner: string | null; members: number; admins: number; categories: number; duesAmount: number; me: Me;
   inviteCode: string | null; publicToken: string | null; openingBalance: number; openingDate: string | null;
+  /** 구독 — 옛 서버처럼 안 오면 pro(막지 않는다). freeMembers: 무료로 받을 수 있는 인원(총무 빼고) */
+  plan: 'free' | 'pro'; freeMembers: number;
   /** 총무 넘기기 진행 중 — 받을 사람과 그게 나인지 */
   transfer: { to: string | null; toMe: boolean } | null;
 };
@@ -48,19 +52,21 @@ export function toGroup(j: unknown): Group {
       id: num(me.id), name: str(me.name) ?? '', role: role(me.role),
       bankName: str(me.bankName), bankAccount: str(me.bankAccount), bankHolder: str(me.bankHolder),
       notify: { notice: n.notice !== false, dues: n.dues !== false, request: n.request !== false },
+      birthday: str(me.birthday),
     },
     inviteCode: str(g.inviteCode), publicToken: str(g.publicToken),
+    plan: g.plan === 'free' ? 'free' : 'pro', freeMembers: num(g.freeMembers, 10),
     openingBalance: num(g.openingBalance), openingDate: str(g.openingDate),
     transfer: tr ? { to: str(tr.to), toMe: bool(tr.toMe) } : null,
   };
 }
 
-export type RosterItem = { id: number; name: string; role: Role; hasApp: boolean; duesExempt: boolean; bank: string | null };
+export type RosterItem = { id: number; name: string; role: Role; hasApp: boolean; duesExempt: boolean; bank: string | null; birthday: string | null };
 export const toRoster = (j: unknown): RosterItem[] =>
   arr(obj(j).members).map((m) => {
     const o = obj(m);
 
-    return { id: num(o.id), name: str(o.name) ?? '', role: role(o.role), hasApp: bool(o.hasApp), duesExempt: bool(o.duesExempt), bank: str(o.bank) };
+    return { id: num(o.id), name: str(o.name) ?? '', role: role(o.role), hasApp: bool(o.hasApp), duesExempt: bool(o.duesExempt), bank: str(o.bank), birthday: str(o.birthday) };
   }).filter((m) => m.id > 0);
 
 /* ── 장부 ── */
@@ -108,7 +114,9 @@ export type Home = {
   /** 가져오는 장부 파일 — 읽는 중이거나 확인을 기다리는 것(총무·관리자에게만 온다) */
   import: { id: string; status: 'reading' | 'ready'; fileName: string | null; rows: number | null } | null;
   /** 로컬 알림(`remind.ts`)이 쓸 셈 — 총무·관리자에게만 온다 */
-  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[] } | null;
+  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[]; birthdays: string[] } | null;
+  /** 다가오는 생일(14일 안) — 총무·관리자 · 구독 모임에만 온다 */
+  birthdays: { id: number; name: string; md: string; days: number }[];
 };
 
 export function toHome(j: unknown): Home {
@@ -129,6 +137,8 @@ export function toHome(j: unknown): Home {
     categories: toNames(o.categories),
     import: toPendingImport(o.import),
     remind: o.remind && typeof o.remind === 'object' ? toRemind(obj(o.remind)) : null,
+    birthdays: arr(o.birthdays).map((x) => ({ id: num(obj(x).id), name: str(obj(x).name) ?? '', md: str(obj(x).md) ?? '', days: num(obj(x).days) }))
+      .filter((x) => /^\d{2}-\d{2}$/.test(x.md)),
   };
 }
 
@@ -137,6 +147,7 @@ function toRemind(r: J): NonNullable<Home['remind']> {
     uncategorized: num(r.uncategorized), reconciled: bool(r.reconciled), duesUnpaid: idOrNull(r.duesUnpaid),
     events: arr(r.events).map((e) => ({ name: str(obj(e).name) ?? '', endsOn: str(obj(e).endsOn) ?? '' }))
       .filter((e) => e.name !== '' && /^\d{4}-\d{2}-\d{2}$/.test(e.endsOn)),
+    birthdays: arr(r.birthdays).filter((x): x is string => typeof x === 'string' && /^\d{2}-\d{2}$/.test(x)),
   };
 }
 
@@ -363,6 +374,8 @@ export type Audience = 'all' | 'admins' | 'unpaid';
 export type Notice = {
   id: number; title: string; author: string | null; audience: Audience; push: boolean; status: 'draft' | 'sent';
   sentAt: string | null; recipients: number; reads: number; readByMe: boolean; preview: string; body: string | null;
+  /** 결산 공지 — 마감이 보낸 것(「결산 보기」) */
+  closingId: number | null;
 };
 function toNoticeOne(v: unknown): Notice {
   const x = obj(v);
@@ -371,7 +384,7 @@ function toNoticeOne(v: unknown): Notice {
     id: num(x.id), title: str(x.title) ?? '', author: str(x.author),
     audience: x.audience === 'admins' || x.audience === 'unpaid' ? x.audience : 'all', push: bool(x.push),
     status: x.status === 'draft' ? 'draft' : 'sent', sentAt: str(x.sentAt), recipients: num(x.recipients), reads: num(x.reads),
-    readByMe: bool(x.readByMe), preview: str(x.preview) ?? '', body: str(x.body),
+    readByMe: bool(x.readByMe), preview: str(x.preview) ?? '', body: str(x.body), closingId: idOrNull(x.closingId),
   };
 }
 export const toNotices = (j: unknown): Notice[] => arr(obj(j).notices).map(toNoticeOne).filter((n) => n.id > 0);
@@ -511,3 +524,41 @@ function toPreview(p: J): ImportPreview {
     counts: { rows: num(c.rows), sheetDup: num(c.sheetDup), ledgerDup: num(c.ledgerDup), noDate: num(c.noDate), dropped: num(c.dropped) },
   };
 }
+
+/* ── 공지 받는 사람 ── */
+
+/** 알림 결과 — sent 보냄 · failed 실패 · no_app 앱 없음 · muted 꺼 둠 · no_token 알림 허용 전 · off 알림 없이 보낸 공지 · null 기록 전 공지 */
+export type PushResult = 'sent' | 'failed' | 'no_app' | 'muted' | 'no_token' | 'off' | null;
+export type NoticeRecipient = { id: number; name: string; hasApp: boolean; push: PushResult; readAt: string | null };
+
+const PUSH_RESULTS: readonly string[] = ['sent', 'failed', 'no_app', 'muted', 'no_token', 'off'];
+
+export function toRecipients(j: unknown): NoticeRecipient[] {
+  return arr(obj(j).recipients).map((x) => {
+    const o = obj(x);
+    const p = str(o.push);
+
+    return { id: num(o.id), name: str(o.name) ?? '', hasApp: bool(o.hasApp), push: p && PUSH_RESULTS.includes(p) ? p as PushResult : null, readAt: str(o.readAt) };
+  });
+}
+
+/* ── 마감 ── */
+
+export type Closing = {
+  id: number; kind: 'month' | 'year' | 'event'; ref: string; title: string; closedAt: string | null; reopenedAt: string | null;
+  summary: { in?: number; out?: number; carryOut?: number } | null;
+  /** 마감한 순간의 장부 화면 모양(월별 · 연간 · 행사) — 결산 화면이 그대로 그린다 */
+  snapshot: unknown;
+};
+
+function toClosingOne(v: unknown): Closing {
+  const x = obj(v);
+  const k = x.kind === 'year' || x.kind === 'event' ? x.kind : 'month';
+
+  return {
+    id: num(x.id), kind: k, ref: str(x.ref) ?? '', title: str(x.title) ?? '', closedAt: str(x.closedAt), reopenedAt: str(x.reopenedAt),
+    summary: x.summary && typeof x.summary === 'object' ? x.summary as Closing['summary'] : null, snapshot: x.snapshot ?? null,
+  };
+}
+export const toClosings = (j: unknown): Closing[] => arr(obj(j).closings).map(toClosingOne).filter((c) => c.id > 0);
+export const toClosing = (j: unknown): Closing => toClosingOne(obj(j).closing);

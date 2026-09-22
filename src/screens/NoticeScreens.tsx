@@ -6,17 +6,18 @@
  * 잠금 화면에는 「{모임} 공지 · 제목」만 뜬다.
  */
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { isNight, kstNow, monthWord } from '../cm/format';
-import { isManager, type Audience } from '../cm/model';
-import { Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Soft, Toggle, Txt, s as k } from '../ui/kit';
+import { isManager, type Audience, type PushResult } from '../cm/model';
+import { pushLine } from '../cm/pushText';
+import { Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Sep, Soft, Toggle, Txt, s as k } from '../ui/kit';
 import { S } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
 export function NoticeScreen({ id }: { id: number }) {
-  const { group, back } = useApp();
+  const { group, back, open } = useApp();
   const { data, error, reload } = useLoad((gid) => cm.notice(gid, id), [id]);
   const manager = group ? isManager(group.me.role) : false;
 
@@ -31,13 +32,60 @@ export function NoticeScreen({ id }: { id: number }) {
               {data.audience !== 'all' ? <Chip label={data.audience === 'admins' ? '관리자만' : '미납자만'} /> : null}
             </View>
             <Txt bold size="title">{data.title}</Txt>
-            <Txt size="tiny" tone="sub">{[data.author, data.sentAt?.slice(0, 10).replace(/-/g, '.'), manager ? `읽음 ${data.reads}/${data.recipients}` : null].filter(Boolean).join(' · ')}</Txt>
+            <Txt size="tiny" tone="sub">{[data.author, data.sentAt?.slice(0, 10).replace(/-/g, '.')].filter(Boolean).join(' · ')}</Txt>
             <Txt style={{ lineHeight: 25 }}>{data.body ?? ''}</Txt>
           </Card>
+          {data.closingId ? <Btn label="결산 보기" onPress={() => open({ kind: 'closing', id: data.closingId! })} /> : null}
+          {manager && data.status === 'sent' ? <Recipients id={id} reads={data.reads} total={data.recipients} /> : null}
         </Body>
       )}
     </View>
   );
+}
+
+/*
+ | 받는 사람 — 「읽음 3/10」을 누르면 한 사람씩: 알림이 갔는지 · 읽었는지(2026-09-22 태훈님 「받는 사람 리스트 · 수신 여부」).
+ | 알림 결과는 보낸 순간의 것이다 — 그 뒤에 알림을 허용한 사람은 「알림 허용 전」으로 남는다.
+ */
+const PUSH_LABEL: Record<NonNullable<PushResult>, string> = {
+  sent: '알림 보냄', failed: '알림 실패', no_app: '앱 없음', muted: '알림 꺼 둠', no_token: '알림 허용 전', off: '알림 없이 보냄',
+};
+
+function Recipients({ id, reads, total }: { id: number; reads: number; total: number }) {
+  const [open, setOpen] = useState(false);
+  const list = useLoad((gid) => (open ? cm.noticeRecipients(gid, id) : Promise.resolve(null)), [id, open]);
+
+  return (
+    <Card style={{ paddingVertical: 2 }}>
+      <Pressable onPress={() => setOpen(!open)} style={[k.listrow, { gap: 8 }]} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <Txt bold style={k.grow}>{`읽음 ${reads} / ${total}명`}</Txt>
+        <Txt size="small" tone="sub">{open ? '접기 ▴' : '받는 사람 보기 ▾'}</Txt>
+      </Pressable>
+      {open ? (
+        !list.data ? <Loading /> : list.data.length === 0 ? (
+          <Txt size="small" tone="dim" style={{ paddingBottom: 12 }}>받는 사람이 없어요(쓴 사람은 빼고 세요)</Txt>
+        ) : list.data.map((r) => (
+          <View key={r.id}>
+            <Sep />
+            <View style={[k.listrow, { gap: 8 }]}>
+              <Txt bold style={k.grow} numberOfLines={1}>{r.name}</Txt>
+              {r.push ? <Chip label={PUSH_LABEL[r.push]} tone={r.push === 'sent' ? 'tint' : r.push === 'off' ? 'plain' : 'warn'} /> : <Chip label="알림 기록 없음" tone="dim" />}
+              <Txt size="small" tone={r.readAt ? 'pos' : 'dim'} style={{ width: 74, textAlign: 'right' }}>{r.readAt ? readWhen(r.readAt) : '안 읽음'}</Txt>
+            </View>
+          </View>
+        ))
+      ) : null}
+    </Card>
+  );
+}
+
+/** 읽은 때 — 서버 UTC → 「9/22 14:30」 */
+function readWhen(at: string): string {
+  const d = new Date(at.includes('T') || at.endsWith('Z') ? at : at.replace(' ', 'T') + 'Z');
+  if (Number.isNaN(d.getTime())) return '읽음';
+  const k = new Date(d.getTime() + 9 * 3600_000);
+
+  return `${k.getUTCMonth() + 1}/${k.getUTCDate()} ${String(k.getUTCHours()).padStart(2, '0')}:${String(k.getUTCMinutes()).padStart(2, '0')}`;
 }
 
 export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: number; audience?: Audience }) {
@@ -75,9 +123,9 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
     setBusy(true);
     const b = { title: title.trim(), body: body.trim(), audience, period: audience === 'unpaid' ? period : undefined, push, draft };
     try {
-      if (draftId) await cm.saveNotice(group.id, draftId, b);
-      else await cm.addNotice(group.id, b);
-      say(draft ? '임시저장했어요' : `${n}명에게 보냈어요`);
+      const r = draftId ? await cm.saveNotice(group.id, draftId, b) : await cm.addNotice(group.id, b);
+      // 공지는 늘 남는다 — 알림은 켠 사람에게만 간다(몇 명에게 갔는지까지)
+      say(draft ? '임시저장했어요' : push && r.push ? `공지를 올렸어요 · ${pushLine(r.push)}` : `${n}명에게 공지를 올렸어요`);
       bump();
       back();
     } catch (e) {
@@ -111,16 +159,19 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
           </View>
           <Toggle on={push} onChange={setPush} />
         </Card>
-        {push ? <Soft tone="warn" title={`${n}명에게 발송됩니다`} sub="보낸 뒤에는 취소할 수 없어요" /> : null}
+        {n === 0 ? <Soft title="받을 사람이 아직 없어요" sub="쓰는 나는 빼고 세요 · 공지는 남아서 나중에 들어온 사람도 봐요" />
+          : push ? <Soft tone="warn" title={`${n}명에게 발송됩니다`} sub="보낸 뒤에는 취소할 수 없어요" /> : null}
         <View style={[k.row, { gap: S.sm }]}>
           <Btn label="임시저장" tone="ghost" style={{ width: 104 }} disabled={!ready} onPress={() => { void submit(true); }} />
-          <Btn label="발송하기" style={k.grow} disabled={!ready || n === 0} onPress={() => setConfirm(true)} />
+          {/* 0명이어도 누를 수 있다 — 확인 창이 「공지만 올릴까요?」로 묻는다(앱빌드 A32: 막혀 있어 그 창에 닿지 못했다) */}
+          <Btn label={n > 0 ? '발송하기' : '공지 올리기'} style={k.grow} disabled={!ready} onPress={() => setConfirm(true)} />
         </View>
       </Body>
 
-      <Ask open={confirm} title={`${n}명에게 보낼까요?`} mood="phone" onClose={() => setConfirm(false)}
-        body={`「${title.trim()}」${push ? '\n푸시로도 알려요. 보낸 뒤에는 취소할 수 없어요.' : '\n앱에서만 보여요(푸시 없음).'}${push && isNight() ? '\n\n지금은 밤이에요. 아침에 보내는 편이 좋아요.' : ''}`}
-        buttons={[{ label: '다시 보기', tone: 'ghost', onPress: () => setConfirm(false) }, { label: busy ? '보내는 중…' : '보내기', onPress: () => { void submit(false); } }]} />
+      {/* 받는 사람 수는 쓰는 나를 빼고 센다(서버 audience) — 0명이면 공지만 남는다 */}
+      <Ask open={confirm} title={n > 0 ? `${n}명에게 보낼까요?` : '공지만 올릴까요?'} mood="phone" onClose={() => setConfirm(false)}
+        body={`「${title.trim()}」${n === 0 ? '\n받을 사람이 아직 없어요(쓰는 나는 빼고 세요). 공지는 남아서 나중에 들어온 사람도 봐요.' : push ? '\n푸시로도 알려요. 보낸 뒤에는 취소할 수 없어요.' : '\n앱에서만 보여요(푸시 없음).'}${n > 0 && push && isNight() ? '\n\n지금은 밤이에요. 아침에 보내는 편이 좋아요.' : ''}`}
+        buttons={[{ label: '다시 보기', tone: 'ghost', onPress: () => setConfirm(false) }, { label: busy ? '보내는 중…' : n > 0 ? '보내기' : '올리기', onPress: () => { void submit(false); } }]} />
     </View>
   );
 }

@@ -10,6 +10,7 @@
  *   event.settle  행사 정산      행사 끝난 다음 날 19:00 — 진행 중 행사의 끝나는 날이 정해져 있을 때
  *   year.settle   연말 결산      12월 28일 19:00 — 11월부터 건다
  *   idle          오랜만에       마지막으로 연 뒤 7일째 19:30(회원은 14일)
+ *   birthday      회원 생일      생일 날 09:00 — 앞으로 60일 안의 생일(구독 모임, 이름은 싣지 않는다 — 누구인지는 앱에서)
  *
  * 앞의 다섯은 총무·관리자만. **서버 푸시와 겹치지 않게** — 서버는 공지를 쓸 때 · 요청이 올라올 때 · 미납 안내를 보낼 때
  * 그 자리에서 보낸다. 로컬은 서버가 모르는 **나중**만 맡는다(요청을 받고도 처리 안 한 채 나간 다음 날처럼).
@@ -27,6 +28,7 @@ export const KEYS = {
   eventSettle: 'event.settle',
   yearSettle: 'year.settle',
   idle: 'idle',
+  birthday: 'birthday',
 } as const;
 
 /** 어드민에 항목이 없을 때 쓰는 기본값 — 채널은 서버 푸시와 같은 `chongmunim`(app.json defaultChannel) */
@@ -41,6 +43,7 @@ export const DEFAULT_CONFIG: NotifyConfig = {
     { key: KEYS.eventSettle, label: '행사 정산', title: '「{event}」 정산할 때예요', body: '행사 수입·지출을 정리해 단톡방에 공유해요' },
     { key: KEYS.yearSettle, label: '연말 결산', title: '올해 결산서를 만들 때예요', body: '연간 장부에서 결산서 PDF 를 한 번에 받아요' },
     { key: KEYS.idle, label: '오랜만에', title: '모임 장부, 한 번 볼까요?', body: '{idleBody}' },
+    { key: KEYS.birthday, label: '회원 생일', title: '오늘 생일인 회원이 있어요', body: '누구인지 앱에서 확인하고 축하를 전해 보세요' },
   ],
 };
 
@@ -55,7 +58,7 @@ export function pickConfig(fromServer: unknown): NotifyConfig {
 export type RemindSnapshot = {
   manager: boolean;
   pending: number;
-  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[] } | null;
+  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[]; birthdays?: string[] } | null;
 };
 
 /** 모임 알림 스위치(서버 명단 행) + 이 폰의 「장부 챙김 알림」 */
@@ -111,8 +114,28 @@ export function remindBases(s: RemindSnapshot | null, now: number): Record<strin
   if (mo >= 10) {
     out[KEYS.yearSettle] = future(at(dayOf(y, 11, 28), 19));
   }
+  // 생일 — 그날 아침 9시. 앞으로 60일 안의 날짜만(서버가 골라 준다), 가까운 다섯
+  const bdays = (r?.birthdays ?? []).map((md) => birthdayAt(md, today)).filter((t): t is number => t !== null && t > now)
+    .sort((a, b) => a - b).slice(0, 5);
+  if (bdays.length) out[KEYS.birthday] = bdays;
 
   return out;
+}
+
+/** 「MM-DD」 → 올해(지났으면 내년) 그날 09:00. 2월 29일은 평년에 28일 */
+function birthdayAt(md: string, today: Date): number | null {
+  const m = /^(\d{2})-(\d{2})$/.exec(md);
+  if (!m) return null;
+  const mo = Number(m[1]) - 1;
+  const d = Number(m[2]);
+  for (const y of [today.getFullYear(), today.getFullYear() + 1]) {
+    const leap = new Date(y, 1, 29).getMonth() === 1;
+    const day = mo === 1 && d === 29 && !leap ? 28 : d;
+    const t = at(dayOf(y, mo, day), 9);
+    if (t >= at(today, 0)) return t;
+  }
+
+  return null;
 }
 
 /** 행사 끝난 다음 날 19:00 */
@@ -146,5 +169,6 @@ export function remindPrefs(p: RemindPrefs): Record<string, boolean> {
     [KEYS.eventSettle]: all,
     [KEYS.yearSettle]: all,
     [KEYS.idle]: all,
+    [KEYS.birthday]: all,
   };
 }

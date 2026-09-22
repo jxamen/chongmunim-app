@@ -127,6 +127,24 @@ export function readAmount(s: string): number | null {
 }
 
 /** 칸에 보이는 금액 — 치는 동안 쉼표를 넣는다 */
+/** 생일 칸 — 숫자만 받아 「MM-DD」로(0315 → 03-15) */
+export const mdInput = (s: string): string => {
+  const d = String(s).replace(/[^\d]/g, '').slice(0, 4);
+
+  return d.length > 2 ? `${d.slice(0, 2)}-${d.slice(2)}` : d;
+};
+
+/** 「03-15」 → 「3월 15일」 · 틀린 날짜면 null(2월 29일은 된다) */
+export function mdWord(md: string | null | undefined): string | null {
+  const m = /^(\d{2})-(\d{2})$/.exec(String(md ?? ''));
+  if (!m) return null;
+  const mo = Number(m[1]);
+  const d = Number(m[2]);
+  const probe = new Date(2000, mo - 1, d);   // 윤년 2000 — 2월 29일이 된다
+
+  return probe.getMonth() === mo - 1 && probe.getDate() === d ? `${mo}월 ${d}일` : null;
+}
+
 export const amountInput = (s: string): string => {
   const n = readAmount(s);
 

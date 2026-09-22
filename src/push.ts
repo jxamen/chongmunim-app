@@ -20,13 +20,24 @@ import { track } from './track';
 import * as storage from './storage';
 import { pickConfig, remindBases, remindPrefs, remindVars, type RemindPrefs, type RemindSnapshot } from './remind';
 
-export const push = createPush({
+const base = createPush({
   base: API_BASE,
   appToken: PUBLIC_KEY,
   session: () => currentToken(),
   // 권한은 켰는데 토큰이 못 올라간 이유를 남긴다(1.2) — 「알림을 켰는데 안 와요」의 단서
   onError: (e) => track('push_register_failed', e),
 });
+
+/*
+ | 등록은 **한 번에 하나만** — 권한 창을 닫으면 앱이 앞으로 돌아오며(active) 또 부른다. 모임 입장 쪽과 같은 초에 두 번
+ | 올라가 서버 유일 키에 걸렸다(2026-09-22 A32 OTA #3, 운영 로그 1062 Duplicate entry). 패키지는 올라간 **뒤에**
+ | 같은 토큰을 기억하므로 동시에 부른 둘은 막지 못한다 — 돌고 있으면 그 약속을 같이 기다린다.
+ */
+let registering: Promise<void> | null = null;
+export const push: typeof base = {
+  ...base,
+  register: () => (registering ??= base.register().finally(() => { registering = null; })),
+};
 
 let adminConfig: unknown = null;
 let snapshot: RemindSnapshot | null = null;

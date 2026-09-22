@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MINUS, amountInput, barPercent, dayShort, entrySub, entryTitle, isNight, kstNow, monthChip, monthWord, plusMinus, readAmount, readWhen, shiftMonth,
-  signed, whenLong, won,
+  signed, whenLong, won, mdInput, mdWord,
 } from './format';
 
 describe('금액 — 시안 표기 그대로', () => {
@@ -97,5 +97,21 @@ describe('장부 한 줄 — 시안 1 의 말', () => {
     expect(entrySub({ occurredAt: '2026-09-20 10:00:00', categoryId: 1, source: 'receipt', by: '김태훈' }, cats)).toBe('9월 20일 · 식비');
     expect(entrySub({ occurredAt: '2026-09-18 10:00:00', categoryId: 1, source: 'request', by: '이수진' }, cats)).toBe('9월 18일 · 식비 · 이수진');
     expect(entrySub({ occurredAt: '2026-09-21 00:00:00', categoryId: 2, source: 'dues', by: null }, cats)).toBe('9월 21일');
+  });
+});
+
+describe('생일 — 월·일만', () => {
+  it('숫자만 쳐도 「MM-DD」', () => {
+    expect(mdInput('0315')).toBe('03-15');
+    expect(mdInput('03')).toBe('03');
+    expect(mdInput('3월 15일')).toBe('31-5');   // 자리수를 지켜 쳐야 한다 — 칸의 예시가 03-15
+    expect(mdInput('03-155')).toBe('03-15');
+  });
+  it('틀린 날짜는 null · 2월 29일은 된다', () => {
+    expect(mdWord('03-15')).toBe('3월 15일');
+    expect(mdWord('02-29')).toBe('2월 29일');
+    expect(mdWord('02-30')).toBeNull();
+    expect(mdWord('13-01')).toBeNull();
+    expect(mdWord(null)).toBeNull();
   });
 });

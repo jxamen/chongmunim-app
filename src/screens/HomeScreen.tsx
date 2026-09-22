@@ -5,16 +5,17 @@
  * 자기 요청의 진행이 보인다. 머리의 모임 이름을 누르면 모임을 바꾼다.
  */
 import React, { useEffect, useState } from 'react';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { entrySub, entryTitle, signed, won } from '../cm/format';
+import { entrySub, entryTitle, mdWord, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
 import { setRemindSnapshot } from '../push';
-import { Ask, Big, Body, Card, Chip, Failed, Head, LedgerRow, Loading, Sep, Soft, Title, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Card, Chip, Failed, Head, LedgerRow, Loading, Sep, Soft, Text, Title, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
-import { S, useT } from '../ui/theme';
+import { Hero } from '../ui/Hero';
+import { F, S, useT } from '../ui/theme';
 
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
 
@@ -72,20 +73,20 @@ export function HomeScreen() {
         {group?.transfer?.toMe ? (
           <Soft tone="warn" title="총무를 넘겨받을까요?" sub={`${group.owner ?? '지금 총무'} 님이 장부를 넘기려 해요`} onPress={() => setOffer(true)} />
         ) : null}
-        <Card>
-          <View style={[k.row, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
-            <View style={{ gap: 4 }}>
-              <Txt size="small" tone="sub">현재 잔액</Txt>
-              <Big value={h.balance} />
+        {/* 잔액은 히어로 띠로 — 흰 카드 한 장이면 첫 화면이 너무 심심했다(2026-09-22 태훈님). 누르면 장부로 */}
+        <Pressable onPress={() => setTab('ledger')} accessibilityRole="button" accessibilityLabel="장부 보기">
+          <Hero tone="deep" mood="coin" mascot={80} foot={(
+            <View style={[k.row, { gap: 6 }]}>
+              <View style={[hs.pill, k.grow]}><Text style={hs.pillText}>이번 달 수입  {signed(h.month.in, 'in')}</Text></View>
+              <View style={[hs.pill, k.grow]}><Text style={hs.pillText}>지출  {signed(h.month.out, 'out')}</Text></View>
             </View>
-            <Mascot mood="coin" size={64} style={{ marginTop: -4, marginRight: -2 }} />
-          </View>
-          <Sep style={{ marginVertical: S.md }} />
-          <View style={[k.row, { justifyContent: 'space-between' }]}>
-            <Txt size="small" tone="sub">이번 달 수입 <Txt size="small" tone="pos" bold>{signed(h.month.in, 'in')}</Txt></Txt>
-            <Txt size="small" tone="sub">지출 <Txt size="small" bold>{signed(h.month.out, 'out')}</Txt></Txt>
-          </View>
-        </Card>
+          )}>
+            <Text style={{ fontSize: F.small, fontWeight: '700', color: 'rgba(255,255,255,0.82)' }}>현재 잔액</Text>
+            <Text style={[k.num, { fontSize: F.hero, color: T.white }]} numberOfLines={1} adjustsFontSizeToFit>
+              {won(h.balance)}<Text style={{ fontSize: 19 }}> 원</Text>
+            </Text>
+          </Hero>
+        </Pressable>
 
         {h.budget.total > 0 ? (
           <Card onPress={() => setTab('ledger')}>
@@ -110,6 +111,21 @@ export function HomeScreen() {
             title={h.import.status === 'ready' ? '가져온 장부를 확인해 주세요' : '장부 파일을 읽고 있어요'}
             sub={h.import.status === 'ready' ? `${h.import.fileName ?? '구글 시트'} · 확인한 줄만 넣어요` : '끝나면 여기서 알려 드려요 · 그동안 장부를 그대로 쓰셔도 돼요'}
             onPress={() => open({ kind: 'import', id: h.import!.id })} />
+        ) : null}
+
+        {/* 다가오는 생일(14일 안) — 총무·관리자 · 구독 모임. 회비로 선물을 챙기는 모임이 많다(2026-09-22 태훈님) */}
+        {h.birthdays.length > 0 ? (
+          <Card style={{ gap: 6 }} onPress={() => open({ kind: 'members' })}>
+            <Txt size="small" tone="sub" bold>다가오는 생일</Txt>
+            {h.birthdays.slice(0, 4).map((b) => (
+              <View key={b.id} style={[k.row, { gap: 8 }]}>
+                <Txt bold style={k.grow} numberOfLines={1}>🎂 {b.name}</Txt>
+                <Txt size="small" tone={b.days === 0 ? 'pos' : 'sub'} bold={b.days === 0}>
+                  {b.days === 0 ? '오늘' : b.days === 1 ? '내일' : `${b.days}일 뒤`} · {mdWord(b.md)}
+                </Txt>
+              </View>
+            ))}
+          </Card>
         ) : null}
 
         {h.notice ? (
@@ -156,3 +172,8 @@ export function HomeScreen() {
     </View>
   );
 }
+
+const hs = StyleSheet.create({
+  pill: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.16)' },
+  pillText: { fontSize: 13.5, fontWeight: '700', color: '#fff', textAlign: 'center' },
+});

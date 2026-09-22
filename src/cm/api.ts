@@ -8,8 +8,9 @@ import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
   toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
-} from './model';
+ toRecipients, toClosing, toClosings } from './model';
 import type { CommitRow } from './importRows';
+import { toPush } from './pushText';
 
 const g = (gid: number, path = ''): string => `cm/g/${gid}${path ? '/' + path : ''}`;
 const q = (params: Record<string, string | number | undefined>): string => {
@@ -27,12 +28,12 @@ export const updateGroup = async (gid: number, b: { name?: string; duesAmount?: 
   toGroup(await api.put(g(gid), b));
 export const roster = async (gid: number) => toRoster(await api.get(g(gid, 'members')));
 export const addMember = async (gid: number, name: string) => toRoster(await api.post(g(gid, 'members'), { name }));
-export const updateMember = async (gid: number, id: number, b: { name?: string; duesExempt?: boolean; role?: 'admin' | 'member'; remove?: boolean }) =>
+export const updateMember = async (gid: number, id: number, b: { name?: string; duesExempt?: boolean; role?: 'admin' | 'member'; remove?: boolean; birthday?: string | null }) =>
   toRoster(await api.put(g(gid, `members/${id}`), b));
 export const transferOwner = async (gid: number, memberId: number) => toGroup(await api.post(g(gid, 'owner'), { memberId }));
 export const acceptOwner = async (gid: number) => toGroup(await api.post(g(gid, 'owner/accept')));
 export const cancelOwner = async (gid: number) => toGroup(await api.post(g(gid, 'owner/cancel')));
-export const updateMe = async (gid: number, b: { name?: string; bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null; notify?: Partial<NotifyPrefs> }) =>
+export const updateMe = async (gid: number, b: { name?: string; bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null; notify?: Partial<NotifyPrefs>; birthday?: string | null }) =>
   toGroup(await api.put(g(gid, 'me'), b));
 export const setPublicLink = async (gid: number, on: boolean) =>
   String((await api.post<{ publicToken?: string | null }>(g(gid, 'public-link'), { on })).publicToken ?? '');
@@ -64,7 +65,9 @@ export const getReceipt = async (gid: number, id: string) => toReceipt(await api
 
 /* ── 지급 요청 ── */
 export const requests = async (gid: number, status: RequestStatus) => toRequests(await api.get(g(gid, 'requests') + q({ status })));
-export const addRequest = (gid: number, b: Omit<EntryInput, 'direction'>) => api.post(g(gid, 'requests'), b);
+/** `bank` — 등록 안 한 계좌를 이번 요청에만 싣는다(없으면 내 정보에 등록한 계좌) */
+export const addRequest = (gid: number, b: Omit<EntryInput, 'direction'> & { bank?: { name: string | null; account: string | null; holder: string | null } }) =>
+  api.post(g(gid, 'requests'), b);
 export const updateRequest = (gid: number, id: number, b: { categoryId?: number | null; eventId?: number | null; memo?: string | null; merchant?: string | null }) =>
   api.put(g(gid, `requests/${id}`), b);
 export const payRequest = (gid: number, id: number) => api.post(g(gid, `requests/${id}/pay`));
@@ -73,8 +76,12 @@ export const cancelRequest = (gid: number, id: number) => api.post(g(gid, `reque
 
 /* ── 행사 ── */
 export const events = async (gid: number) => toEvents(await api.get(g(gid, 'events')));
-export const addEvent = async (gid: number, b: { name: string; startsOn?: string; endsOn?: string; budget?: number }) =>
-  toEventDetail(await api.post(g(gid, 'events'), b));
+/** 만든 행사 + 알렸으면 보낸 결과(push) */
+export const addEvent = async (gid: number, b: { name: string; startsOn?: string; endsOn?: string; budget?: number; notify?: boolean }) => {
+  const j = await api.post(g(gid, 'events'), b);
+
+  return { ...toEventDetail(j), push: toPush((j as { push?: unknown }).push) };
+};
 export const event = async (gid: number, id: number) => toEventDetail(await api.get(g(gid, `events/${id}`)));
 export const updateEvent = async (gid: number, id: number, b: { name?: string; budget?: number; status?: 'open' | 'closed' }) =>
   toEventDetail(await api.put(g(gid, `events/${id}`), b));
@@ -102,6 +109,8 @@ export const uploadLedger = async (gid: number, form: FormData) => toImport(awai
  * 구글 시트 링크 — 서버가 xlsx 로 받아 둔다(공유가 「링크가 있는 모든 사용자」여야 한다). 서버가 구글에서 받아 오느라
  * 오래 걸릴 수 있어 느린 요청(40초)으로 보낸다
  */
+/** 구글 드라이브에서 고르기 — 15분짜리 표. 앱은 폰 브라우저로 `{API}/cm/picker?t=표` 를 연다(ChongmunimPickerController) */
+export const googlePickerTicket = async (gid: number) => String((await api.post<{ ticket: string }>(g(gid, 'imports/google'))).ticket ?? '');
 export const importSheet = async (gid: number, sheetUrl: string) => {
   const form = new FormData();
   form.append('sheetUrl', sheetUrl);
@@ -126,6 +135,29 @@ export const notices = async (gid: number) => toNotices(await api.get(g(gid, 'no
 export const audienceCount = (gid: number, audience: Audience, period?: string) =>
   api.get<{ count: number; withApp: number }>(g(gid, 'notices/audience') + q({ audience, period }));
 export type NoticeInput = { title: string; body: string; audience: Audience; period?: string; push: boolean; draft?: boolean };
-export const addNotice = async (gid: number, b: NoticeInput) => toNotice(await api.post(g(gid, 'notices'), b));
-export const saveNotice = async (gid: number, id: number, b: NoticeInput) => toNotice(await api.put(g(gid, `notices/${id}`), b));
+/** 쓴 공지 + 보냈으면 결과(push — 임시저장이면 null) */
+export const addNotice = async (gid: number, b: NoticeInput) => {
+  const j = await api.post(g(gid, 'notices'), b);
+
+  return { notice: toNotice(j), push: toPush((j as { push?: unknown }).push) };
+};
+export const saveNotice = async (gid: number, id: number, b: NoticeInput) => {
+  const j = await api.put(g(gid, `notices/${id}`), b);
+
+  return { notice: toNotice(j), push: toPush((j as { push?: unknown }).push) };
+};
 export const notice = async (gid: number, id: number) => toNotice(await api.get(g(gid, `notices/${id}`)));
+/** 받는 사람 — 이름 · 알림 결과 · 읽은 시각(총무·관리자) */
+export const noticeRecipients = async (gid: number, id: number) => toRecipients(await api.get(g(gid, `notices/${id}/recipients`)));
+
+/* ── 마감 ── */
+/** 지금 잠긴 것들(풀지 않은 마감) */
+export const closings = async (gid: number) => toClosings(await api.get(g(gid, 'closings')));
+/** 마감하고 알리기 — 결산을 굳히고 공지+푸시(notify 끄면 잠그기만) */
+export const closeNow = async (gid: number, b: { kind: 'month' | 'year' | 'event'; ref: string; notify?: boolean }) => {
+  const j = await api.post(g(gid, 'closings'), b);
+
+  return { closing: toClosing(j), push: toPush((j as { push?: unknown }).push) };
+};
+export const closing = async (gid: number, id: number) => toClosing(await api.get(g(gid, `closings/${id}`)));
+export const reopenClosing = (gid: number, id: number) => api.post(g(gid, `closings/${id}/reopen`));

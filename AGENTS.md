@@ -23,6 +23,28 @@ App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 | 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
 | 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
+## 구독 (2026-09-22 사용자 결정)
+
+**모임마다 월 4,900원. 무료는 계속 쓸 수 있다(체험 없음).** 결제(앱 안 구독)는 출시 직전에 붙인다 — 그전엔 운영 DB 에서
+`jc_chongmunim.cm_groups.plan` 을 `pro` 로 바꾼다. `plan` 칸이 생길 때 **있던 모임은 모두 pro**, 새 모임은 free.
+
+| 무료 | 구독 |
+|---|---|
+| 영수증 올리기 **한 번에 한 장** · 직접 적기 · 장부 보기 · 엑셀 | 여러 장 한 번에(최대 10) |
+| 총무 빼고 **10명까지** 초대 — 같이 **보기만** | 인원 제한 없음 · 운영자(관리자) · 회원 지급 요청 |
+| | 회비 체크·미납 안내 · 공지 · 행사 · 예산·작년 · 결산서 PDF · 공개 링크 · 장부 파일 가져오기 |
+
+서버가 막는 것은 `plan_required`(403) · 초대 인원은 `plan_member_limit` — 앱은 `plan_required` 를 받으면 토스트 대신
+구독 안내(`src/screens/Plan.tsx` PlanAsk)를 띄운다(store `fail`). 여러 장 · PDF · 회원의 가운데 카메라는 앱이 먼저 막는다.
+문구·목록은 `src/cm/plan.ts` 한 곳.
+
+## 마감 (2026-09-22 사용자 결정 「잠그기」)
+
+장부 월별 · 연간, 행사 화면의 「마감하고 알리기」 — 그 순간 숫자로 **결산 한 장**(서버 `cm_closings.snapshot`, 장부 화면과 같은 모양)을
+굳히고 공지+푸시로 보낸다(잠금 화면엔 「9월 결산」 제목만). 알림을 누르면 `chongmunim://notice/{id}?g={모임}` → 공지 →
+「결산 보기」(`src/screens/Closing.tsx`). **마감한 달 · 해 · 행사의 기록은 서버가 막는다**(`period_closed` — 적기·고치기·지우기·
+지급 처리·회비·가져오기). 고치려면 「마감 풀기」, 다시 마감하면 새 결산이 간다. 구독 기능(풀기는 늘 된다).
+
 ## 쓰던 장부 파일 가져오기 (2026-09-22 사용자 결정 「b로 해」)
 
 설정 › 모임 정보 › 「쓰던 장부 파일로 가져오기」 — 엑셀(.xlsx)·CSV·PDF 또는 구글 시트 링크.
@@ -46,12 +68,15 @@ App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 | `event.settle` | 행사 끝난 다음 날 19:00 | 총무·관리자 |
 | `year.settle` | 12월 28일 19:00(11월부터) | 총무·관리자 |
 | `idle` | 마지막으로 연 뒤 7일(회원 14일) 19:30 | 모두 |
+| `birthday` | 회원 생일 날 09:00 — 앞으로 60일 안(구독 모임) · 이름은 싣지 않는다 | 총무·관리자 |
 
 전체 스위치는 설정 › 내 정보 › 「장부 챙김 알림(이 폰)」. 안 울리는 시간 21~8시(아침 9시로 미룸).
 
-## 공용 패키지 (vendor tgz, `file:` 설치)
+## 공용 패키지 (GitHub 릴리스 주소로 설치 — API 문서 §0-B-1)
 
-`@jcurve/auth` 2.1.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.4.1 — 원본 `..\..\jcurve-packages\packages\<이름>`.
+`@jcurve/auth` 2.1.2 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
+릴리스 파일 주소를 적는다(공개 저장소라 토큰 없이 어디서든 받는다). 예전 `vendor/*.tgz`(`file:`)는 공개 저장소에 없어 클론만으로는 설치가 안 됐다.
+API 요청 헤더의 OTA 판은 앱이 만들지 않고 `otaHeaders()`(updates 2.5.1)를 쓴다.
 `@jcurve/ocr` 1.0.0 의 업로드는 Expo 57 에서 `{uri,name,type}` 이 깨진다 — 앱의 `post` 가 `expo-file-system` 의
 `File` 로 다시 싼다(영테크 `src/receipt/client.ts` 와 같은 수정, `src/ocr.ts`).
 
@@ -70,7 +95,8 @@ DB                jc_chongmunim (배포 세션 생성 2026-09-22 — 공용 표 
 카카오 앱 ID      1584900
 카카오 네이티브키 2e519559d34fa6fd107cf3a3f23cb284   ← app.json 두 곳(플러그인 nativeAppKey + extra.kakaoNativeAppKey)
 카카오 Redirect   https://api.j-curve.co.kr/v1/chongmunim/auth/callback/kakao
-동의항목          닉네임·프로필사진 (필수)
+동의항목          닉네임·프로필사진 → 「사용 안 함」으로 바꾸는 중 (2026-09-22 태훈님: 카카오에서 이름·사진을 받지 않는다.
+                  앱은 이름이 없으면 「회원」으로 가입하고, 모임 만들 때 부를 이름을 받는다)
 
 Firebase 프로젝트 chongmunim-d7971   (GA4: 애널리틱스 계정 「제이커브 앱」)
   Android 앱      1:279587750736:android:157daaf115a16f2b386255
@@ -93,5 +119,10 @@ Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2
   푸시 발송 키(FCM V1)는 서버 `/www/jcurve/secrets/chongmunim-fcm.json` 에 있다(자동화 세션, project_id chongmunim-d7971 확인)
 - **어드민 SNS 로그인 키**(`app_configs.social`) — 카카오 REST 키·시크릿, 구글 웹 시크릿은 사람이 넣는다(자동화 세션은 시크릿을 옮기지 않는다)
 - **구글 OAuth 게시 상태**가 「테스트 중」 — 다른 앱(꾹테크)과 같다. 테스트 사용자 외에는 구글 로그인이 안 되니 출시 전에 게시한다
-- **구글 Android OAuth 클라이언트·카카오 키 해시** — 첫 AAB 뒤(Play 앱 서명 키 SHA-1 필요)
+- **구글 Android OAuth 클라이언트·카카오 키 해시** — 시험판(빌드 맥 디버그 키)은 등록 요청 중(2026-09-22, 윈도우 자동화 세션):
+  SHA-1 `83:FA:C4:D3:93:72:A3:B7:F2:FB:14:11:27:E2:FE:FD:79:9C:3A:D9` · 카카오 키 해시 `g/rE05Nyo7fy+xQRJ+L+/XmcOtk=`(계열 앱 시험판 공용 디버그 키).
+  **스토어 판은 지문이 둘 더** — ① EAS 업로드 키(총무님 EAS 에 안드로이드 키스토어가 아직 없다 → 사람이 `eas credentials -p android` 로 한 번 만든다)
+  ② Play 앱 서명 키(첫 AAB 뒤 Play Console › 앱 무결성). 설치 경로마다 실제로 서명한 키가 등록돼야 로그인이 된다
+- **구글 드라이브에서 고르기**(장부 가져오기) — 구글 클라우드 Picker·Drive API · API 키(→ `app_configs` 'picker') · 웹 클라이언트 JS 원본·리디렉션
+  `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 키가 없으면 앱이 「준비하고 있어요」
 - **약관·개인정보 기본본** — 등록 안 함(총무님 전용 문안이 필요하다)

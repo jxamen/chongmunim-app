@@ -1,17 +1,22 @@
 /**
- * 탭 위에 겹쳐 뜨는 작은 화면들 — 장부 한 줄 고치기 · 영수증 보기 · 명단 · 항목 · 내 정보/알림 · 모임 정보 · 총무 넘기기 · 예산 한 줄.
+ * 탭 위에 겹쳐 뜨는 작은 화면들 — 장부 한 줄 고치기 · 영수증 보기 · 명단 · 항목 · 내 정보 · 알림 · 모임 정보 · 총무 넘기기 · 예산 한 줄.
  */
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useApp, useLoad } from '../store';
+import { API_BASE } from '../config';
 import * as cm from '../cm/api';
-import { amountInput, kstNow, readAmount, readWhen, whenLong, won } from '../cm/format';
+import { amountInput, kstNow, mdInput, mdWord, readAmount, readWhen, whenLong, won } from '../cm/format';
+import { isPro } from '../cm/plan';
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
 import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
 import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
+import { BankField } from '../ui/BankField';
+import { DateField } from '../ui/DateField';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -77,7 +82,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
         {dues ? <Soft title="회비 기록이에요" sub="금액·날짜는 모임 › 회비에서 바꿔 주세요. 지우면 그 달 납부도 취소돼요" /> : null}
         <Field label={entry.direction === 'in' ? '누구에게 · 무엇' : '상호'} value={merchant} onChangeText={setMerchant} maxLength={60} />
         <View style={[k.row, { gap: S.sm }]}>
-          <Field label="날짜" style={{ flex: 1.3 }} value={date} onChangeText={setDate} editable={!dues} maxLength={10} inputStyle={{ fontSize: F.body }} />
+          <DateField label="날짜" style={{ flex: 1.3 }} value={date} onChange={setDate} disabled={dues} />
           <Field label="시각" style={{ flex: 0.9 }} value={time} onChangeText={setTime} editable={!dues} maxLength={5} placeholder="—" inputStyle={{ fontSize: F.body }} />
         </View>
         <Field label="금액" value={amount} onChangeText={(v) => setAmount(amountInput(v))} editable={!dues} keyboardType="number-pad"
@@ -157,10 +162,11 @@ export function ReceiptScreen({ id }: { id: string }) {
 /* ── 명단 · 관리자 ── */
 
 export function MembersScreen() {
-  const { group, back, fail, say, reloadGroup } = useApp();
+  const { group, back, fail, say, reloadGroup, showPlan } = useApp();
   const { data, error, reload } = useLoad(cm.roster);
   const [name, setName] = useState('');
   const [pick, setPick] = useState<RosterItem | null>(null);
+  const [bday, setBday] = useState('');   // 고르는 사람의 생일(MM-DD)
   const [list, setList] = useState<RosterItem[] | null>(null);
   const owner = group?.me.role === 'owner';
   const rows = list ?? data;
@@ -188,8 +194,8 @@ export function MembersScreen() {
             {rows.map((m, i) => (
               <View key={m.id}>
                 {i > 0 ? <Sep /> : null}
-                <MenuRow label={m.name} value={[ROLE[m.role], m.hasApp ? null : '앱 없음', m.duesExempt ? '회비 면제' : null].filter(Boolean).join(' · ')}
-                  onPress={m.role === 'owner' ? undefined : () => setPick(m)} />
+                <MenuRow label={m.name} value={[ROLE[m.role], m.hasApp ? null : '앱 없음', m.duesExempt ? '회비 면제' : null, mdWord(m.birthday) ? `🎂 ${mdWord(m.birthday)}` : null].filter(Boolean).join(' · ')}
+                  onPress={() => { setBday(m.birthday ?? ''); setPick(m); }} />
               </View>
             ))}
           </Card>
@@ -201,14 +207,26 @@ export function MembersScreen() {
         buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setPick(null) }]}>
         {pick && group ? (
           <View style={{ gap: S.sm }}>
-            {owner && pick.hasApp ? (
+            {/* 생일 — 월·일만. 그날 아침 총무·관리자 폰에 알림(이름은 잠금 화면에 안 싣는다) · 구독 */}
+            <View style={[k.row, { gap: S.sm, alignItems: 'flex-end' }]}>
+              <Field label="생일(월-일)" style={k.grow} value={bday} onChangeText={(v) => setBday(mdInput(v))} placeholder="예) 03-15"
+                keyboardType="number-pad" maxLength={5} inputStyle={{ fontSize: F.body }} />
+              <Btn label="저장" small style={{ width: 70, marginBottom: 2 }} disabled={bday !== '' && !mdWord(bday)}
+                onPress={() => {
+                  if (!isPro(group)) { setPick(null); showPlan('general'); return; }
+                  void run(() => cm.updateMember(group.id, pick.id, { birthday: bday || null }), bday ? `${pick.name} 님 생일을 적었어요` : '생일을 지웠어요');
+                }} />
+            </View>
+            {pick.role !== 'owner' && owner && pick.hasApp ? (
               <Btn label={pick.role === 'admin' ? '관리자에서 빼기' : '관리자로 지정'} tone="ghost" small
                 onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { role: pick.role === 'admin' ? 'member' : 'admin' }), '바꿨어요'); }} />
             ) : null}
             <Btn label={pick.duesExempt ? '회비 면제 풀기' : '회비 면제'} tone="ghost" small
               onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { duesExempt: !pick.duesExempt }), '바꿨어요'); }} />
-            <Btn label="명단에서 빼기" tone="danger" small
-              onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { remove: true }), `${pick.name} 님을 명단에서 뺐어요`); }} />
+            {pick.role !== 'owner' ? (
+              <Btn label="명단에서 빼기" tone="danger" small
+                onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { remove: true }), `${pick.name} 님을 명단에서 뺐어요`); }} />
+            ) : null}
           </View>
         ) : null}
       </Ask>
@@ -288,7 +306,7 @@ export function CategoriesScreen() {
   );
 }
 
-/* ── 내 정보 · 받을 계좌 · 알림 ── */
+/* ── 내 정보 · 받을 계좌 ── */
 
 export function ProfileScreen() {
   const { group, back, say, fail, reloadGroup } = useApp();
@@ -298,7 +316,55 @@ export function ProfileScreen() {
   const [bankName, setBankName] = useState(me?.bankName ?? '');
   const [bankAccount, setBankAccount] = useState(me?.bankAccount ?? '');
   const [bankHolder, setBankHolder] = useState(me?.bankHolder ?? '');
+  const [birthday, setBirthday] = useState(me?.birthday ?? '');
   const [busy, setBusy] = useState(false);
+  if (!group || !me) return null;
+  const pro = isPro(group);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      // 생일은 구독 모임에서만 — 바뀌었을 때만 보낸다(무료 모임에서 이름·계좌 저장이 막히지 않게)
+      const bday = pro && birthday !== (me.birthday ?? '') ? { birthday: birthday || null } : {};
+      await cm.updateMe(group.id, { name: name.trim(), bankName: bankName.trim() || null, bankAccount: bankAccount.trim() || null, bankHolder: bankHolder.trim() || null, ...bday });
+      await reloadGroup();
+      say('저장했어요');
+      back();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Head title="내 정보" onClose={back} />
+      <Body bottom={kb > 0 ? kb + 24 : 120}>
+        <View style={{ height: 2 }} />
+        <Field label="모임에서 쓰는 이름" value={name} onChangeText={setName} maxLength={30} />
+        {pro ? (
+          <Field label="생일(월-일)" value={birthday} onChangeText={(v) => setBirthday(mdInput(v))} placeholder="예) 03-15 · 적어 두면 그날 모임이 알아요"
+            keyboardType="number-pad" maxLength={5} inputStyle={{ fontSize: F.body }} />
+        ) : null}
+        <Card style={{ gap: S.md }}>
+          <Txt size="small" tone="sub" bold>지급받을 계좌</Txt>
+          <Txt size="tiny" tone="dim">지급 요청을 하면 총무님이 이 계좌로 보내요. 총무·관리자만 전체 번호를 봐요.</Txt>
+          <BankField value={bankName} onChange={setBankName} />
+          <Field value={bankAccount} onChangeText={setBankAccount} placeholder="계좌번호" keyboardType="numbers-and-punctuation" maxLength={40} inputStyle={{ fontSize: F.body }} />
+          <Field value={bankHolder} onChangeText={setBankHolder} placeholder="예금주" maxLength={30} inputStyle={{ fontSize: F.body }} />
+        </Card>
+        <Btn label="저장" loading={busy} disabled={!name.trim() || (birthday !== '' && !mdWord(birthday))} onPress={() => { void save(); }} />
+      </Body>
+    </View>
+  );
+}
+
+/* ── 알림 — 모임 푸시(서버, 모임마다) · 장부 챙김(이 폰) ── */
+
+export function NotifyScreen() {
+  const { group, back, fail, reloadGroup } = useApp();
+  const me = group?.me;
   const [remind, setRemind] = useState(remindOn());
   if (!group || !me) return null;
 
@@ -308,20 +374,6 @@ export function ProfileScreen() {
     setRemind(on);
     await setRemindOn(on);
     if (on) void notify.ask();
-  };
-
-  const save = async () => {
-    setBusy(true);
-    try {
-      await cm.updateMe(group.id, { name: name.trim(), bankName: bankName.trim() || null, bankAccount: bankAccount.trim() || null, bankHolder: bankHolder.trim() || null });
-      await reloadGroup();
-      say('저장했어요');
-      back();
-    } catch (e) {
-      fail(e);
-    } finally {
-      setBusy(false);
-    }
   };
 
   const setNotify = async (key: 'notice' | 'dues' | 'request', on: boolean) => {
@@ -336,18 +388,9 @@ export function ProfileScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Head title="내 정보" onClose={back} />
-      <Body bottom={kb > 0 ? kb + 24 : 120}>
+      <Head title="알림" onClose={back} />
+      <Body bottom={120}>
         <View style={{ height: 2 }} />
-        <Field label="모임에서 쓰는 이름" value={name} onChangeText={setName} maxLength={30} />
-        <Card style={{ gap: S.md }}>
-          <Txt size="small" tone="sub" bold>지급받을 계좌</Txt>
-          <Txt size="tiny" tone="dim">지급 요청을 하면 총무님이 이 계좌로 보내요. 총무·관리자만 전체 번호를 봐요.</Txt>
-          <Field value={bankName} onChangeText={setBankName} placeholder="은행 예) 국민" maxLength={20} inputStyle={{ fontSize: F.body }} />
-          <Field value={bankAccount} onChangeText={setBankAccount} placeholder="계좌번호" keyboardType="numbers-and-punctuation" maxLength={40} inputStyle={{ fontSize: F.body }} />
-          <Field value={bankHolder} onChangeText={setBankHolder} placeholder="예금주" maxLength={30} inputStyle={{ fontSize: F.body }} />
-        </Card>
-        <Btn label="저장" loading={busy} disabled={!name.trim()} onPress={() => { void save(); }} />
         <Card style={{ paddingVertical: 2 }}>
           <Txt size="small" tone="sub" bold style={{ paddingTop: 12 }}>{group.name} 알림</Txt>
           <MenuRow label="공지" right={<Toggle on={me.notify.notice} onChange={(v) => { void setNotify('notice', v); }} />} />
@@ -375,9 +418,11 @@ export function GroupEditScreen() {
   const { group, back, say, fail, reloadGroup, open } = useApp();
   const kb = useKeyboardPad();
   const [sheetUrl, setSheetUrl] = useState('');
+  const [linkOpen, setLinkOpen] = useState(false);   // 링크 붙이기는 접어 둔다 — 남이 공유해 준 시트일 때만
   const [sending, setSending] = useState(false);
   const [name, setName] = useState(group?.name ?? '');
   const [dues, setDues] = useState(group?.duesAmount ? won(group.duesAmount) : '');
+  const [duesOn, setDuesOn] = useState((group?.duesAmount ?? 0) > 0);
   const [opening, setOpening] = useState(group?.openingBalance ? won(group.openingBalance) : '');
   const [openingDate, setOpeningDate] = useState(group?.openingDate ?? '');
   const [busy, setBusy] = useState(false);
@@ -422,11 +467,31 @@ export function GroupEditScreen() {
     }
   };
 
+  /*
+   | 구글 드라이브에서 고르기 — 링크를 복사해 붙이지 않는다(2026-09-22 태훈님). 폰 브라우저로 서버 페이지를 열면 구글 로그인
+   | (고른 파일만 읽는 권한) → 내 드라이브 목록(구글 Picker) → 고르면 서버가 받아 가져오기에 맡기고 chongmunim://import/{id} 로
+   | 돌려보낸다 → 확인 표를 연다. 로그인은 앱 안 웹뷰에서 구글이 막아서 폰 브라우저(인증 세션)로 연다.
+   */
+  const fromDrive = async () => {
+    setSending(true);
+    try {
+      const ticket = await cm.googlePickerTicket(group.id);
+      const r = await WebBrowser.openAuthSessionAsync(`${API_BASE}/cm/picker?t=${encodeURIComponent(ticket)}`, 'chongmunim://import');
+      if (r.type !== 'success') return;
+      const m = /^chongmunim:\/\/import\/([\w-]+)/.exec(r.url);
+      if (m && m[1] !== 'cancel') open({ kind: 'import', id: m[1] });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const save = async () => {
     setBusy(true);
     try {
       await cm.updateGroup(group.id, {
-        name: name.trim(), duesAmount: readAmount(dues) ?? 0,
+        name: name.trim(), duesAmount: duesOn ? readAmount(dues) ?? 0 : 0,
         openingBalance: (opening.trim().startsWith('−') || opening.trim().startsWith('-') ? -1 : 1) * (readAmount(opening) ?? 0),
         openingDate: /^\d{4}-\d{2}-\d{2}$/.test(openingDate) ? openingDate : null,
       });
@@ -446,21 +511,39 @@ export function GroupEditScreen() {
       <Body bottom={kb > 0 ? kb + 24 : 120}>
         <View style={{ height: 2 }} />
         <Field label="모임 이름" value={name} onChangeText={setName} maxLength={40} />
-        <Field label="월 회비" value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="없으면 비워 두세요" right={<Txt tone="sub">원</Txt>} />
+        {/* 회비 없음을 고를 수 있게 — 0원을 「아직 안 정함」이 아니라 「회비 없는 모임」으로(2026-09-22 태훈님) */}
+        <View style={{ gap: 6 }}>
+          <Txt bold>월 회비</Txt>
+          <Choices items={[{ id: 'on', label: '매달 회비 받기' }, { id: 'off', label: '회비 없음' }]} value={duesOn ? 'on' : 'off'}
+            onChange={(id) => { setDuesOn(id === 'on'); if (id === 'off') setDues(''); }} />
+          {duesOn ? (
+            <Field value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="예) 40,000" right={<Txt tone="sub">원</Txt>} />
+          ) : <Txt size="tiny" tone="dim">회비 칸에 납부 체크·미납 안내가 뜨지 않아요. 나중에 언제든 바꿀 수 있어요.</Txt>}
+        </View>
         <Card style={{ gap: S.md }}>
           <View style={[k.row, { gap: 10 }]}>
             <Mascot mood="calculator" size={46} />
             <View style={k.grow}>
               <Txt bold>쓰던 장부 파일로 가져오기</Txt>
-              <Txt size="tiny" tone="sub">엑셀(.xlsx) · CSV · PDF 를 올리거나 구글 시트 링크를 붙이면 날짜 · 항목 · 금액으로 풀어 드려요. 확인한 줄만 넣어요.</Txt>
+              <Txt size="tiny" tone="sub">구글 시트 · 엑셀(.xlsx) · CSV · PDF 를 날짜 · 항목 · 금액으로 풀어 드려요. 확인한 줄만 넣어요.</Txt>
             </View>
           </View>
-          <Btn label="파일 고르기" loading={sending} onPress={() => { void sendLedger('file'); }} />
-          <Field value={sheetUrl} onChangeText={setSheetUrl} placeholder="구글 시트 링크 https://docs.google.com/…" autoCapitalize="none"
-            autoCorrect={false} inputStyle={{ fontSize: F.small, fontWeight: '400' }} />
-          <Btn label="링크로 가져오기" tone="ghost" disabled={!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(sheetUrl.trim())} loading={sending}
-            onPress={() => { void sendLedger('sheet'); }} />
-          <Txt size="tiny" tone="dim">시트는 공유를 「링크가 있는 모든 사용자」로 바꿔야 읽혀요. 서버가 그 시트를 한 번 받아 읽어요.</Txt>
+          <Btn label="구글 드라이브에서 고르기" loading={sending} onPress={() => { void fromDrive(); }} />
+          <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>구글에 로그인하면 내 시트 목록이 떠요 · 고른 파일만 읽어요</Txt>
+          <Btn label="폰에 있는 파일 고르기" tone="ghost" loading={sending} onPress={() => { void sendLedger('file'); }} />
+          {linkOpen ? (
+            <>
+              <Field value={sheetUrl} onChangeText={setSheetUrl} placeholder="구글 시트 링크 https://docs.google.com/…" autoCapitalize="none"
+                autoCorrect={false} inputStyle={{ fontSize: F.small, fontWeight: '400' }} />
+              <Btn label="링크로 가져오기" tone="ghost" disabled={!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(sheetUrl.trim())} loading={sending}
+                onPress={() => { void sendLedger('sheet'); }} />
+              <Txt size="tiny" tone="dim">남이 공유해 준 시트는 공유가 「링크가 있는 모든 사용자」여야 읽혀요.</Txt>
+            </>
+          ) : (
+            <Pressable onPress={() => setLinkOpen(true)} hitSlop={8} style={{ alignSelf: 'center' }}>
+              <Txt size="small" tone="sub">다른 사람이 공유한 시트 링크로 가져오기</Txt>
+            </Pressable>
+          )}
         </Card>
         <Card style={{ gap: S.md }}>
           <View style={[k.row, { gap: 10 }]}>
@@ -471,9 +554,9 @@ export function GroupEditScreen() {
             </View>
           </View>
           <Field label="기초 잔액" value={opening} onChangeText={(v) => setOpening(amountInput(v))} keyboardType="number-pad" placeholder="예) 1,150,400" right={<Txt tone="sub">원</Txt>} />
-          <Field label="기초일(선택)" value={openingDate} onChangeText={setOpeningDate} placeholder="2026-01-01" maxLength={10} inputStyle={{ fontSize: F.body }} />
+          <DateField label="기초일(선택)" value={openingDate} onChange={setOpeningDate} optional placeholder="이날 이전 잔액이 기초 잔액" />
         </Card>
-        <Btn label="저장" loading={busy} disabled={!name.trim()} onPress={() => { void save(); }} />
+        <Btn label="저장" loading={busy} disabled={!name.trim() || (duesOn && !readAmount(dues))} onPress={() => { void save(); }} />
         <Card style={{ gap: S.md }}>
           <Txt bold>{lastYear}년 항목별 집행 붙여넣기</Txt>
           <Txt size="tiny" tone="sub">쓰던 시트에서 「항목」 열과 「금액」 열을 같이 복사해 아래에 붙이세요. 합계·소계 줄은 알아서 빼요. 다음 해 예산의 근거로 쓰여요.</Txt>

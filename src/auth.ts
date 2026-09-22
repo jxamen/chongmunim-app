@@ -28,6 +28,7 @@ export const auth = createAuth<AuthResult>({
   },
   server: { kakao: loginKakao, google: loginGoogle, apple: loginApple },
   track,
+  // kakao_native 만 켜진 서버도 카카오를 켜진 것으로 본다(@jcurve/auth 2.1.2 부터 패키지가 한다)
   providers: () => serverProviders,
 });
 

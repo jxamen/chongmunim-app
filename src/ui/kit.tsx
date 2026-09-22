@@ -6,11 +6,13 @@
  * 화면 코드가 StyleSheet 를 매번 다시 쓰지 않게 여기 모은다. 색은 `useT()`(테마) 만 본다.
  * 확인창·입력창은 RN `Alert` 대신 여기 것을 쓴다 — 웹 미리보기에서 `Alert` 가 아무것도 안 한다.
  */
-import React from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import {
-  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View,
+  ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View,
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from 'react-native';
+import { useKeyboardPad } from './keyboard';
+import { revealY } from './hiddenBy';
 import { F, R, S, shadow, useT } from './theme';
 import { withPretendard } from './font';
 import { Mascot, type Mood } from './Mascot';
@@ -105,7 +107,7 @@ export function Head({ title, right, onClose, onBack, left }: {
   );
 }
 
-/** 탭 줄(시안 .tabs) — 밑줄 */
+/** 탭 줄(시안 .tabs) — 밑줄. 글자는 머리 크기(17) — 15.5 는 폰에서 너무 작았다(2026-09-22 태훈님) */
 export function Tabs<K extends string>({ items, value, onChange }: { items: { id: K; label: string }[]; value: K; onChange: (k: K) => void }) {
   const T = useT();
 
@@ -117,7 +119,7 @@ export function Tabs<K extends string>({ items, value, onChange }: { items: { id
         return (
           <Pressable key={it.id} onPress={() => onChange(it.id)} hitSlop={6}
             style={[s.tab, on && { borderBottomColor: T.ink }]}>
-            <Text style={{ fontSize: F.body, color: on ? T.ink : T.sub, fontWeight: on ? '700' : '400' }}>{it.label}</Text>
+            <Text style={{ fontSize: F.head, color: on ? T.ink : T.sub, fontWeight: on ? '800' : '600' }}>{it.label}</Text>
           </Pressable>
         );
       })}
@@ -255,12 +257,16 @@ export function Field({ label, right, style, inputStyle, ...rest }: TextInputPro
   label?: string; right?: React.ReactNode; style?: StyleProp<ViewStyle>; inputStyle?: StyleProp<TextStyle>;
 }) {
   const T = useT();
+  const body = useContext(BodyContext);
+  const rowRef = useRef<View | null>(null);
 
   return (
-    <View style={[{ gap: 6 }, style]}>
+    <View ref={rowRef} style={[{ gap: 6 }, style]}>
       {label ? <Text style={{ fontSize: F.body, fontWeight: '700', color: T.ink }}>{label}</Text> : null}
       <View style={[s.input, { borderColor: T.line, backgroundColor: T.white }]}>
+        {/* 몸통(Body) 안이면 눌렸을 때 이 줄이 키보드에 가리지 않게 몸통이 스크롤한다 */}
         <TextInput placeholderTextColor={T.dim} {...rest}
+          onFocus={(e) => { body?.focus(rowRef.current); rest.onFocus?.(e); }}
           style={[s.inputText, { color: T.ink }, rest.multiline && s.multi, inputStyle]} />
         {right}
       </View>
@@ -334,15 +340,54 @@ export function Failed({ text, onRetry }: { text: string; onRetry: () => void })
   );
 }
 
+/*
+ | 스크롤 몸통 안의 입력칸이 키보드에 가리지 않게 — `reveal.ts`(꿀꿀캐시)와 같은 계산을 **몸통 한 곳**에 둔다.
+ | 화면마다 useReveal 을 달게 두면 또 한 곳이 빠진다(2026-09-22 태훈님 아이폰 모임 만들기 「입력칸 가려짐」 — 그 화면만
+ | 키보드 여백도 없었다). 몸통이 ① 키보드만큼 바닥 여백을 두고 ② 칸(Field)이 눌리면 그 줄이 가린 만큼 지금 위치에서 더 내린다.
+ | iOS 의 automaticallyAdjustKeyboardInsets 는 쓰지 않는다(탭바가 사라지는 프레임으로 재 모자란다 — hiddenBy.test).
+ */
+const BodyContext = React.createContext<{ focus: (row: View | null) => void } | null>(null);
+
 /** 스크롤 몸통 — 시안 .pad(좌우 14 → 16, 사이 9 → 10) */
 export function Body({ children, refresh, pad = true, bottom = 120 }: {
   children: React.ReactNode; refresh?: React.ReactElement; pad?: boolean; bottom?: number;
 }) {
+  const scrollRef = useRef<ScrollView | null>(null);
+  const offset = useRef(0);
+  const top = useRef(0);                       // 키보드 윗변(창 좌표) — 없으면 0
+  const row = useRef<View | null>(null);       // 커서가 있는 칸의 줄
+  const kb = useKeyboardPad();
+
+  const reveal = useCallback(() => {
+    const r = row.current;
+    if (!r || top.current <= 0) return;
+    r.measureInWindow((_x, y, _w, h) => {
+      const to = revealY(offset.current, y + h, top.current);
+      if (to !== null) scrollRef.current?.scrollTo({ y: to, animated: true });
+    });
+  }, []);
+
+  useEffect(() => {
+    // 여백이 먼저 붙어야 스크롤할 자리가 생긴다 — 한 박자 뒤에. 자동완성 줄이 붙으면 윗변이 또 올라간다(keyboardDidChangeFrame)
+    const onShow = (e: { endCoordinates?: { screenY?: number } }) => { top.current = Number(e?.endCoordinates?.screenY) || 0; setTimeout(reveal, 80); };
+    const a = Keyboard.addListener('keyboardDidShow', onShow);
+    const c = Keyboard.addListener('keyboardDidChangeFrame', onShow);
+    const b = Keyboard.addListener('keyboardDidHide', () => { top.current = 0; row.current = null; });
+
+    return () => { a.remove(); b.remove(); c.remove(); };
+  }, [reveal]);
+
+  // 다른 칸에서 넘어와 키보드가 이미 떠 있으면 keyboardDidShow 가 다시 안 온다 — 눌린 자리에서 한 번 더 맞춘다
+  const ctx = useMemo(() => ({ focus: (r: View | null) => { row.current = r; setTimeout(reveal, 80); } }), [reveal]);
+
   return (
-    <ScrollView refreshControl={refresh as never} keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[pad && s.pad, { paddingBottom: bottom }]}>
-      {children}
-    </ScrollView>
+    <BodyContext.Provider value={ctx}>
+      <ScrollView ref={scrollRef} refreshControl={refresh as never} keyboardShouldPersistTaps="handled"
+        onScroll={(e) => { offset.current = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
+        contentContainerStyle={[pad && s.pad, { paddingBottom: Math.max(bottom, kb > 0 ? kb + 24 : 0) }]}>
+        {children}
+      </ScrollView>
+    </BodyContext.Provider>
   );
 }
 
@@ -401,8 +446,8 @@ export const s = StyleSheet.create({
   pad: { paddingHorizontal: S.lg, gap: 10 },
 
   card: { borderWidth: 1, borderRadius: R.card, padding: S.lg },
-  tabs: { flexDirection: 'row', gap: 18, paddingHorizontal: S.lg, borderBottomWidth: 1 },
-  tab: { paddingTop: 10, paddingBottom: 9, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
+  tabs: { flexDirection: 'row', gap: 22, paddingHorizontal: S.lg, borderBottomWidth: 1 },
+  tab: { paddingTop: 12, paddingBottom: 10, borderBottomWidth: 3, borderBottomColor: 'transparent' },
 
   chip: { borderWidth: 1, borderRadius: R.chip, paddingHorizontal: 11, paddingVertical: 6, alignSelf: 'flex-start' },
   pill: { borderRadius: R.chip, paddingHorizontal: 9, paddingVertical: 3 },

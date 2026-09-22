@@ -8,7 +8,7 @@
  * 모임 목록 → 마지막으로 본 모임. 모임이 없으면 「모임 만들기 / 들어가기」로.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import { autoApply, onUpdateReady, startupSettled } from '@jcurve/updates';
 import * as storage from './storage';
 import {
@@ -22,6 +22,7 @@ import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
 import * as cm from './cm/api';
 import type { Audience, BudgetLine, Entry, Group, GroupItem } from './cm/model';
 import { codeOf, errorText } from './cm/errors';
+import type { PlanReason } from './cm/plan';
 import { isTheme, type ThemeName } from './ui/theme';
 
 export type Phase = 'boot' | 'login' | 'signup' | 'groups' | 'main';
@@ -41,6 +42,9 @@ export type Page =
   | { kind: 'members' }
   | { kind: 'categories' }
   | { kind: 'profile' }
+  | { kind: 'notify' }
+  | { kind: 'closing'; id: number }
+  | { kind: 'plan' }
   | { kind: 'groupEdit' }
   | { kind: 'import'; id: string }
   | { kind: 'transfer' }
@@ -78,6 +82,10 @@ type Ctx = {
   reland: () => Promise<void>;
   logout: () => Promise<void>;
   withdraw: () => Promise<void>;
+  /** 구독 안내 — 무엇 때문에 떴는지(없으면 닫힘). 서버 plan_required 도 여기로 온다 */
+  planAsk: PlanReason | null;
+  showPlan: (why?: PlanReason) => void;
+  closePlan: () => void;
 };
 
 const AppContext = createContext<Ctx | null>(null);
@@ -90,6 +98,20 @@ export function useApp(): Ctx {
 }
 
 const platform = (): 'ios' | 'android' => (Platform.OS === 'ios' ? 'ios' : 'android');
+
+/** 가입 이름 — 서버가 2자 이상을 요구한다. SNS 이름이 없으면(카카오 닉네임을 받지 않는다) 자리값. 화면은 이 자리값을 기본값으로 쓰지 않는다 */
+export const SIGNUP_PLACEHOLDER = '회원';
+export const signupName = (name?: string | null): string => {
+  const n = String(name ?? '').trim().slice(0, 20);
+
+  return n.length >= 2 ? n : SIGNUP_PLACEHOLDER;
+};
+/** 모임에서 쓸 이름의 기본값 — 가입 자리값이면 비운다 */
+export const defaultMyName = (name?: string | null): string => {
+  const n = String(name ?? '').trim();
+
+  return n === SIGNUP_PLACEHOLDER ? '' : n.slice(0, 30);
+};
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>('boot');
@@ -104,6 +126,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const [updateReady, setUpdateReady] = useState(false);
   const [updateNotice, setUpdateNoticeState] = useState(true);
+  const [planAsk, setPlanAsk] = useState<PlanReason | null>(null);
 
   // 새 버전 적용 규칙(@jcurve/updates)이 읽는 지금 상태 — 렌더 밖에서 읽으므로 ref 로 둔다
   const live = useRef({ phase, signedIn: false, pages: 0, notice: true });
@@ -115,7 +138,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2400);
   }, []);
-  const fail = useCallback((e: unknown) => say(errorText(codeOf(e))), [say]);
+  const showPlan = useCallback((why: PlanReason = 'general') => { track('plan_view', { why }); setPlanAsk(why); }, []);
+  const closePlan = useCallback(() => setPlanAsk(null), []);
+  // 구독에서만 되는 일을 서버가 막으면(plan_required) 토스트 대신 구독 안내를 띄운다
+  const fail = useCallback((e: unknown) => {
+    const code = codeOf(e);
+    if (code === 'plan_required') setPlanAsk('server');
+    else say(errorText(code));
+  }, [say]);
 
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const open = useCallback((p: Page) => setPages((cur) => [...cur, p]), []);
@@ -139,6 +169,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPages([]);
     setTab('home');
     setPhase('main');
+    /*
+     | 알림 권한은 **모임에 들어온 때** 묻는다(한 실행에 한 번 — 이미 허용했으면 창 없이 넘어간다). 허용돼야 기기 토큰이 올라간다 —
+     | `push.register()` 는 권한이 없으면 조용히 돌아선다(@jcurve/notify: 「허용 요청은 앱이 한다」). 전에는 설정 › 알림 스위치를
+     | 건드려야만 물어서, 스위치가 처음부터 켜져 있는 이 앱에선 아무도 안 물어봤다 → 운영 push_tokens 0행, 지급 요청 알림이
+     | 총무에게 한 번도 안 갔다(2026-09-22 태훈님 「요청 들어오면 담당자한테 알림이 와야 함」, 배포 조회 chongmunim_push_no_token).
+     */
+    void notify.ask().then((ok) => { if (ok) void push.register(); }).catch(() => undefined);
   }, []);
 
   const selectGroup = useCallback(async (gid: number) => {
@@ -165,12 +202,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await enterGroup(await cm.getGroup(pick.id));
   }, [enterGroup]);
 
-  const afterLogin = useCallback(async (s: Session, m: Member) => {
+  const afterLogin = useCallback(async (s: Session, m0: Member) => {
+    let m = m0;
     setSession(s);
     await storage.setJson('cm.session', s);
+    setGuestNow(m.provider === 'guest');
+    /*
+     | 처음 온 SNS 계정은 **약관 창 없이 여기서 가입까지 끝낸다**(당근캐시 2026-09-18 지시와 같다 — 화면 하나에서 38% 가 빠졌다).
+     | 고지는 로그인 버튼 아래 한 줄(「계속하면 이용약관 · 개인정보처리방침에 동의합니다」)이 한다. 카카오 동의를 한 사람에게
+     | 앱이 또 동의를 받던 것(2026-09-22 태훈님 「카카오 동의 했는데 … 또 동의가 뜸」). 세션을 먼저 둔 뒤라 auth/complete 가 인증된다.
+     | 이름은 모임마다 따로 받으므로(모임 만들기·들어가기의 「내 이름」) 여기서는 서버 규칙(2자 이상)만 맞춘다 — 카카오 닉네임을
+     | 받지 않는다(태훈님 「프로필사진, 닉네임도 불러오지마」). 실패하면 이름만 적는 화면으로(동의 칸 없음).
+     */
+    if (m.needsSignup) {
+      try {
+        const r = await completeSignup(signupName(m.name), platform());
+        track('signup_done');
+        m = { ...m, ...r.member, needsSignup: false };
+      } catch (e) {
+        track('signup_fail', { code: codeOf(e) });
+      }
+    }
     await storage.setJson('cm.member', m);
     setMember(m);
-    setGuestNow(m.provider === 'guest');
     void push.register();
     if (m.needsSignup) {
       setPhase('signup');
@@ -191,6 +245,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTab('home');
     setPhase('login');
   }, []);
+
+  /*
+   | 알림을 누르면 — @jcurve/notify 가 푸시의 data.url(「chongmunim://notice/12?g=3」)을 연다 → 여기서 받아 그 공지를 띄운다
+   | (마감 결산 공지면 공지 안의 「결산 보기」). 다른 모임 것이면 그 모임으로 옮긴 뒤. 꺼져 있다 알림으로 켜졌으면
+   | 로그인 복원 · 모임 입장이 끝난 뒤에 한 번. 같은 주소가 두 길(getInitialURL · url 이벤트)로 와도 한 번만 연다.
+   */
+  const pendingLink = useRef<string | null>(null);
+  const lastLink = useRef<{ url: string; at: number } | null>(null);
+  const groupRef = useRef<number | null>(null);
+  groupRef.current = group?.id ?? null;
+  const openLink = useCallback(async (url: string) => {
+    const m = /^chongmunim:\/\/notice\/(\d+)(?:\?g=(\d+))?/.exec(url);
+    if (!m) return;
+    if (lastLink.current && lastLink.current.url === url && Date.now() - lastLink.current.at < 5000) return;
+    lastLink.current = { url, at: Date.now() };
+    const gid = Number(m[2] ?? 0);
+    try {
+      if (gid && gid !== groupRef.current) await enterGroup(await cm.getGroup(gid));
+      setPages((cur) => [...cur, { kind: 'notice', id: Number(m[1]) }]);
+      track('push_open', { kind: 'notice' });
+    } catch {
+      say('알림의 공지를 열지 못했어요');
+    }
+  }, [enterGroup, say]);
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (live.current.phase === 'main') void openLink(url); else pendingLink.current = url;
+    });
+    void Linking.getInitialURL().then((u) => { if (u) pendingLink.current = u; }).catch(() => undefined);
+
+    return () => sub.remove();
+  }, [openLink]);
+  useEffect(() => {
+    if (phase !== 'main' || !pendingLink.current) return;
+    const u = pendingLink.current;
+    pendingLink.current = null;
+    void openLink(u);
+  }, [phase, openLink]);
 
   /* ── 부팅 ── */
   useEffect(() => {
@@ -273,8 +365,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    */
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') void notify.clear();
-      else scheduleRemind();
+      if (st === 'active') {
+        void notify.clear();
+        void push.register();   // 기기 설정에서 나중에 허용했으면 이제 올라간다(같은 토큰은 한 실행에 한 번만)
+      } else scheduleRemind();
     });
 
     return () => sub.remove();
@@ -353,8 +447,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     phase, member, busy, groups, group, theme, setTheme, tab, setTab, pages, open, back, version, bump, toast, say, fail,
     updateReady, updateNotice, setUpdateNotice,
     signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, reland: landing, logout, withdraw,
+    planAsk, showPlan, closePlan,
   }), [landing, phase, member, busy, groups, group, theme, setTheme, tab, pages, open, back, version, bump, toast, say, fail,
-    updateReady, updateNotice, setUpdateNotice, signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, logout, withdraw]);
+    updateReady, updateNotice, setUpdateNotice, signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, logout, withdraw,
+    planAsk, showPlan, closePlan]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

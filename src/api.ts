@@ -9,7 +9,7 @@
  *
  * **금액을 앱이 정해 서버에 믿게 하지 않는다** — 장부 계산(잔액·이월·집계)은 서버가 하고 앱은 그린다.
  */
-import { Platform } from 'react-native';
+import { otaHeaders } from '@jcurve/updates';
 import { API_BASE, PUBLIC_KEY } from './config';
 import { resendIfDropped } from './resend';
 import { isDeadSession } from './deadSession';
@@ -45,29 +45,12 @@ const TIMEOUT_MS = 12000;
 /** 사진 올리기는 더 기다린다(영테크 `SLOW_MS`) */
 const SLOW_MS = 40000;
 
-/** 이 기기가 어느 OTA 판으로 도는지 — 어드민이 판별 사용자 수를 센다(용돈캡슐과 같은 헤더) */
-let otaHeaders: Record<string, string> | null = null;
-function ota(): Record<string, string> {
-  if (otaHeaders) return otaHeaders;
-  otaHeaders = {};
-  if (Platform.OS === 'web') return otaHeaders;
-  try {
-    const U = require('expo-updates') as typeof import('expo-updates');
-    otaHeaders = {
-      'x-ota-update-id': U.updateId ?? 'embedded',
-      'x-ota-channel': U.channel ?? '',
-      'x-ota-runtime': U.runtimeVersion ?? '',
-      'x-ota-platform': Platform.OS,
-    };
-  } catch {
-    // 모듈이 없는 빌드 — 붙이지 않는다
-  }
-
-  return otaHeaders;
-}
-
 async function call<T>(method: string, path: string, body?: unknown, auth = true, ms = TIMEOUT_MS): Promise<T> {
-  const headers: Record<string, string> = { 'X-App-Token': PUBLIC_KEY, Accept: 'application/json', ...ota() };
+  /*
+   | 이 기기가 어느 OTA 판으로 도는지 — 어드민이 판별 사용자 수를 센다(`@jcurve/updates` 2.5 `otaHeaders`, 문서 §9-B-2).
+   | 앱마다 들고 있던 ota() 를 이것으로 바꿨다 — 스토어 판 그대로 켠 기기에 내장 판 id 를 싣던 것을 패키지가 고쳤다(2.5.1)
+   */
+  const headers: Record<string, string> = { 'X-App-Token': PUBLIC_KEY, Accept: 'application/json', ...otaHeaders() };
   const form = typeof FormData !== 'undefined' && body instanceof FormData;
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   if (auth && session) headers.Authorization = 'Bearer ' + session.token;

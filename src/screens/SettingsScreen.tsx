@@ -14,8 +14,13 @@ import { kstNow } from '../cm/format';
 import { isManager } from '../cm/model';
 import { APP_VERSION, LEGAL_BASE, publicLedgerUrl } from '../config';
 import { copy, shareText } from '../share';
-import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Toggle, Txt, s as k } from '../ui/kit';
-import { PALETTES, S, THEMES, THEME_LABEL, useT } from '../ui/theme';
+import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Toggle, Txt, s as k } from '../ui/kit';
+import { Hero } from '../ui/Hero';
+import { PlanCard } from './Plan';
+import { isPro } from '../cm/plan';
+import { F, PALETTES, S, THEMES, THEME_LABEL, useT } from '../ui/theme';
+
+const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
 
 export function SettingsScreen() {
   const { group, theme, setTheme, open, say, fail, reloadGroup, reland, logout, withdraw, updateNotice, setUpdateNotice, member } = useApp();
@@ -49,6 +54,15 @@ export function SettingsScreen() {
     <View style={{ flex: 1 }}>
       <Head title="설정" />
       <Body>
+        {/* 히어로 띠 — 이 모임에서의 나(2026-09-22 태훈님 「모임 설정에도 히어로」). 누르면 내 정보 */}
+        <Pressable onPress={() => open({ kind: 'profile' })} accessibilityRole="button" accessibilityLabel="내 정보">
+          <Hero mood="coffee" mascot={70}>
+            <Text style={{ fontSize: F.title, fontWeight: '900', color: T.deep }} numberOfLines={1}>{group.me.name || '내 정보'}</Text>
+            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${isPro(group) ? ' · 구독 중' : ' · 무료'}`}</Txt>
+          </Hero>
+        </Pressable>
+        {/* 구독 — 히어로 바로 밑(2026-09-22 태훈님 「히어로 밑으로 구독 관리 내려」). 무료는 크게, 구독 중은 작게 */}
+        <PlanCard />
         <Card style={{ gap: 2 }}>
           <Txt size="small" tone="sub" bold style={{ marginBottom: 4 }}>테마</Txt>
           {THEMES.map((t, i) => (
@@ -66,14 +80,16 @@ export function SettingsScreen() {
           ))}
         </Card>
 
-        {owner && group.admins === 0 ? (
+        {owner && group.admins === 0 && isPro(group) ? (
           <Soft tone="warn" title="관리자를 한 명 더 두세요" sub="총무가 연락이 끊겨도 모임 장부가 잠기지 않아요" onPress={() => open({ kind: 'members' })} />
         ) : null}
 
         <Card style={{ paddingVertical: 2 }}>
           <MenuRow label="내 정보 · 받을 계좌" value={group.me.bankAccount ? '적어 둠' : '비어 있음'} onPress={() => open({ kind: 'profile' })} />
           <Sep />
-          <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'profile' })} />
+          <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'notify' })} />
+          <Sep />
+          <MenuRow label="구독 관리" value={isPro(group) ? '구독 중' : '무료'} onPress={() => open({ kind: 'plan' })} />
           {manager ? (
             <>
               <Sep />

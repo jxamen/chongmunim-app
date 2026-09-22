@@ -12,9 +12,12 @@ import { amountInput, dayShort, entrySub, entryTitle, kstNow, plusMinus, readAmo
 import { isManager, type EventDetail } from '../cm/model';
 import { eventShareText } from '../cm/export';
 import { shareText } from '../share';
-import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, Loading, Sep, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, Loading, MenuRow, Sep, Toggle, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
+import { CloseBar } from './Closing';
+import { pushLine } from '../cm/pushText';
+import { DateField } from '../ui/DateField';
 import { F, S, useT } from '../ui/theme';
 
 export function EventScreen({ id }: { id: number }) {
@@ -24,7 +27,6 @@ export function EventScreen({ id }: { id: number }) {
   const cats = useLoad(cm.categories);
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [budget, setBudget] = useState('');
-  const [closeOpen, setCloseOpen] = useState(false);
   const manager = group ? isManager(group.me.role) : false;
 
   if (!data) {
@@ -35,11 +37,11 @@ export function EventScreen({ id }: { id: number }) {
   const names: Record<number, string> = {};
   for (const c of cats.data ?? []) names[c.id] = c.name;
 
-  const update = async (b: { budget?: number; status?: 'open' | 'closed' }) => {
+  const update = async (b: { budget?: number }) => {
     if (!group) return;
     try {
       await cm.updateEvent(group.id, id, b);
-      say(b.status === 'closed' ? '행사를 마감했어요' : b.status === 'open' ? '행사를 다시 열었어요' : '행사 예산을 바꿨어요');
+      say('행사 예산을 바꿨어요');
       bump();
     } catch (e) {
       fail(e);
@@ -89,11 +91,9 @@ export function EventScreen({ id }: { id: number }) {
             ))}
         </Card>
 
-        <View style={[k.row, { gap: S.sm }]}>
-          {manager ? <Btn label={ev.status === 'open' ? '행사 마감' : '다시 열기'} tone="ghost" small style={k.grow}
-            onPress={() => { if (ev.status === 'open') setCloseOpen(true); else void update({ status: 'open' }); }} /> : null}
-          <Btn label="정산서 공유" small style={k.grow} onPress={() => { void share(); }} />
-        </View>
+        <Btn label="정산서 공유" small onPress={() => { void share(); }} />
+        {/* 마감 — 결산을 굳혀 회원에게 보내고 행사 기록을 잠근다(행사 칸에서도 빠진다). 풀면 다시 열린다 */}
+        <CloseBar kind="event" refKey={String(ev.id)} label="행사" />
       </Body>
 
       <Ask open={budgetOpen} title="행사 예산" onClose={() => setBudgetOpen(false)}
@@ -101,21 +101,18 @@ export function EventScreen({ id }: { id: number }) {
           { label: '저장', onPress: () => { setBudgetOpen(false); void update({ budget: readAmount(budget) ?? 0 }); } }]}>
         <Field value={budget} onChangeText={(v) => setBudget(amountInput(v))} keyboardType="number-pad" placeholder="600,000" right={<Txt tone="sub">원</Txt>} autoFocus />
       </Ask>
-      <Ask open={closeOpen} title="행사를 마감할까요?" mood="cheer" onClose={() => setCloseOpen(false)}
-        body="마감하면 기록할 때 행사 칸에 더는 나오지 않아요. 수지는 그대로 남고, 다시 열 수 있어요."
-        buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setCloseOpen(false) },
-          { label: '마감', onPress: () => { setCloseOpen(false); void update({ status: 'closed' }); } }]} />
     </View>
   );
 }
 
 /** 행사 만들기 — 이름 · 날짜 · 예산 */
 export function EventNewScreen() {
-  const { group, back, open, bump, fail } = useApp();
+  const { group, back, open, bump, fail, say } = useApp();
   const [name, setName] = useState('');
   const [date, setDate] = useState(kstNow().ymd);
   const [endDate, setEndDate] = useState('');
   const [budget, setBudget] = useState('');
+  const [notify, setNotify] = useState(true);   // 회원들에게 알린다(공지 한 건 + 푸시) — 2026-09-22 태훈님
   const [busy, setBusy] = useState(false);
 
   const make = async () => {
@@ -123,7 +120,8 @@ export function EventNewScreen() {
     setBusy(true);
     try {
       const ymd = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
-      const d = await cm.addEvent(group.id, { name: name.trim(), startsOn: ymd(date), endsOn: ymd(endDate), budget: readAmount(budget) ?? 0 });
+      const d = await cm.addEvent(group.id, { name: name.trim(), startsOn: ymd(date), endsOn: ymd(endDate), budget: readAmount(budget) ?? 0, notify });
+      if (notify) say(`행사를 만들고 알렸어요 · ${pushLine(d.push)}`);
       bump();
       back();
       open({ kind: 'event', id: d.event.id });
@@ -144,13 +142,19 @@ export function EventNewScreen() {
         </Card>
         <Field label="행사 이름" value={name} onChangeText={setName} placeholder="예) 가을 체육대회" maxLength={40} />
         <View style={[k.row, { gap: S.sm }]}>
-          <Field label="시작" style={k.grow} value={date} onChangeText={setDate} placeholder="2026-10-10" maxLength={10} inputStyle={{ fontSize: F.body }} />
-          <Field label="끝(선택)" style={k.grow} value={endDate} onChangeText={setEndDate} placeholder="2026-10-12" maxLength={10} inputStyle={{ fontSize: F.body }} />
+          <DateField label="시작" style={k.grow} value={date} onChange={(v) => { setDate(v); if (endDate && v && endDate < v) setEndDate(''); }} />
+          <DateField label="끝(선택)" style={k.grow} value={endDate} onChange={setEndDate} optional min={date || undefined} placeholder="하루 행사면 비워요" />
         </View>
         <Txt size="tiny" tone="dim">기간 안에 찍힌 영수증에는 이 행사를 먼저 골라 둬요.</Txt>
         <Field label="행사 예산(없으면 비워 두세요)" value={budget} onChangeText={(v) => setBudget(amountInput(v))} keyboardType="number-pad"
           placeholder="600,000" right={<Txt tone="sub">원</Txt>} />
-        <Btn label="만들기" loading={busy} disabled={!name.trim()} onPress={() => { void make(); }} />
+        <Card style={{ paddingVertical: 2 }}>
+          <MenuRow label="회원들에게 알림 보내기" right={<Toggle on={notify} onChange={setNotify} />} />
+          <Txt size="tiny" tone="dim" style={{ paddingBottom: 12, lineHeight: 19 }}>
+            {notify ? '「새 행사 · 이름」 알림이 가고 공지에도 남아요. 예산 금액은 알리지 않아요.' : '알리지 않고 만들어요. 나중에 공지로 알릴 수 있어요.'}
+          </Txt>
+        </Card>
+        <Btn label={notify ? '만들고 알리기' : '만들기'} loading={busy} disabled={!name.trim()} onPress={() => { void make(); }} />
       </Body>
     </View>
   );
