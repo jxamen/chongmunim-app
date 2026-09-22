@@ -19,6 +19,9 @@ import { Mascot } from '../ui/Mascot';
 import { AppleMark, GoogleMark, KakaoMark } from '../ui/BrandMark';
 import { BRAND, F, R, S, useT } from '../ui/theme';
 
+/** 약관 전문 — 총무님 홈페이지(`LEGAL_BASE`) */
+const openLegal = (doc: 'terms' | 'privacy'): void => { void WebBrowser.openBrowserAsync(`${LEGAL_BASE}/${doc}`).catch(() => undefined); };
+
 /** 버튼 왼쪽 표시 — 무엇으로 로그인하는지 글자보다 그림이 먼저 읽힌다 */
 const MARK: Record<Provider, React.ComponentType<{ size?: number }>> = { kakao: KakaoMark, google: GoogleMark, apple: AppleMark };
 
@@ -57,6 +60,17 @@ export function LoginScreen() {
         <Btn label={providers.length ? '로그인 없이 둘러보기' : '시작하기'} tone={providers.length ? 'ghost' : 'main'} loading={busy}
           onPress={() => { if (!isRestarting()) setConsentOpen(true); }} />
         <Txt tone="dim" size="tiny" style={{ textAlign: 'center' }}>둘러보다가 나중에 카카오·구글·애플로 이어 쓸 수 있어요</Txt>
+        {/*
+          약관 「명시」 — 약관규제법은 체크가 아니라 알리고 읽을 수 있게 하는 것을 요구한다(당근캐시 로그인 화면과 같은 문구).
+          두 낱말을 누르면 전문이 열린다. 필수 동의 체크는 가입 마무리 · 둘러보기 시작에서 따로 받는다(Consent)
+        */}
+        <Txt tone="dim" size="tiny" style={{ textAlign: 'center', marginTop: S.xs }}>
+          {'계속하면 '}
+          <Text style={{ textDecorationLine: 'underline', fontWeight: '700', color: T.sub }} onPress={() => openLegal('terms')}>이용약관</Text>
+          {' · '}
+          <Text style={{ textDecorationLine: 'underline', fontWeight: '700', color: T.sub }} onPress={() => openLegal('privacy')}>개인정보처리방침</Text>
+          {'에 동의합니다'}
+        </Txt>
       </View>
 
       <Ask open={consentOpen} title="시작하기 전에" mood="receipt" onClose={() => setConsentOpen(false)}
@@ -98,7 +112,7 @@ export function SignupScreen() {
 /** 필수 동의 셋 — 만 14세 이상 · 이용약관 · 개인정보 수집·이용. 전문은 총무님 홈페이지 */
 function Consent({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   const T = useT();
-  const openDoc = (doc: 'terms' | 'privacy') => { void WebBrowser.openBrowserAsync(`${LEGAL_BASE}/${doc}`).catch(() => undefined); };
+  const openDoc = openLegal;
 
   return (
     <View style={[st.consent, { borderColor: T.line, backgroundColor: T.white }]}>
