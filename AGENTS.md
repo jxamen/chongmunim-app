@@ -172,6 +172,8 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   → Firebase 에 네 키(디버그 · 업로드 · 현재 · 이전) SHA-1/256 등록, Android OAuth 클라이언트 네 개(자동화), google-services.json 새로 받음(2026-09-22).
     카카오 키 해시 네 개도 넣음(자동화, 앱 1584900 › Android)
   첫 AAB: versionCode 2(51d5308) — Play 내부 테스트 게시(테스터 미지정)
-- **구글 드라이브에서 고르기**(장부 가져오기) — 구글 클라우드 Picker·Drive API · API 키(→ `app_configs` 'picker') · 웹 클라이언트 JS 원본·리디렉션
-  `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 키가 없으면 앱이 「준비하고 있어요」
+- **구글 드라이브에서 고르기**(장부 가져오기) — **구글 로그인 화면이 곧 파일 고르기**(`trigger_onepick=true`, Google Picker for desktop and
+  mobile apps, 2026-09-23). 페이지 속 Picker(iframe · API 키)는 아이폰 앱 안 브라우저에서 로그인 뒤 멈춰서(대표님 「먹통」) 버렸다.
+  서버가 코드를 토큰으로 바꾼다 — 웹 클라이언트 id · **비밀**(`app_configs.social.google`)이 있어야 하고, 리디렉션
+  `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 없으면 앱이 「준비하고 있어요」
 - **어드민 약관·개인정보 기본본** — 등록 안 함. 총무님 전용 문안은 서버 페이지(`cm/legal/*`, 위 머리말)로 대신한다
