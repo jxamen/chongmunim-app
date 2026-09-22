@@ -54,8 +54,6 @@ export function SettingsScreen() {
     <View style={{ flex: 1 }}>
       <Head title="설정" />
       <Body>
-        {/* 구독 안내 — 무료 모임에만(2026-09-22 태훈님 「설정 상단에 구독 안내」) */}
-        <PlanCard />
         {/* 히어로 띠 — 이 모임에서의 나(2026-09-22 태훈님 「모임 설정에도 히어로」). 누르면 내 정보 */}
         <Pressable onPress={() => open({ kind: 'profile' })} accessibilityRole="button" accessibilityLabel="내 정보">
           <Hero mood="coffee" mascot={70}>
@@ -63,6 +61,8 @@ export function SettingsScreen() {
             <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${isPro(group) ? ' · 구독 중' : ' · 무료'}`}</Txt>
           </Hero>
         </Pressable>
+        {/* 구독 — 히어로 바로 밑(2026-09-22 태훈님 「히어로 밑으로 구독 관리 내려」). 무료는 크게, 구독 중은 작게 */}
+        <PlanCard />
         <Card style={{ gap: 2 }}>
           <Txt size="small" tone="sub" bold style={{ marginBottom: 4 }}>테마</Txt>
           {THEMES.map((t, i) => (
