@@ -12,7 +12,7 @@ import { barPercent, dayShort, isNight, kstNow, monthWord, shiftMonth, won } fro
 import { isManager, type Dues, type DuesRow, type Notice, type RosterItem } from '../cm/model';
 import { copy, shareText } from '../share';
 import { track } from '../track';
-import { Ask, Body, Btn, Card, Chip, Empty, Failed, Head, Loading, Sep, Soft, Tabs, Text, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Btn, Card, Chip, Empty, Failed, Head, Loading, Sep, Tabs, Text, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Hero } from '../ui/Hero';
 import { F, S, useT } from '../ui/theme';
@@ -21,11 +21,17 @@ import { EventsTab } from './LedgerScreen';
 type Sub = 'dues' | 'notice' | 'event' | 'people';
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
 
+/** 초대 글 — 코드와 들어오는 길. 스토어 주소는 앱이 올라간 뒤에 붙인다(지금은 받을 곳이 없다) */
+const inviteMessage = (groupName: string, code: string): string =>
+  `[${groupName}] 총무님 앱에서 모임 장부를 같이 봐요.\n앱을 받아 「초대 코드로 들어가기」에 아래 코드를 넣어 주세요.\n\n초대 코드: ${code}`;
+
 export function ClubScreen() {
-  const { group } = useApp();
+  const { group, say } = useApp();
   const [sub, setSub] = useState<Sub>('dues');
+  const [inviting, setInviting] = useState(false);
   const manager = group ? isManager(group.me.role) : false;
   const T = useT();
+  const invite = manager ? group?.inviteCode ?? null : null;   // 초대 코드는 총무·관리자에게만 온다
 
   return (
     <View style={{ flex: 1 }}>
@@ -37,6 +43,13 @@ export function ClubScreen() {
           <Txt size="small" tone="sub" numberOfLines={1}>
             {[`회원 ${group.members}명`, group.owner ? `총무 ${group.owner}` : null, `나는 ${ROLE[group.me.role]}`].filter(Boolean).join(' · ')}
           </Txt>
+          {/* 초대 — 모임 탭 어디서든 한 번에(2026-09-22 태훈님 「모임에 초대 기능이 있어야 해」). 전엔 회원 칸 안에만 있었다 */}
+          {invite ? (
+            <Pressable onPress={() => { track('invite_open', {}); setInviting(true); }} accessibilityRole="button" accessibilityLabel="모임에 초대하기"
+              style={({ pressed }) => [{ alignSelf: 'flex-start', marginTop: 6, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: T.deep }, pressed && k.pressed]}>
+              <Text style={{ fontSize: F.small, fontWeight: '800', color: T.white }}>＋ 초대하기</Text>
+            </Pressable>
+          ) : null}
         </Hero>
       ) : null}
       <Tabs items={[{ id: 'dues', label: '회비' }, { id: 'notice', label: '공지' }, { id: 'event', label: '행사' }, { id: 'people', label: '회원' }]}
@@ -45,6 +58,19 @@ export function ClubScreen() {
         : sub === 'notice' ? <NoticesTab manager={manager} />
           : sub === 'event' ? <EventsTab manager={manager} />
             : <PeopleTab manager={manager} />}
+      <Ask open={inviting && !!invite} title="모임에 초대하기" mood="phone" onClose={() => setInviting(false)}
+        body="초대 글을 카톡으로 보내면, 받은 사람이 앱에서 코드를 넣고 들어와요."
+        buttons={[
+          { label: '코드 복사', tone: 'ghost', onPress: () => { if (invite) void copy(invite).then(() => say('초대 코드를 복사했어요')); } },
+          { label: '카톡으로 보내기', onPress: () => {
+            if (!invite || !group) return;
+            track('invite_share', { from: 'hero' });
+            void shareText(inviteMessage(group.name, invite)).then((r) => { if (r === 'copied') say('초대 글을 복사했어요'); });
+            setInviting(false);
+          } },
+        ]}>
+        <Text style={[k.num, { fontSize: 34, color: T.deep, textAlign: 'center', letterSpacing: 6 }]}>{invite ?? ''}</Text>
+      </Ask>
     </View>
   );
 }
@@ -62,6 +88,22 @@ function DuesTab() {
 
   if (!data) return error ? <Failed text={error} onRetry={reload} /> : <Loading />;
   const d: Dues = data;
+  /*
+   | 월 회비 0원 = 회비 없는 모임 — 납부 체크도 미납도 없다(2026-09-22 태훈님 「회비가 0원인데 미납으로 나옴 · 회비 없음 설정」).
+   | 서버도 0원이면 미납을 세지 않는다(home.remind duesUnpaid null → 회비 확인 알림 없음)
+   */
+  if (d.amount <= 0) {
+    return (
+      <Body>
+        <View style={{ height: 2 }} />
+        <Card>
+          <Empty mood="calm" title="회비를 받지 않는 모임이에요" sub="회비를 걷게 되면 월 회비를 정해 주세요. 그때부터 달마다 납부를 체크해요">
+            <Btn label="월 회비 정하기" tone="ghost" small style={{ paddingHorizontal: S.xl }} onPress={() => open({ kind: 'groupEdit' })} />
+          </Empty>
+        </Card>
+      </Body>
+    );
+  }
   // 미납 먼저 — 할 일이 먼저 보이게. 면제는 맨 뒤
   const rows = [...d.members].sort((a, b) => Number(a.exempt) - Number(b.exempt) || Number(!!a.paid) - Number(!!b.paid) || a.name.localeCompare(b.name, 'ko'));
 
@@ -99,9 +141,6 @@ function DuesTab() {
   return (
     <Body refresh={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={T.deep} />}>
       <View style={{ height: 2 }} />
-      {d.amount <= 0 ? (
-        <Soft title="월 회비를 먼저 정해 주세요" sub="설정 › 모임 정보에서 금액을 적으면 여기서 납부를 체크해요" onPress={() => open({ kind: 'groupEdit' })} />
-      ) : null}
       <Card>
         <View style={[k.row, { justifyContent: 'space-between', marginBottom: 10 }]}>
           <View style={[k.row, { gap: 6 }]}>
@@ -165,6 +204,9 @@ function MyDues() {
   const { data, error, loading, reload } = useLoad((gid) => cm.dues(gid));
 
   if (!data) return error ? <Failed text={error} onRetry={reload} /> : <Loading />;
+  if (data.amount <= 0) {
+    return <Body><View style={{ height: 2 }} /><Card><Empty mood="calm" title="회비를 받지 않는 모임이에요" sub="회비가 생기면 여기서 내 납부 내역을 볼 수 있어요" /></Card></Body>;
+  }
 
   return (
     <Body refresh={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={T.deep} />}>
@@ -231,7 +273,7 @@ function PeopleTab({ manager }: { manager: boolean }) {
   if (!data) return error ? <Failed text={error} onRetry={reload} /> : <Loading />;
   const list: RosterItem[] = data;
   const invite = group?.inviteCode ?? null;
-  const inviteText = invite && group ? `[${group.name}] 총무님 앱에서 장부를 같이 봐요.\n초대 코드: ${invite}` : '';
+  const inviteText = invite && group ? inviteMessage(group.name, invite) : '';
 
   return (
     <Body refresh={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={T.deep} />}>

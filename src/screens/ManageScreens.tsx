@@ -396,6 +396,7 @@ export function GroupEditScreen() {
   const [sending, setSending] = useState(false);
   const [name, setName] = useState(group?.name ?? '');
   const [dues, setDues] = useState(group?.duesAmount ? won(group.duesAmount) : '');
+  const [duesOn, setDuesOn] = useState((group?.duesAmount ?? 0) > 0);
   const [opening, setOpening] = useState(group?.openingBalance ? won(group.openingBalance) : '');
   const [openingDate, setOpeningDate] = useState(group?.openingDate ?? '');
   const [busy, setBusy] = useState(false);
@@ -444,7 +445,7 @@ export function GroupEditScreen() {
     setBusy(true);
     try {
       await cm.updateGroup(group.id, {
-        name: name.trim(), duesAmount: readAmount(dues) ?? 0,
+        name: name.trim(), duesAmount: duesOn ? readAmount(dues) ?? 0 : 0,
         openingBalance: (opening.trim().startsWith('−') || opening.trim().startsWith('-') ? -1 : 1) * (readAmount(opening) ?? 0),
         openingDate: /^\d{4}-\d{2}-\d{2}$/.test(openingDate) ? openingDate : null,
       });
@@ -464,7 +465,15 @@ export function GroupEditScreen() {
       <Body bottom={kb > 0 ? kb + 24 : 120}>
         <View style={{ height: 2 }} />
         <Field label="모임 이름" value={name} onChangeText={setName} maxLength={40} />
-        <Field label="월 회비" value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="없으면 비워 두세요" right={<Txt tone="sub">원</Txt>} />
+        {/* 회비 없음을 고를 수 있게 — 0원을 「아직 안 정함」이 아니라 「회비 없는 모임」으로(2026-09-22 태훈님) */}
+        <View style={{ gap: 6 }}>
+          <Txt bold>월 회비</Txt>
+          <Choices items={[{ id: 'on', label: '매달 회비 받기' }, { id: 'off', label: '회비 없음' }]} value={duesOn ? 'on' : 'off'}
+            onChange={(id) => { setDuesOn(id === 'on'); if (id === 'off') setDues(''); }} />
+          {duesOn ? (
+            <Field value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="예) 40,000" right={<Txt tone="sub">원</Txt>} />
+          ) : <Txt size="tiny" tone="dim">회비 칸에 납부 체크·미납 안내가 뜨지 않아요. 나중에 언제든 바꿀 수 있어요.</Txt>}
+        </View>
         <Card style={{ gap: S.md }}>
           <View style={[k.row, { gap: 10 }]}>
             <Mascot mood="calculator" size={46} />
@@ -491,7 +500,7 @@ export function GroupEditScreen() {
           <Field label="기초 잔액" value={opening} onChangeText={(v) => setOpening(amountInput(v))} keyboardType="number-pad" placeholder="예) 1,150,400" right={<Txt tone="sub">원</Txt>} />
           <Field label="기초일(선택)" value={openingDate} onChangeText={setOpeningDate} placeholder="2026-01-01" maxLength={10} inputStyle={{ fontSize: F.body }} />
         </Card>
-        <Btn label="저장" loading={busy} disabled={!name.trim()} onPress={() => { void save(); }} />
+        <Btn label="저장" loading={busy} disabled={!name.trim() || (duesOn && !readAmount(dues))} onPress={() => { void save(); }} />
         <Card style={{ gap: S.md }}>
           <Txt bold>{lastYear}년 항목별 집행 붙여넣기</Txt>
           <Txt size="tiny" tone="sub">쓰던 시트에서 「항목」 열과 「금액」 열을 같이 복사해 아래에 붙이세요. 합계·소계 줄은 알아서 빼요. 다음 해 예산의 근거로 쓰여요.</Txt>
