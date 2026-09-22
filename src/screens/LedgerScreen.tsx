@@ -20,6 +20,7 @@ import {
 } from '../ui/kit';
 import { Gauge, YearBars } from '../ui/skia';
 import { Hero } from '../ui/Hero';
+import { CloseBar } from './Closing';
 import { MonthPicker, YearPicker } from '../ui/PeriodPicker';
 import { F, S, useT } from '../ui/theme';
 
@@ -156,6 +157,8 @@ function MonthTab({ ym, manager }: { ym: string; manager: boolean }) {
       {manager && m.uncategorized > 0 ? (
         <Soft pill={String(m.uncategorized)} title="항목이 비어있는 기록" sub="정리하러 가기" onPress={() => open({ kind: 'tidy' })} />
       ) : null}
+      {/* 마감 — 결산을 굳혀 회원에게 보내고 이 달을 잠근다(2026-09-22 태훈님) */}
+      <CloseBar kind="month" refKey={ym} label={`${Number(ym.slice(5, 7))}월`} />
     </Body>
   );
 }
@@ -216,6 +219,7 @@ function YearTab({ year }: { year: number }) {
         <Btn label="엑셀" tone="ghost" small style={k.grow} disabled={ex.busy} onPress={() => { void ex.run('csv'); }} />
         <Btn label="결산서 PDF" small style={k.grow} loading={ex.busy} onPress={() => { void ex.run('pdf'); }} />
       </View>
+      <CloseBar kind="year" refKey={String(year)} label={`${year}년`} />
     </Body>
   );
 }

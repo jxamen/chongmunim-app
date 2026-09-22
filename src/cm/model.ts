@@ -374,6 +374,8 @@ export type Audience = 'all' | 'admins' | 'unpaid';
 export type Notice = {
   id: number; title: string; author: string | null; audience: Audience; push: boolean; status: 'draft' | 'sent';
   sentAt: string | null; recipients: number; reads: number; readByMe: boolean; preview: string; body: string | null;
+  /** 결산 공지 — 마감이 보낸 것(「결산 보기」) */
+  closingId: number | null;
 };
 function toNoticeOne(v: unknown): Notice {
   const x = obj(v);
@@ -382,7 +384,7 @@ function toNoticeOne(v: unknown): Notice {
     id: num(x.id), title: str(x.title) ?? '', author: str(x.author),
     audience: x.audience === 'admins' || x.audience === 'unpaid' ? x.audience : 'all', push: bool(x.push),
     status: x.status === 'draft' ? 'draft' : 'sent', sentAt: str(x.sentAt), recipients: num(x.recipients), reads: num(x.reads),
-    readByMe: bool(x.readByMe), preview: str(x.preview) ?? '', body: str(x.body),
+    readByMe: bool(x.readByMe), preview: str(x.preview) ?? '', body: str(x.body), closingId: idOrNull(x.closingId),
   };
 }
 export const toNotices = (j: unknown): Notice[] => arr(obj(j).notices).map(toNoticeOne).filter((n) => n.id > 0);
@@ -539,3 +541,24 @@ export function toRecipients(j: unknown): NoticeRecipient[] {
     return { id: num(o.id), name: str(o.name) ?? '', hasApp: bool(o.hasApp), push: p && PUSH_RESULTS.includes(p) ? p as PushResult : null, readAt: str(o.readAt) };
   });
 }
+
+/* ── 마감 ── */
+
+export type Closing = {
+  id: number; kind: 'month' | 'year' | 'event'; ref: string; title: string; closedAt: string | null; reopenedAt: string | null;
+  summary: { in?: number; out?: number; carryOut?: number } | null;
+  /** 마감한 순간의 장부 화면 모양(월별 · 연간 · 행사) — 결산 화면이 그대로 그린다 */
+  snapshot: unknown;
+};
+
+function toClosingOne(v: unknown): Closing {
+  const x = obj(v);
+  const k = x.kind === 'year' || x.kind === 'event' ? x.kind : 'month';
+
+  return {
+    id: num(x.id), kind: k, ref: str(x.ref) ?? '', title: str(x.title) ?? '', closedAt: str(x.closedAt), reopenedAt: str(x.reopenedAt),
+    summary: x.summary && typeof x.summary === 'object' ? x.summary as Closing['summary'] : null, snapshot: x.snapshot ?? null,
+  };
+}
+export const toClosings = (j: unknown): Closing[] => arr(obj(j).closings).map(toClosingOne).filter((c) => c.id > 0);
+export const toClosing = (j: unknown): Closing => toClosingOne(obj(j).closing);

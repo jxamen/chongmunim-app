@@ -8,7 +8,7 @@ import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
   toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
- toRecipients } from './model';
+ toRecipients, toClosing, toClosings } from './model';
 import type { CommitRow } from './importRows';
 
 const g = (gid: number, path = ''): string => `cm/g/${gid}${path ? '/' + path : ''}`;
@@ -133,3 +133,12 @@ export const saveNotice = async (gid: number, id: number, b: NoticeInput) => toN
 export const notice = async (gid: number, id: number) => toNotice(await api.get(g(gid, `notices/${id}`)));
 /** 받는 사람 — 이름 · 알림 결과 · 읽은 시각(총무·관리자) */
 export const noticeRecipients = async (gid: number, id: number) => toRecipients(await api.get(g(gid, `notices/${id}/recipients`)));
+
+/* ── 마감 ── */
+/** 지금 잠긴 것들(풀지 않은 마감) */
+export const closings = async (gid: number) => toClosings(await api.get(g(gid, 'closings')));
+/** 마감하고 알리기 — 결산을 굳히고 공지+푸시(notify 끄면 잠그기만) */
+export const closeNow = async (gid: number, b: { kind: 'month' | 'year' | 'event'; ref: string; notify?: boolean }) =>
+  toClosing(await api.post(g(gid, 'closings'), b));
+export const closing = async (gid: number, id: number) => toClosing(await api.get(g(gid, `closings/${id}`)));
+export const reopenClosing = (gid: number, id: number) => api.post(g(gid, `closings/${id}/reopen`));

@@ -16,7 +16,7 @@ import { S } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
 export function NoticeScreen({ id }: { id: number }) {
-  const { group, back } = useApp();
+  const { group, back, open } = useApp();
   const { data, error, reload } = useLoad((gid) => cm.notice(gid, id), [id]);
   const manager = group ? isManager(group.me.role) : false;
 
@@ -34,6 +34,7 @@ export function NoticeScreen({ id }: { id: number }) {
             <Txt size="tiny" tone="sub">{[data.author, data.sentAt?.slice(0, 10).replace(/-/g, '.')].filter(Boolean).join(' · ')}</Txt>
             <Txt style={{ lineHeight: 25 }}>{data.body ?? ''}</Txt>
           </Card>
+          {data.closingId ? <Btn label="결산 보기" onPress={() => open({ kind: 'closing', id: data.closingId! })} /> : null}
           {manager && data.status === 'sent' ? <Recipients id={id} reads={data.reads} total={data.recipients} /> : null}
         </Body>
       )}

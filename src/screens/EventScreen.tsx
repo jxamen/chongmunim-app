@@ -15,6 +15,7 @@ import { shareText } from '../share';
 import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, Loading, MenuRow, Sep, Toggle, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
+import { CloseBar } from './Closing';
 import { F, S, useT } from '../ui/theme';
 
 export function EventScreen({ id }: { id: number }) {
@@ -24,7 +25,6 @@ export function EventScreen({ id }: { id: number }) {
   const cats = useLoad(cm.categories);
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [budget, setBudget] = useState('');
-  const [closeOpen, setCloseOpen] = useState(false);
   const manager = group ? isManager(group.me.role) : false;
 
   if (!data) {
@@ -35,11 +35,11 @@ export function EventScreen({ id }: { id: number }) {
   const names: Record<number, string> = {};
   for (const c of cats.data ?? []) names[c.id] = c.name;
 
-  const update = async (b: { budget?: number; status?: 'open' | 'closed' }) => {
+  const update = async (b: { budget?: number }) => {
     if (!group) return;
     try {
       await cm.updateEvent(group.id, id, b);
-      say(b.status === 'closed' ? '행사를 마감했어요' : b.status === 'open' ? '행사를 다시 열었어요' : '행사 예산을 바꿨어요');
+      say('행사 예산을 바꿨어요');
       bump();
     } catch (e) {
       fail(e);
@@ -89,11 +89,9 @@ export function EventScreen({ id }: { id: number }) {
             ))}
         </Card>
 
-        <View style={[k.row, { gap: S.sm }]}>
-          {manager ? <Btn label={ev.status === 'open' ? '행사 마감' : '다시 열기'} tone="ghost" small style={k.grow}
-            onPress={() => { if (ev.status === 'open') setCloseOpen(true); else void update({ status: 'open' }); }} /> : null}
-          <Btn label="정산서 공유" small style={k.grow} onPress={() => { void share(); }} />
-        </View>
+        <Btn label="정산서 공유" small onPress={() => { void share(); }} />
+        {/* 마감 — 결산을 굳혀 회원에게 보내고 행사 기록을 잠근다(행사 칸에서도 빠진다). 풀면 다시 열린다 */}
+        <CloseBar kind="event" refKey={String(ev.id)} label="행사" />
       </Body>
 
       <Ask open={budgetOpen} title="행사 예산" onClose={() => setBudgetOpen(false)}
@@ -101,10 +99,6 @@ export function EventScreen({ id }: { id: number }) {
           { label: '저장', onPress: () => { setBudgetOpen(false); void update({ budget: readAmount(budget) ?? 0 }); } }]}>
         <Field value={budget} onChangeText={(v) => setBudget(amountInput(v))} keyboardType="number-pad" placeholder="600,000" right={<Txt tone="sub">원</Txt>} autoFocus />
       </Ask>
-      <Ask open={closeOpen} title="행사를 마감할까요?" mood="cheer" onClose={() => setCloseOpen(false)}
-        body="마감하면 기록할 때 행사 칸에 더는 나오지 않아요. 수지는 그대로 남고, 다시 열 수 있어요."
-        buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setCloseOpen(false) },
-          { label: '마감', onPress: () => { setCloseOpen(false); void update({ status: 'closed' }); } }]} />
     </View>
   );
 }

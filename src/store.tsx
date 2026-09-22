@@ -8,7 +8,7 @@
  * 모임 목록 → 마지막으로 본 모임. 모임이 없으면 「모임 만들기 / 들어가기」로.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import { autoApply, onUpdateReady, startupSettled } from '@jcurve/updates';
 import * as storage from './storage';
 import {
@@ -43,6 +43,7 @@ export type Page =
   | { kind: 'categories' }
   | { kind: 'profile' }
   | { kind: 'notify' }
+  | { kind: 'closing'; id: number }
   | { kind: 'groupEdit' }
   | { kind: 'import'; id: string }
   | { kind: 'transfer' }
@@ -243,6 +244,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTab('home');
     setPhase('login');
   }, []);
+
+  /*
+   | 알림을 누르면 — @jcurve/notify 가 푸시의 data.url(「chongmunim://notice/12?g=3」)을 연다 → 여기서 받아 그 공지를 띄운다
+   | (마감 결산 공지면 공지 안의 「결산 보기」). 다른 모임 것이면 그 모임으로 옮긴 뒤. 꺼져 있다 알림으로 켜졌으면
+   | 로그인 복원 · 모임 입장이 끝난 뒤에 한 번. 같은 주소가 두 길(getInitialURL · url 이벤트)로 와도 한 번만 연다.
+   */
+  const pendingLink = useRef<string | null>(null);
+  const lastLink = useRef<{ url: string; at: number } | null>(null);
+  const groupRef = useRef<number | null>(null);
+  groupRef.current = group?.id ?? null;
+  const openLink = useCallback(async (url: string) => {
+    const m = /^chongmunim:\/\/notice\/(\d+)(?:\?g=(\d+))?/.exec(url);
+    if (!m) return;
+    if (lastLink.current && lastLink.current.url === url && Date.now() - lastLink.current.at < 5000) return;
+    lastLink.current = { url, at: Date.now() };
+    const gid = Number(m[2] ?? 0);
+    try {
+      if (gid && gid !== groupRef.current) await enterGroup(await cm.getGroup(gid));
+      setPages((cur) => [...cur, { kind: 'notice', id: Number(m[1]) }]);
+      track('push_open', { kind: 'notice' });
+    } catch {
+      say('알림의 공지를 열지 못했어요');
+    }
+  }, [enterGroup, say]);
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (live.current.phase === 'main') void openLink(url); else pendingLink.current = url;
+    });
+    void Linking.getInitialURL().then((u) => { if (u) pendingLink.current = u; }).catch(() => undefined);
+
+    return () => sub.remove();
+  }, [openLink]);
+  useEffect(() => {
+    if (phase !== 'main' || !pendingLink.current) return;
+    const u = pendingLink.current;
+    pendingLink.current = null;
+    void openLink(u);
+  }, [phase, openLink]);
 
   /* ── 부팅 ── */
   useEffect(() => {
