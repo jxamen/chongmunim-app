@@ -49,9 +49,11 @@ App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 
 전체 스위치는 설정 › 내 정보 › 「장부 챙김 알림(이 폰)」. 안 울리는 시간 21~8시(아침 9시로 미룸).
 
-## 공용 패키지 (vendor tgz, `file:` 설치)
+## 공용 패키지 (GitHub 릴리스 주소로 설치 — API 문서 §0-B-1)
 
-`@jcurve/auth` 2.1.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.4.1 — 원본 `..\..\jcurve-packages\packages\<이름>`.
+`@jcurve/auth` 2.1.1 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
+릴리스 파일 주소를 적는다(공개 저장소라 토큰 없이 어디서든 받는다). 예전 `vendor/*.tgz`(`file:`)는 공개 저장소에 없어 클론만으로는 설치가 안 됐다.
+API 요청 헤더의 OTA 판은 앱이 만들지 않고 `otaHeaders()`(updates 2.5.1)를 쓴다.
 `@jcurve/ocr` 1.0.0 의 업로드는 Expo 57 에서 `{uri,name,type}` 이 깨진다 — 앱의 `post` 가 `expo-file-system` 의
 `File` 로 다시 싼다(영테크 `src/receipt/client.ts` 와 같은 수정, `src/ocr.ts`).
 
