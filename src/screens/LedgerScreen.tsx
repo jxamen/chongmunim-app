@@ -12,6 +12,7 @@ import * as cm from '../cm/api';
 import { barPercent, dayShort, entryTitle, kstNow, monthWord, plusMinus, shiftMonth, signed, won } from '../cm/format';
 import { isManager, type Budget, type ClubEvent, type Month, type Year } from '../cm/model';
 import { reportHtml, toCsv } from '../cm/export';
+import { isPro } from '../cm/plan';
 import { rollup } from '../cm/rules';
 import { shareCsv, sharePdf } from '../share';
 import {
@@ -219,6 +220,20 @@ function YearTab({ year }: { year: number }) {
   );
 }
 
+/** 구독에서 여는 칸 — 무료 모임에 뜬다 */
+export function Locked({ title, sub, onPlan }: { title: string; sub: string; onPlan: () => void }) {
+  return (
+    <Body>
+      <View style={{ height: 2 }} />
+      <Card>
+        <Empty mood="cheer" title={title} sub={sub}>
+          <Btn label="구독 알아보기" small style={{ paddingHorizontal: S.xl }} onPress={onPlan} />
+        </Empty>
+      </Card>
+    </Body>
+  );
+}
+
 function Stat({ label, value, pos }: { label: string; value: string; pos?: boolean }) {
   const T = useT();
 
@@ -232,11 +247,13 @@ function Stat({ label, value, pos }: { label: string; value: string; pos?: boole
 
 /** 내보내기 — 엑셀(CSV) · 결산서 PDF. 그해 줄 전부를 받아 기기에서 만든다 */
 function useExport(year: number) {
-  const { group, fail } = useApp();
+  const { group, fail, showPlan } = useApp();
   const [busy, setBusy] = useState(false);
 
   const run = async (what: 'csv' | 'pdf'): Promise<boolean> => {
     if (!group || busy) return false;
+    // 엑셀은 무료, 결산서 PDF 는 구독
+    if (what === 'pdf' && !isPro(group)) { showPlan('pdf'); return false; }
     setBusy(true);
     try {
       const d = await cm.exportYear(group.id, year);
@@ -305,10 +322,11 @@ export function EventsTab({ manager }: { manager: boolean }) {
 /* ── 예산 ── */
 
 function BudgetTab({ year, manager }: { year: number; manager: boolean }) {
-  const { open } = useApp();
+  const { open, group, showPlan } = useApp();
   const T = useT();
   const { data, error, loading, reload } = useLoad((gid) => cm.budget(gid, year), [year]);
 
+  if (!isPro(group)) return <Locked title="예산은 구독에서 써요" sub="항목마다 예산을 세우고 얼마나 썼는지 막대로 보여 드려요" onPlan={() => showPlan('budget')} />;
   if (!data) return error ? <Failed text={error} onRetry={reload} /> : <Loading />;
   const b: Budget = data;
 

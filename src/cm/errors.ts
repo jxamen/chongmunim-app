@@ -19,6 +19,8 @@ const TEXT: Record<string, string> = {
   unauthorized: '로그인이 풀렸어요. 다시 로그인해 주세요',
   not_found: '찾을 수 없어요. 새로 고침해 주세요',
   not_manager: '총무·관리자만 할 수 있어요',
+  plan_required: '구독한 모임에서 쓸 수 있어요',
+  plan_member_limit: '이 모임은 무료로 10명까지 들어올 수 있어요. 총무님께 구독을 부탁해 주세요',
   not_owner: '총무만 할 수 있어요',
   bad_code: '초대 코드를 다시 확인해 주세요',
   name_required: '이름을 적어 주세요',

@@ -16,7 +16,8 @@ import { Ask, Body, Btn, Card, Chip, Empty, Failed, Head, Loading, Sep, Tabs, Te
 import { Gauge } from '../ui/skia';
 import { Hero } from '../ui/Hero';
 import { F, S, useT } from '../ui/theme';
-import { EventsTab } from './LedgerScreen';
+import { EventsTab, Locked } from './LedgerScreen';
+import { isPro } from '../cm/plan';
 
 type Sub = 'dues' | 'notice' | 'event' | 'people';
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
@@ -70,6 +71,11 @@ export function ClubScreen() {
           } },
         ]}>
         <Text style={[k.num, { fontSize: 34, color: T.deep, textAlign: 'center', letterSpacing: 6 }]}>{invite ?? ''}</Text>
+        {group && !isPro(group) ? (
+          <Txt size="tiny" tone="dim" style={{ textAlign: 'center' }}>
+            {`무료 모임은 ${group.freeMembers}명까지 같이 볼 수 있어요 · 지금 ${Math.max(0, group.members - 1)}명`}
+          </Txt>
+        ) : null}
       </Ask>
     </View>
   );
@@ -78,7 +84,7 @@ export function ClubScreen() {
 /* ── 회비(총무·관리자) ── */
 
 function DuesTab() {
-  const { group, open, say, fail, bump } = useApp();
+  const { group, open, say, fail, bump, showPlan } = useApp();
   const T = useT();
   const [period, setPeriod] = useState(kstNow().ym);
   const { data, error, loading, reload } = useLoad((gid) => cm.dues(gid, period), [period]);
@@ -103,6 +109,9 @@ function DuesTab() {
         </Card>
       </Body>
     );
+  }
+  if (!isPro(group)) {
+    return <Locked title="회비 체크는 구독에서 써요" sub="달마다 누가 냈는지 체크하고, 미납인 사람에게만 따로 안내를 보내요" onPlan={() => showPlan('dues')} />;
   }
   // 미납 먼저 — 할 일이 먼저 보이게. 면제는 맨 뒤
   const rows = [...d.members].sort((a, b) => Number(a.exempt) - Number(b.exempt) || Number(!!a.paid) - Number(!!b.paid) || a.name.localeCompare(b.name, 'ko'));

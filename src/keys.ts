@@ -17,6 +17,7 @@ export const DEVICE_KEYS = [
   'cm.notifyAsked',    // 알림 권한을 실제로 물어봤다
   'cm.notifyConfig',   // 어드민 로컬 알림 문구(content/config/notify) — 뒤로 가는 순간엔 못 받아서 들고 있는다
   'cm.remindOff',      // 「장부 챙김 알림(이 폰)」을 껐다 — '1'
+  'cm.scanIntro',      // 안드로이드 — 첫 스캔 전 「구글 플레이 준비」 안내를 봤다(구글 모듈은 기기마다 한 번 받는다)
 ] as const;
 
 /** 로그아웃·계정 전환 때 지운다 — 회원에 속한 값 */

@@ -16,6 +16,8 @@ import { APP_VERSION, LEGAL_BASE, publicLedgerUrl } from '../config';
 import { copy, shareText } from '../share';
 import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Toggle, Txt, s as k } from '../ui/kit';
 import { Hero } from '../ui/Hero';
+import { PlanCard } from './Plan';
+import { isPro } from '../cm/plan';
 import { F, PALETTES, S, THEMES, THEME_LABEL, useT } from '../ui/theme';
 
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
@@ -52,11 +54,13 @@ export function SettingsScreen() {
     <View style={{ flex: 1 }}>
       <Head title="설정" />
       <Body>
+        {/* 구독 안내 — 무료 모임에만(2026-09-22 태훈님 「설정 상단에 구독 안내」) */}
+        <PlanCard />
         {/* 히어로 띠 — 이 모임에서의 나(2026-09-22 태훈님 「모임 설정에도 히어로」). 누르면 내 정보 */}
         <Pressable onPress={() => open({ kind: 'profile' })} accessibilityRole="button" accessibilityLabel="내 정보">
           <Hero mood="coffee" mascot={70}>
             <Text style={{ fontSize: F.title, fontWeight: '900', color: T.deep }} numberOfLines={1}>{group.me.name || '내 정보'}</Text>
-            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}`}</Txt>
+            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${isPro(group) ? ' · 구독 중' : ' · 무료'}`}</Txt>
           </Hero>
         </Pressable>
         <Card style={{ gap: 2 }}>
@@ -76,7 +80,7 @@ export function SettingsScreen() {
           ))}
         </Card>
 
-        {owner && group.admins === 0 ? (
+        {owner && group.admins === 0 && isPro(group) ? (
           <Soft tone="warn" title="관리자를 한 명 더 두세요" sub="총무가 연락이 끊겨도 모임 장부가 잠기지 않아요" onPress={() => open({ kind: 'members' })} />
         ) : null}
 

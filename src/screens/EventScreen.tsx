@@ -12,7 +12,7 @@ import { amountInput, dayShort, entrySub, entryTitle, kstNow, plusMinus, readAmo
 import { isManager, type EventDetail } from '../cm/model';
 import { eventShareText } from '../cm/export';
 import { shareText } from '../share';
-import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, Loading, Sep, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, Loading, MenuRow, Sep, Toggle, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
 import { F, S, useT } from '../ui/theme';
@@ -111,11 +111,12 @@ export function EventScreen({ id }: { id: number }) {
 
 /** 행사 만들기 — 이름 · 날짜 · 예산 */
 export function EventNewScreen() {
-  const { group, back, open, bump, fail } = useApp();
+  const { group, back, open, bump, fail, say } = useApp();
   const [name, setName] = useState('');
   const [date, setDate] = useState(kstNow().ymd);
   const [endDate, setEndDate] = useState('');
   const [budget, setBudget] = useState('');
+  const [notify, setNotify] = useState(true);   // 회원들에게 알린다(공지 한 건 + 푸시) — 2026-09-22 태훈님
   const [busy, setBusy] = useState(false);
 
   const make = async () => {
@@ -123,7 +124,8 @@ export function EventNewScreen() {
     setBusy(true);
     try {
       const ymd = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
-      const d = await cm.addEvent(group.id, { name: name.trim(), startsOn: ymd(date), endsOn: ymd(endDate), budget: readAmount(budget) ?? 0 });
+      const d = await cm.addEvent(group.id, { name: name.trim(), startsOn: ymd(date), endsOn: ymd(endDate), budget: readAmount(budget) ?? 0, notify });
+      if (notify) say('행사를 만들고 회원들에게 알렸어요 · 공지에도 남았어요');
       bump();
       back();
       open({ kind: 'event', id: d.event.id });
@@ -150,7 +152,13 @@ export function EventNewScreen() {
         <Txt size="tiny" tone="dim">기간 안에 찍힌 영수증에는 이 행사를 먼저 골라 둬요.</Txt>
         <Field label="행사 예산(없으면 비워 두세요)" value={budget} onChangeText={(v) => setBudget(amountInput(v))} keyboardType="number-pad"
           placeholder="600,000" right={<Txt tone="sub">원</Txt>} />
-        <Btn label="만들기" loading={busy} disabled={!name.trim()} onPress={() => { void make(); }} />
+        <Card style={{ paddingVertical: 2 }}>
+          <MenuRow label="회원들에게 알림 보내기" right={<Toggle on={notify} onChange={setNotify} />} />
+          <Txt size="tiny" tone="dim" style={{ paddingBottom: 12, lineHeight: 19 }}>
+            {notify ? '「새 행사 · 이름」 알림이 가고 공지에도 남아요. 예산 금액은 알리지 않아요.' : '알리지 않고 만들어요. 나중에 공지로 알릴 수 있어요.'}
+          </Txt>
+        </Card>
+        <Btn label={notify ? '만들고 알리기' : '만들기'} loading={busy} disabled={!name.trim()} onPress={() => { void make(); }} />
       </Body>
     </View>
   );

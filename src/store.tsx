@@ -22,6 +22,7 @@ import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
 import * as cm from './cm/api';
 import type { Audience, BudgetLine, Entry, Group, GroupItem } from './cm/model';
 import { codeOf, errorText } from './cm/errors';
+import type { PlanReason } from './cm/plan';
 import { isTheme, type ThemeName } from './ui/theme';
 
 export type Phase = 'boot' | 'login' | 'signup' | 'groups' | 'main';
@@ -79,6 +80,10 @@ type Ctx = {
   reland: () => Promise<void>;
   logout: () => Promise<void>;
   withdraw: () => Promise<void>;
+  /** 구독 안내 — 무엇 때문에 떴는지(없으면 닫힘). 서버 plan_required 도 여기로 온다 */
+  planAsk: PlanReason | null;
+  showPlan: (why?: PlanReason) => void;
+  closePlan: () => void;
 };
 
 const AppContext = createContext<Ctx | null>(null);
@@ -119,6 +124,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const [updateReady, setUpdateReady] = useState(false);
   const [updateNotice, setUpdateNoticeState] = useState(true);
+  const [planAsk, setPlanAsk] = useState<PlanReason | null>(null);
 
   // 새 버전 적용 규칙(@jcurve/updates)이 읽는 지금 상태 — 렌더 밖에서 읽으므로 ref 로 둔다
   const live = useRef({ phase, signedIn: false, pages: 0, notice: true });
@@ -130,7 +136,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2400);
   }, []);
-  const fail = useCallback((e: unknown) => say(errorText(codeOf(e))), [say]);
+  const showPlan = useCallback((why: PlanReason = 'general') => { track('plan_view', { why }); setPlanAsk(why); }, []);
+  const closePlan = useCallback(() => setPlanAsk(null), []);
+  // 구독에서만 되는 일을 서버가 막으면(plan_required) 토스트 대신 구독 안내를 띄운다
+  const fail = useCallback((e: unknown) => {
+    const code = codeOf(e);
+    if (code === 'plan_required') setPlanAsk('server');
+    else say(errorText(code));
+  }, [say]);
 
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const open = useCallback((p: Page) => setPages((cur) => [...cur, p]), []);
@@ -394,8 +407,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     phase, member, busy, groups, group, theme, setTheme, tab, setTab, pages, open, back, version, bump, toast, say, fail,
     updateReady, updateNotice, setUpdateNotice,
     signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, reland: landing, logout, withdraw,
+    planAsk, showPlan, closePlan,
   }), [landing, phase, member, busy, groups, group, theme, setTheme, tab, pages, open, back, version, bump, toast, say, fail,
-    updateReady, updateNotice, setUpdateNotice, signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, logout, withdraw]);
+    updateReady, updateNotice, setUpdateNotice, signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, logout, withdraw,
+    planAsk, showPlan, closePlan]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

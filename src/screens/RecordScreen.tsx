@@ -30,10 +30,13 @@ import {
 } from '../cm/shots';
 import { ocr, ocrMessage, preparePhoto, verdictMessage, type OcrResult } from '../ocr';
 import { holdWebFile } from '../upload';
+import { isPro } from '../cm/plan';
 import { track } from '../track';
 import { Ask, Body, Btn, Card, Chip, Choices, Field, Head, Sep, Soft, Tabs, Text, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { BankField } from '../ui/BankField';
+import { ScanIntro } from '../ui/ScanIntro';
+import * as storage from '../storage';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -67,6 +70,8 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   const [busy, setBusy] = useState(false);
   const [addCatFor, setAddCatFor] = useState<string | null>(null);         // 항목 만들기 — 'manual' 또는 카드 key
   const [newCat, setNewCat] = useState('');
+  const [intro, setIntro] = useState(false);            // 안드로이드 첫 스캔 안내
+  const [scanFailed, setScanFailed] = useState(false);  // 스캐너가 안 열렸다 — 일반 촬영 버튼
 
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
@@ -76,6 +81,8 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   evsRef.current = evs.data ?? [];
   const webFiles = useRef(new Map<string, Blob | null>());
   const pace = useMemo(() => pacer(2100), []);
+  // 무료는 한 번에 한 장(2026-09-22 태훈님) — 여러 장은 구독
+  const maxShots = isPro(group) ? MAX_SHOTS : 1;
 
   const categoriesOf = (dir: 'in' | 'out'): Category[] => chipOrder((cats.data ?? []).filter((c) => !c.hidden && c.kind === dir));
   // 행사 칸은 진행 중인 행사가 있을 때만(시안 2)
@@ -107,9 +114,11 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   /* ── 1. 찍기 · 고르기 ── */
 
   const take = (list: Picked[]) => {
-    const room = MAX_SHOTS - shotsRef.current.length;
-    if (room <= 0) { say(`한 번에 ${MAX_SHOTS}장까지예요`); return; }
-    if (list.length > room) say(`${MAX_SHOTS}장까지만 올려요 · 나머지는 기록한 뒤에 다시 골라 주세요`);
+    const room = maxShots - shotsRef.current.length;
+    if (room <= 0) { say(`한 번에 ${maxShots}장까지예요`); return; }
+    if (list.length > room) {
+      say(maxShots === 1 ? '무료는 한 번에 한 장이에요 · 첫 장만 올렸어요 · 여러 장은 구독에서' : `${maxShots}장까지만 올려요 · 나머지는 기록한 뒤에 다시 골라 주세요`);
+    }
     const stamp = Date.now();
     const picked = list.slice(0, room).map((p, i) => ({ ...p, key: `${stamp}-${i}` }));
     for (const p of picked) webFiles.current.set(p.key, p.file ?? null);
@@ -121,26 +130,52 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
 
   const scan = async () => {
     setNote(null);
+    setScanFailed(false);
     if (Platform.OS === 'web') { void album(); return; }
+    // 안드로이드 첫 스캔 — 구글 플레이가 모듈을 받는다고 먼저 알린다(기기마다 한 번, 영테크와 같은 안내)
+    if (Platform.OS === 'android' && (await storage.get('cm.scanIntro')) !== '1') { setIntro(true); return; }
+    await openScanner();
+  };
+
+  const openScanner = async () => {
     try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) { setNote('카메라를 쓸 수 있게 허락해 주세요. 설정에서 바꿀 수 있어요'); return; }
+      /*
+       | 카메라 권한은 **아이폰만** 묻는다(VisionKit 은 앱 권한이 필요하다). 안드로이드 스캐너는 구글 Play 서비스 화면이라
+       | 앱 권한이 필요 없고, 여기서 「이번만 허용」을 고르면 스캐너가 떠 있는 동안 권한이 거둬져 **앱이 죽고 찍은 사진을 잃었다**
+       | (2026-09-22 앱빌드 A32 — one-time permission revoked).
+       */
+      if (Platform.OS === 'ios') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) { setNote('카메라를 쓸 수 있게 허락해 주세요. 설정에서 바꿀 수 있어요'); return; }
+      }
       const { default: scanner, ResponseType } = await import('react-native-document-scanner-plugin');
       // 여러 장 — 한 장 찍고 이어서 찍으면 된다(안드로이드는 maxNumDocuments 까지, 아이폰 VisionKit 은 원래 여러 장)
-      const r = await scanner.scanDocument({ maxNumDocuments: MAX_SHOTS, croppedImageQuality: 90, responseType: ResponseType.ImageFilePath });
+      const r = await scanner.scanDocument({ maxNumDocuments: maxShots, croppedImageQuality: 90, responseType: ResponseType.ImageFilePath });
       if (r.status === 'cancel') return;
       const imgs = r.scannedImages ?? [];
       if (imgs.length) take(imgs.map((uri) => ({ uri })));
     } catch {
-      setNote('카메라를 열지 못했어요. 앨범에서 골라 주세요');
+      // 구글 모듈을 못 받았거나 스캐너가 안 열린다 — 앱 카메라로 그냥 찍는 길을 준다(영테크와 같다)
+      setNote('자동 스캔을 열지 못했어요. 다시 해 보거나 일반 촬영으로 찍어 주세요');
+      setScanFailed(true);
     }
+  };
+
+  /** 일반 촬영 — 스캐너가 안 열릴 때(테두리 보정 없이 사진 그대로) */
+  const plainCamera = async () => {
+    setNote(null);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) { setNote('카메라를 쓸 수 있게 허락해 주세요. 설정에서 바꿀 수 있어요'); return; }
+    const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85, exif: false });
+    if (r.canceled || !r.assets[0]) return;
+    take([{ uri: r.assets[0].uri }]);
   };
 
   const album = async () => {
     setNote(null);
     const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'], allowsEditing: false, quality: 0.85, exif: false,
-      allowsMultipleSelection: true, selectionLimit: MAX_SHOTS, orderedSelection: true,
+      allowsMultipleSelection: maxShots > 1, selectionLimit: maxShots, orderedSelection: true,
     });
     if (r.canceled || !r.assets.length) return;
     take(r.assets.map((a) => ({ uri: a.uri, file: Platform.OS === 'web' ? (a as unknown as { file?: Blob }).file ?? null : null })));
@@ -182,9 +217,22 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
       track('receipt_submit', { batch: picked.length });
       try {
         const prepared = await preparePhoto({ uri: p.uri });
-        await pace();
-        if (Platform.OS === 'web') holdWebFile(webFiles.current.get(p.key) ?? null);
-        const id = await ocr.submit(prepared);
+        let id = '';
+        for (let tries = 0; ; tries++) {
+          await pace();
+          if (Platform.OS === 'web') holdWebFile(webFiles.current.get(p.key) ?? null);
+          try {
+            id = await ocr.submit(prepared);
+            break;
+          } catch (e) {
+            /*
+             | 한도(429) — OCR 한도는 실제로 **IP 기준**이라 같은 와이파이의 다른 기기와 나눠 쓴다(배포 2026-09-22).
+             | 조금 쉬었다 다시 올린다(세 번까지). 다른 오류는 그대로 던진다.
+             */
+            if (!/429|too_many|throttle|rate/i.test(codeOf(e)) || tries >= 2) throw e;
+            await new Promise((r) => setTimeout(r, 15_000));
+          }
+        }
         // 워커는 한 장씩 읽는다 — 뒤에 선 장일수록 기다림을 늘려 준다
         jobs.push({ key: p.key, id, until: Date.now() + 60_000 + i * 15_000 });
       } catch (e) {
@@ -349,10 +397,13 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
               <Mascot mood={note ? 'confused' : 'receipt'} size={88} />
               <Txt bold size="head">{note ? '다시 해 볼까요?' : '영수증을 찍어 주세요'}</Txt>
               <Txt size="small" tone="sub" style={{ textAlign: 'center' }}>
-                {note ?? `테두리를 잡아 반듯하게 펴 드려요. 날짜와 금액은 알아서 읽어요.\n여러 장이면 이어서 찍거나 한 번에 골라요(최대 ${MAX_SHOTS}장).`}
+                {note ?? (maxShots > 1
+                  ? `테두리를 잡아 반듯하게 펴 드려요. 날짜와 금액은 알아서 읽어요.\n여러 장이면 이어서 찍거나 한 번에 골라요(최대 ${maxShots}장).`
+                  : '테두리를 잡아 반듯하게 펴 드려요. 날짜와 금액은 알아서 읽어요.\n무료는 한 번에 한 장씩 올려요.')}
               </Txt>
             </Card>
             {Platform.OS !== 'web' ? <Btn label="영수증 찍기" onPress={() => { void scan(); }} /> : null}
+            {scanFailed ? <Btn label="일반 촬영으로 찍기" tone="ghost" onPress={() => { void plainCamera(); }} /> : null}
             <Btn label="앨범에서 고르기" tone={Platform.OS === 'web' ? 'main' : 'ghost'} onPress={() => { void album(); }} />
             <Btn label="영수증 없이 적기" tone="ghost" onPress={() => { setNote(null); setStep('manual'); }} />
           </>
@@ -365,7 +416,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
                 onPatch={(fn) => patch(s.key, fn)} onRemove={() => remove(s.key)} onAddCat={() => setAddCatFor(s.key)}
                 onDateChange={(d) => patch(s.key, (x) => (x.eventTouched ? x : { ...x, form: { ...x.form, eventId: suggestEvent(evsRef.current, ymd(d)) } }))} />
             ))}
-            {shots.length < MAX_SHOTS ? (
+            {shots.length < maxShots ? (
               <View style={[k.row, { gap: S.sm }]}>
                 {Platform.OS !== 'web' ? <Btn small tone="ghost" label="+ 더 찍기" style={k.grow} onPress={() => { void scan(); }} /> : null}
                 <Btn small tone="ghost" label="+ 앨범에서 더" style={k.grow} onPress={() => { void album(); }} />
@@ -437,6 +488,9 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
         buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setAddCatFor(null) }, { label: '만들기', onPress: () => { void addCategory(); } }]}>
         <Field value={newCat} onChangeText={setNewCat} placeholder={addCatFor === 'manual' && direction === 'in' ? '예) 후원금' : '예) 경조사비'} maxLength={20} autoFocus />
       </Ask>
+
+      <ScanIntro open={intro} onClose={() => setIntro(false)}
+        onContinue={() => { setIntro(false); void storage.set('cm.scanIntro', '1'); void openScanner(); }} />
 
       <Ask open={bankAsk !== null} title="이 계좌를 등록해 둘까요?" mood="coin" onClose={() => setBankAsk(null)}
         body={`${[bankName.trim(), bankAccount.trim(), bankHolder.trim()].filter(Boolean).join(' · ')}\n\n등록해 두면 다음 요청부터 자동으로 채워져요. 설정 › 내 정보에서 바꿀 수 있어요.`}

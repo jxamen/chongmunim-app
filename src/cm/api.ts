@@ -8,7 +8,7 @@ import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
   toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
-} from './model';
+ toRecipients } from './model';
 import type { CommitRow } from './importRows';
 
 const g = (gid: number, path = ''): string => `cm/g/${gid}${path ? '/' + path : ''}`;
@@ -75,7 +75,7 @@ export const cancelRequest = (gid: number, id: number) => api.post(g(gid, `reque
 
 /* ── 행사 ── */
 export const events = async (gid: number) => toEvents(await api.get(g(gid, 'events')));
-export const addEvent = async (gid: number, b: { name: string; startsOn?: string; endsOn?: string; budget?: number }) =>
+export const addEvent = async (gid: number, b: { name: string; startsOn?: string; endsOn?: string; budget?: number; notify?: boolean }) =>
   toEventDetail(await api.post(g(gid, 'events'), b));
 export const event = async (gid: number, id: number) => toEventDetail(await api.get(g(gid, `events/${id}`)));
 export const updateEvent = async (gid: number, id: number, b: { name?: string; budget?: number; status?: 'open' | 'closed' }) =>
@@ -131,3 +131,5 @@ export type NoticeInput = { title: string; body: string; audience: Audience; per
 export const addNotice = async (gid: number, b: NoticeInput) => toNotice(await api.post(g(gid, 'notices'), b));
 export const saveNotice = async (gid: number, id: number, b: NoticeInput) => toNotice(await api.put(g(gid, `notices/${id}`), b));
 export const notice = async (gid: number, id: number) => toNotice(await api.get(g(gid, `notices/${id}`)));
+/** 받는 사람 — 이름 · 알림 결과 · 읽은 시각(총무·관리자) */
+export const noticeRecipients = async (gid: number, id: number) => toRecipients(await api.get(g(gid, `notices/${id}/recipients`)));

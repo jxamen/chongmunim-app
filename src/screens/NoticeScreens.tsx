@@ -6,12 +6,12 @@
  * 잠금 화면에는 「{모임} 공지 · 제목」만 뜬다.
  */
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { isNight, kstNow, monthWord } from '../cm/format';
-import { isManager, type Audience } from '../cm/model';
-import { Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Soft, Toggle, Txt, s as k } from '../ui/kit';
+import { isManager, type Audience, type PushResult } from '../cm/model';
+import { Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Sep, Soft, Toggle, Txt, s as k } from '../ui/kit';
 import { S } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -31,13 +31,59 @@ export function NoticeScreen({ id }: { id: number }) {
               {data.audience !== 'all' ? <Chip label={data.audience === 'admins' ? '관리자만' : '미납자만'} /> : null}
             </View>
             <Txt bold size="title">{data.title}</Txt>
-            <Txt size="tiny" tone="sub">{[data.author, data.sentAt?.slice(0, 10).replace(/-/g, '.'), manager ? `읽음 ${data.reads}/${data.recipients}` : null].filter(Boolean).join(' · ')}</Txt>
+            <Txt size="tiny" tone="sub">{[data.author, data.sentAt?.slice(0, 10).replace(/-/g, '.')].filter(Boolean).join(' · ')}</Txt>
             <Txt style={{ lineHeight: 25 }}>{data.body ?? ''}</Txt>
           </Card>
+          {manager && data.status === 'sent' ? <Recipients id={id} reads={data.reads} total={data.recipients} /> : null}
         </Body>
       )}
     </View>
   );
+}
+
+/*
+ | 받는 사람 — 「읽음 3/10」을 누르면 한 사람씩: 알림이 갔는지 · 읽었는지(2026-09-22 태훈님 「받는 사람 리스트 · 수신 여부」).
+ | 알림 결과는 보낸 순간의 것이다 — 그 뒤에 알림을 허용한 사람은 「알림 허용 전」으로 남는다.
+ */
+const PUSH_LABEL: Record<NonNullable<PushResult>, string> = {
+  sent: '알림 보냄', failed: '알림 실패', no_app: '앱 없음', muted: '알림 꺼 둠', no_token: '알림 허용 전', off: '알림 없이 보냄',
+};
+
+function Recipients({ id, reads, total }: { id: number; reads: number; total: number }) {
+  const [open, setOpen] = useState(false);
+  const list = useLoad((gid) => (open ? cm.noticeRecipients(gid, id) : Promise.resolve(null)), [id, open]);
+
+  return (
+    <Card style={{ paddingVertical: 2 }}>
+      <Pressable onPress={() => setOpen(!open)} style={[k.listrow, { gap: 8 }]} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <Txt bold style={k.grow}>{`읽음 ${reads} / ${total}명`}</Txt>
+        <Txt size="small" tone="sub">{open ? '접기 ▴' : '받는 사람 보기 ▾'}</Txt>
+      </Pressable>
+      {open ? (
+        !list.data ? <Loading /> : list.data.length === 0 ? (
+          <Txt size="small" tone="dim" style={{ paddingBottom: 12 }}>받는 사람이 없어요(쓴 사람은 빼고 세요)</Txt>
+        ) : list.data.map((r) => (
+          <View key={r.id}>
+            <Sep />
+            <View style={[k.listrow, { gap: 8 }]}>
+              <Txt bold style={k.grow} numberOfLines={1}>{r.name}</Txt>
+              {r.push ? <Chip label={PUSH_LABEL[r.push]} tone={r.push === 'sent' ? 'tint' : r.push === 'off' ? 'plain' : 'warn'} /> : <Chip label="알림 기록 없음" tone="dim" />}
+              <Txt size="small" tone={r.readAt ? 'pos' : 'dim'} style={{ width: 74, textAlign: 'right' }}>{r.readAt ? readWhen(r.readAt) : '안 읽음'}</Txt>
+            </View>
+          </View>
+        ))
+      ) : null}
+    </Card>
+  );
+}
+
+/** 읽은 때 — 서버 UTC → 「9/22 14:30」 */
+function readWhen(at: string): string {
+  const d = new Date(at.includes('T') || at.endsWith('Z') ? at : at.replace(' ', 'T') + 'Z');
+  if (Number.isNaN(d.getTime())) return '읽음';
+  const k = new Date(d.getTime() + 9 * 3600_000);
+
+  return `${k.getUTCMonth() + 1}/${k.getUTCDate()} ${String(k.getUTCHours()).padStart(2, '0')}:${String(k.getUTCMinutes()).padStart(2, '0')}`;
 }
 
 export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: number; audience?: Audience }) {

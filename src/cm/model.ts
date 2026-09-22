@@ -31,6 +31,8 @@ export type Me = { id: number; name: string; role: Role; bankName: string | null
 export type Group = {
   id: number; name: string; owner: string | null; members: number; admins: number; categories: number; duesAmount: number; me: Me;
   inviteCode: string | null; publicToken: string | null; openingBalance: number; openingDate: string | null;
+  /** 구독 — 옛 서버처럼 안 오면 pro(막지 않는다). freeMembers: 무료로 받을 수 있는 인원(총무 빼고) */
+  plan: 'free' | 'pro'; freeMembers: number;
   /** 총무 넘기기 진행 중 — 받을 사람과 그게 나인지 */
   transfer: { to: string | null; toMe: boolean } | null;
 };
@@ -50,6 +52,7 @@ export function toGroup(j: unknown): Group {
       notify: { notice: n.notice !== false, dues: n.dues !== false, request: n.request !== false },
     },
     inviteCode: str(g.inviteCode), publicToken: str(g.publicToken),
+    plan: g.plan === 'free' ? 'free' : 'pro', freeMembers: num(g.freeMembers, 10),
     openingBalance: num(g.openingBalance), openingDate: str(g.openingDate),
     transfer: tr ? { to: str(tr.to), toMe: bool(tr.toMe) } : null,
   };
@@ -510,4 +513,21 @@ function toPreview(p: J): ImportPreview {
     }),
     counts: { rows: num(c.rows), sheetDup: num(c.sheetDup), ledgerDup: num(c.ledgerDup), noDate: num(c.noDate), dropped: num(c.dropped) },
   };
+}
+
+/* ── 공지 받는 사람 ── */
+
+/** 알림 결과 — sent 보냄 · failed 실패 · no_app 앱 없음 · muted 꺼 둠 · no_token 알림 허용 전 · off 알림 없이 보낸 공지 · null 기록 전 공지 */
+export type PushResult = 'sent' | 'failed' | 'no_app' | 'muted' | 'no_token' | 'off' | null;
+export type NoticeRecipient = { id: number; name: string; hasApp: boolean; push: PushResult; readAt: string | null };
+
+const PUSH_RESULTS: readonly string[] = ['sent', 'failed', 'no_app', 'muted', 'no_token', 'off'];
+
+export function toRecipients(j: unknown): NoticeRecipient[] {
+  return arr(obj(j).recipients).map((x) => {
+    const o = obj(x);
+    const p = str(o.push);
+
+    return { id: num(o.id), name: str(o.name) ?? '', hasApp: bool(o.hasApp), push: p && PUSH_RESULTS.includes(p) ? p as PushResult : null, readAt: str(o.readAt) };
+  });
 }
