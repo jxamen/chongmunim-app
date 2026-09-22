@@ -244,6 +244,21 @@ export type Receipt = {
   duplicate: { occurredAt: string; amount: number; used: boolean } | null; imageUrl: string | null;
 };
 
+/** 보낸 영수증 한 장 — **서버가 기록한다**(receipts/pending, 2026-09-22 태훈님 「올라간 영수증은 서버에 기록 안 하나?」) */
+export type PendingJob = { jobId: string; state: 'reading' | 'ready' | 'failed'; note: string | null; review: boolean; receipt: Receipt | null };
+
+export function toPendingJob(j: unknown): PendingJob {
+  const o = obj(j);
+  const st = str(o.state);
+
+  return {
+    jobId: str(o.jobId) ?? '', state: st === 'ready' || st === 'failed' ? st : 'reading', note: str(o.note), review: bool(o.review),
+    receipt: o.receipt ? toReceipt({ receipt: o.receipt }) : null,
+  };
+}
+
+export const toPendingJobs = (j: unknown): PendingJob[] => arr(obj(j).jobs).map(toPendingJob);
+
 export function toReceipt(j: unknown): Receipt {
   const o = obj(obj(j).receipt);
   const d = o.duplicate ? obj(o.duplicate) : null;

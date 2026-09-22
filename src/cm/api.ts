@@ -8,7 +8,7 @@ import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
   toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
- toRecipients, toClosing, toClosings } from './model';
+ toRecipients, toClosing, toClosings, toPendingJob, toPendingJobs } from './model';
 import type { CommitRow } from './importRows';
 import { toPush } from './pushText';
 
@@ -64,6 +64,14 @@ export const reconcile = (gid: number, bankBalance: number, ym: string) =>
 /* ── 영수증 ── */
 export const attachReceipt = async (gid: number, ocrJobId: string) => toReceipt(await api.post(g(gid, 'receipts'), { ocrJobId }));
 export const getReceipt = async (gid: number, id: string) => toReceipt(await api.get(g(gid, `receipts/${id}`)));
+/*
+ | 보낸 영수증을 서버가 기록한다(ReceiptJobs) — 올린 작업을 맡기면 워커가 다 읽는 순간 서버가 옮긴다. 「기록 기다림」은 서버 목록이라
+ | 폰을 바꿔도 남는다. 나중에 기록 묶음은 다 읽히면 푸시.
+ */
+export const registerReceiptJob = async (gid: number, jobId: string) => toPendingJob((await api.post<{ job?: unknown }>(g(gid, 'receipts/jobs'), { jobId })).job);
+export const pendingReceipts = async (gid: number) => toPendingJobs(await api.get(g(gid, 'receipts/pending')));
+export const dismissReceiptJob = async (gid: number, jobId: string): Promise<void> => { await api.post(g(gid, `receipts/jobs/${jobId}/dismiss`)); };
+export const receiptsLater = async (gid: number, jobIds: string[]): Promise<void> => { await api.post(g(gid, 'receipts/later'), { jobIds }); };
 
 /* ── 지급 요청 ── */
 export const requests = async (gid: number, status: RequestStatus) => toRequests(await api.get(g(gid, 'requests') + q({ status })));
