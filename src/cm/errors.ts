@@ -20,6 +20,7 @@ const TEXT: Record<string, string> = {
   not_found: '찾을 수 없어요. 새로 고침해 주세요',
   not_manager: '총무·관리자만 할 수 있어요',
   plan_required: '구독한 모임에서 쓸 수 있어요',
+  picker_unset: '구글 드라이브 연결을 준비하고 있어요 · 지금은 파일이나 링크로 가져와 주세요',
   period_closed: '마감한 기간이에요 · 고치려면 장부에서 마감을 풀어 주세요',
   already_closed: '이미 마감했어요',
   plan_member_limit: '이 모임은 무료로 10명까지 들어올 수 있어요. 총무님께 구독을 부탁해 주세요',

@@ -104,6 +104,8 @@ export const uploadLedger = async (gid: number, form: FormData) => toImport(awai
  * 구글 시트 링크 — 서버가 xlsx 로 받아 둔다(공유가 「링크가 있는 모든 사용자」여야 한다). 서버가 구글에서 받아 오느라
  * 오래 걸릴 수 있어 느린 요청(40초)으로 보낸다
  */
+/** 구글 드라이브에서 고르기 — 15분짜리 표. 앱은 폰 브라우저로 `{API}/cm/picker?t=표` 를 연다(ChongmunimPickerController) */
+export const googlePickerTicket = async (gid: number) => String((await api.post<{ ticket: string }>(g(gid, 'imports/google'))).ticket ?? '');
 export const importSheet = async (gid: number, sheetUrl: string) => {
   const form = new FormData();
   form.append('sheetUrl', sheetUrl);
