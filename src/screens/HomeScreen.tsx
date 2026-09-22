@@ -4,12 +4,13 @@
  * 숫자는 전부 서버가 센 것이다(`GET cm/g/{gid}/home`). 총무·관리자에게는 처리할 지급 요청이, 회원에게는
  * 자기 요청의 진행이 보인다. 머리의 모임 이름을 누르면 모임을 바꾼다.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { entrySub, entryTitle, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
+import { setRemindSnapshot } from '../push';
 import { Ask, Big, Body, Card, Chip, Failed, Head, LedgerRow, Loading, Sep, Soft, Title, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
@@ -23,6 +24,13 @@ export function HomeScreen() {
   const { data, error, loading, reload } = useLoad(cm.home);
   const manager = group ? isManager(group.me.role) : false;
   const [offer, setOffer] = useState(false);
+
+  // 재방문 로컬 알림이 쓸 사실을 들고 있게 한다 — 앱이 뒤로 가는 순간엔 네트워크를 기다릴 수 없다(push.ts)
+  useEffect(() => {
+    if (!data || !group) return;
+    setRemindSnapshot({ manager, pending: manager ? data.pending.count : 0, remind: data.remind },
+      { dues: group.me.notify.dues, request: group.me.notify.request });
+  }, [data, group, manager]);
 
   /* 총무 넘기기 — 지정받은 사람이 수락하거나 사양한다 */
   const answer = async (yes: boolean) => {

@@ -15,6 +15,8 @@ export const DEVICE_KEYS = [
   'cm.theme',          // 테마 — mint · coral · sky(설정에서 고른다, 기기마다)
   'cm.updateNotice',   // 새 버전이 오면 띠로 알린다 — 끄면 '0'(끄면 스스로 적용, @jcurve/updates 2.2)
   'cm.notifyAsked',    // 알림 권한을 실제로 물어봤다
+  'cm.notifyConfig',   // 어드민 로컬 알림 문구(content/config/notify) — 뒤로 가는 순간엔 못 받아서 들고 있는다
+  'cm.remindOff',      // 「장부 챙김 알림(이 폰)」을 껐다 — '1'
 ] as const;
 
 /** 로그아웃·계정 전환 때 지운다 — 회원에 속한 값 */
@@ -22,6 +24,7 @@ export const ACCOUNT_KEYS = [
   'cm.session',        // 세션 토큰
   'cm.member',         // 화면에 쓰는 회원 정보
   'cm.group',          // 마지막으로 본 모임 id
+  'cm.remindSnap',     // 로컬 알림이 쓸 홈 요약(home.remind) — 그 모임의 것이라 계정과 같이 지운다
 ] as const;
 
 export type DeviceKey = (typeof DEVICE_KEYS)[number];

@@ -9,7 +9,7 @@ import { amountInput, kstNow, readAmount, readWhen, whenLong, won } from '../cm/
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
 import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
-import { notify, push } from '../push';
+import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { F, S, useT } from '../ui/theme';
@@ -299,7 +299,16 @@ export function ProfileScreen() {
   const [bankAccount, setBankAccount] = useState(me?.bankAccount ?? '');
   const [bankHolder, setBankHolder] = useState(me?.bankHolder ?? '');
   const [busy, setBusy] = useState(false);
+  const [remind, setRemind] = useState(remindOn());
   if (!group || !me) return null;
+
+  /* 재방문 로컬 알림 전체 — 이 폰에만 걸리므로 이 폰에 둔다(remind.ts) */
+  const toggleRemind = async (on: boolean) => {
+    // 스위치가 먼저다 — 권한 창을 기다리다 스위치가 안 바뀌면 안 된다. 권한은 그다음에 묻는다(한 실행에 한 번)
+    setRemind(on);
+    await setRemindOn(on);
+    if (on) void notify.ask();
+  };
 
   const save = async () => {
     setBusy(true);
@@ -346,6 +355,14 @@ export function ProfileScreen() {
           <MenuRow label="회비 안내" right={<Toggle on={me.notify.dues} onChange={(v) => { void setNotify('dues', v); }} />} />
           <Sep />
           <MenuRow label="지급 요청" right={<Toggle on={me.notify.request} onChange={(v) => { void setNotify('request', v); }} />} />
+        </Card>
+        <Card style={{ paddingVertical: 2 }}>
+          <MenuRow label="장부 챙김 알림 (이 폰)" right={<Toggle on={remind} onChange={(v) => { void toggleRemind(v); }} />} />
+          <Txt size="tiny" tone="dim" style={{ paddingBottom: 12, lineHeight: 19 }}>
+            {me.role === 'member'
+              ? '한동안 안 열면 공지와 내 회비를 확인하라고 알려 드려요.'
+              : '월말 정리 · 회비 확인 · 처리 안 한 지급 요청 · 행사 정산 · 연말 결산 때를 알려 드려요. 금액과 이름은 알림에 나오지 않아요.'}
+          </Txt>
         </Card>
       </Body>
     </View>

@@ -107,6 +107,8 @@ export type Home = {
   categories: Names;
   /** 가져오는 장부 파일 — 읽는 중이거나 확인을 기다리는 것(총무·관리자에게만 온다) */
   import: { id: string; status: 'reading' | 'ready'; fileName: string | null; rows: number | null } | null;
+  /** 로컬 알림(`remind.ts`)이 쓸 셈 — 총무·관리자에게만 온다 */
+  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[] } | null;
 };
 
 export function toHome(j: unknown): Home {
@@ -126,6 +128,15 @@ export function toHome(j: unknown): Home {
     recent: entries(o.recent),
     categories: toNames(o.categories),
     import: toPendingImport(o.import),
+    remind: o.remind && typeof o.remind === 'object' ? toRemind(obj(o.remind)) : null,
+  };
+}
+
+function toRemind(r: J): NonNullable<Home['remind']> {
+  return {
+    uncategorized: num(r.uncategorized), reconciled: bool(r.reconciled), duesUnpaid: idOrNull(r.duesUnpaid),
+    events: arr(r.events).map((e) => ({ name: str(obj(e).name) ?? '', endsOn: str(obj(e).endsOn) ?? '' }))
+      .filter((e) => e.name !== '' && /^\d{4}-\d{2}-\d{2}$/.test(e.endsOn)),
   };
 }
 
