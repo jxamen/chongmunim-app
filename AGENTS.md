@@ -157,7 +157,12 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   ① EAS 업로드 키(2026-09-22 태훈님이 맥에서 만듦, Build Credentials XpMvDSU4f8) — SHA-1 `0F:29:B8:A2:03:6D:D4:20:F8:B1:1E:DE:8C:40:30:F4:F2:18:D2:3E`
      SHA-256 `94:3F:C0:97:…:CE:9F:A8:60` · 카카오 키 해시 `Dym4ogNt1CD4sR7ejEAw9PIY0j4=`. Firebase 에 등록함(총무님 세션, REST).
      Android OAuth 클라이언트 · 카카오 키 해시는 웹 콘솔이라 자동화에 부탁함
-  ② Play 앱 서명 키 — 첫 AAB(versionCode 2, 51d5308) 내부 테스트 업로드 뒤 Play Console › 앱 무결성. 받으면 Firebase · OAuth · 카카오에 등록하고 google-services.json 을 새로 받는다
+  ② Play 앱 서명 키 — **둘이다**(Play 가 키를 바꾼 상태: 현재 · 이전 — Android 13 미만은 이전 키로 볼 수 있어 둘 다 등록)
+     현재 SHA-1 `CD:F7:F1:D3:D2:E5:13:FC:33:81:6E:AB:78:F1:81:BA:CB:40:82:E8` · 카카오 `zffx09LlE/wzgW6rePGBustAgug=`
+     이전 SHA-1 `15:D0:2B:3B:A1:50:F0:BF:1E:3C:4C:07:ED:5B:A6:A4:A6:DB:5E:3F` · 카카오 `FdArO6FQ8L8ePEwH7VumpKbbXj8=`
+  → Firebase 에 네 키(디버그 · 업로드 · 현재 · 이전) SHA-1/256 등록, Android OAuth 클라이언트 네 개(자동화), google-services.json 새로 받음(2026-09-22).
+    카카오 키 해시 네 개는 developers.kakao.com 로그인 뒤 자동화가 넣는다
+  첫 AAB: versionCode 2(51d5308) — Play 내부 테스트 게시(테스터 미지정)
 - **구글 드라이브에서 고르기**(장부 가져오기) — 구글 클라우드 Picker·Drive API · API 키(→ `app_configs` 'picker') · 웹 클라이언트 JS 원본·리디렉션
   `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 키가 없으면 앱이 「준비하고 있어요」
 - **어드민 약관·개인정보 기본본** — 등록 안 함. 총무님 전용 문안은 서버 페이지(`cm/legal/*`, 위 머리말)로 대신한다
