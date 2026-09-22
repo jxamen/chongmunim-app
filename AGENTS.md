@@ -134,13 +134,14 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   권한 · 오퍼링     pro(총무님 구독) · default(현재) = $rc_monthly 하나
   App Store       .p8 앱 내 구입 키 등록 · 구독 그룹 「총무님 구독」 22404322 · chongmunim_pro_monthly(Apple ID 6814796573, 1개월, 175개국)
                   가격표에 ₩4,900 이 없어 **₩5,500**(태훈님 결정 — Play 도 같은 값). 앱 화면의 결제 단추는 스토어 priceString
-  Play            서비스 계정 revenuecat-play@chongmunim-d7971 JSON 등록. Play 상품 chongmunim_pro/monthly 는 첫 AAB 뒤
+  Play            서비스 계정 revenuecat-play@chongmunim-d7971 JSON 등록(자격 증명 Valid). 구독 chongmunim_pro · 기본 요금제 monthly(₩5,500,
+                  자동 갱신, 유예 7일, 활성) → RC 권한 pro · 오퍼링 default $rc_monthly 에 연결(2026-09-22, 판매자 계정은 태훈님)
   웹훅            …/v1/chongmunim/cm/revenuecat · 두 환경 · 모든 이벤트. 비밀 키(V1) · 웹훅 인증값은 배포가 app_configs 에(파일로 받음)
   Play 연동       서비스 계정에 pubsub.admin · monitoring.viewer, Play Console 총무님 앱에만 초대(재무 데이터 · 주문 및 구독 관리)
                   RTDN 토픽 projects/chongmunim-d7971/topics/Play-Store-Notifications — 테스트 알림 수신 확인(2026-09-22)
                   RC 자격 증명 3개 중 1개(package name not found)는 첫 AAB 업로드 뒤 다시 검사
-  남은 것         ASC 유료 앱 계약 서명(「신규」) · 은행 · 세금(태훈님) / RC 가입 메일 확인(태훈님) / EAS 안드로이드 키스토어(태훈님, 맥) →
-                  AAB 내부 테스트 업로드 → Play 구독 chongmunim_pro/monthly ₩5,500 → RC 연결 / 구독 심사 스크린샷
+  남은 것         ASC 유료 앱 계약 서명(「신규」) · 은행 · 세금(태훈님) — 그전엔 RC 의 App Store 상품이 「Could not check」 /
+                  내부 테스트 테스터 · 라이선스 테스터 지정 / 구독 심사 스크린샷 / 해외 가격이 스토어마다 다름(App Store 미국 $2.99 · Play $4.09)
 ```
 
 ### 아직 없는 것
@@ -151,7 +152,7 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   푸시 발송 키(FCM V1)는 서버 `/www/jcurve/secrets/chongmunim-fcm.json` 에 있다(자동화 세션, project_id chongmunim-d7971 확인)
 - **어드민 SNS 로그인 키**(`app_configs.social`) — 카카오 REST 키·시크릿, 구글 웹 시크릿은 사람이 넣는다(자동화 세션은 시크릿을 옮기지 않는다)
 - **구글 OAuth 게시 상태**가 「테스트 중」 — 다른 앱(꾹테크)과 같다. 테스트 사용자 외에는 구글 로그인이 안 되니 출시 전에 게시한다
-- **구글 Android OAuth 클라이언트·카카오 키 해시** — 시험판(빌드 맥 디버그 키)은 등록 요청 중(2026-09-22, 윈도우 자동화 세션):
+- ~~구글 Android OAuth 클라이언트·카카오 키 해시~~ — **끝**(2026-09-22: 디버그 · 업로드 · Play 앱 서명 현재 · 이전 네 키 모두 Firebase · OAuth · 카카오 등록). 시험판(빌드 맥 디버그 키):
   SHA-1 `83:FA:C4:D3:93:72:A3:B7:F2:FB:14:11:27:E2:FE:FD:79:9C:3A:D9` · 카카오 키 해시 `g/rE05Nyo7fy+xQRJ+L+/XmcOtk=`(계열 앱 시험판 공용 디버그 키).
   **스토어 판은 지문이 둘 더** — 설치 경로마다 실제로 서명한 키가 등록돼야 로그인이 된다
   ① EAS 업로드 키(2026-09-22 태훈님이 맥에서 만듦, Build Credentials XpMvDSU4f8) — SHA-1 `0F:29:B8:A2:03:6D:D4:20:F8:B1:1E:DE:8C:40:30:F4:F2:18:D2:3E`
@@ -161,7 +162,7 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
      현재 SHA-1 `CD:F7:F1:D3:D2:E5:13:FC:33:81:6E:AB:78:F1:81:BA:CB:40:82:E8` · 카카오 `zffx09LlE/wzgW6rePGBustAgug=`
      이전 SHA-1 `15:D0:2B:3B:A1:50:F0:BF:1E:3C:4C:07:ED:5B:A6:A4:A6:DB:5E:3F` · 카카오 `FdArO6FQ8L8ePEwH7VumpKbbXj8=`
   → Firebase 에 네 키(디버그 · 업로드 · 현재 · 이전) SHA-1/256 등록, Android OAuth 클라이언트 네 개(자동화), google-services.json 새로 받음(2026-09-22).
-    카카오 키 해시 네 개는 developers.kakao.com 로그인 뒤 자동화가 넣는다
+    카카오 키 해시 네 개도 넣음(자동화, 앱 1584900 › Android)
   첫 AAB: versionCode 2(51d5308) — Play 내부 테스트 게시(테스터 미지정)
 - **구글 드라이브에서 고르기**(장부 가져오기) — 구글 클라우드 Picker·Drive API · API 키(→ `app_configs` 'picker') · 웹 클라이언트 JS 원본·리디렉션
   `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 키가 없으면 앱이 「준비하고 있어요」
