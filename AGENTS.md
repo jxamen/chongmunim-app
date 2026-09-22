@@ -17,6 +17,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 | API base | `https://api.j-curve.co.kr/v1/chongmunim` |
 | 앱 DB | `jc_chongmunim` |
 | 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
+| 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
 ## 공용 패키지 (vendor tgz, `file:` 설치)
 

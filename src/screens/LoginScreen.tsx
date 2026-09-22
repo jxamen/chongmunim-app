@@ -7,16 +7,16 @@
  * 새 판으로 다시 시작하는 1초 남짓의 틈에는 버튼을 무시한다(`isRestarting`, @jcurve/updates 2.3).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { isRestarting } from '@jcurve/updates';
 import { useApp } from '../store';
 import { auth, type Provider } from '../auth';
 import { track } from '../track';
 import { LEGAL_BASE } from '../config';
-import { Ask, Btn, Field, Txt, s as k } from '../ui/kit';
+import { Ask, Btn, Field, Text, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
-import { BRAND, F, R, S, TITLE_FONT, useT } from '../ui/theme';
+import { BRAND, F, R, S, useT } from '../ui/theme';
 
 export function LoginScreen() {
   const { signInWith, guestStart, busy } = useApp();
@@ -110,7 +110,7 @@ function Consent({ on, onChange }: { on: boolean; onChange: (v: boolean) => void
 const st = StyleSheet.create({
   wrap: { flex: 1, paddingHorizontal: S.xl, paddingBottom: S.xxl, justifyContent: 'space-between' },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: S.sm },
-  brand: { fontFamily: TITLE_FONT, fontSize: 38, marginTop: S.sm },
+  brand: { fontSize: 38, fontWeight: '900', letterSpacing: -1, marginTop: S.sm },
   sns: { height: 52, borderRadius: R.button, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   consent: { borderWidth: 1, borderRadius: R.card, padding: S.lg, gap: S.md },
   check: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },

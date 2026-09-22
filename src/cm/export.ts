@@ -80,6 +80,9 @@ export function settle(d: ExportData): {
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 
+/** Pretendard 웹 배포본(앱 `assets/fonts` 와 같은 v1.3.9) — 글자 조각(subset)마다 나눠 쓰는 것만 받는다 */
+export const PRETENDARD_CSS = 'https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.min.css';
+
 /** 결산서 — A4 한 장에 들어가게. 총무·감사 서명 칸을 둔다 */
 export function reportHtml(d: ExportData, madeOn: string): string {
   const s = settle(d);
@@ -94,10 +97,12 @@ export function reportHtml(d: ExportData, madeOn: string): string {
     + `<td class="n">${won(e.in)}</td><td class="n">${won(e.out)}</td><td class="n">${e.in - e.out >= 0 ? '+' : ''}${won(e.in - e.out)}</td></tr>`).join('');
   const monthRows = s.months.map((m, i) => `<tr><td>${i + 1}월</td><td class="n">${won(m.in)}</td><td class="n">${won(m.out)}</td></tr>`).join('');
 
+  // 글꼴은 앱과 같은 Pretendard(웹 배포본, 쓰는 글자 조각만 받는다). 못 받으면 기기 글꼴로 인쇄된다
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(d.group)} ${d.year}년 결산서</title>
+<link rel="stylesheet" href="${PRETENDARD_CSS}">
 <style>
   @page { size: A4; margin: 18mm 16mm; }
-  body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; color: #16251F; font-size: 11.5pt; }
+  body { font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; color: #16251F; font-size: 11.5pt; }
   h1 { font-size: 19pt; margin: 0 0 4px; } .sub { color: #5E7169; margin: 0 0 16px; font-size: 10pt; }
   table { width: 100%; border-collapse: collapse; margin: 6px 0 14px; } td, th { border-bottom: 1px solid #DFEDE8; padding: 5px 4px; text-align: left; }
   th { color: #5E7169; font-weight: 600; font-size: 10pt; } .n { text-align: right; font-variant-numeric: tabular-nums; }
