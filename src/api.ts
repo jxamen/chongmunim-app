@@ -12,7 +12,7 @@
 import { otaHeaders } from '@jcurve/updates';
 import { API_BASE, PUBLIC_KEY } from './config';
 import { resendIfDropped } from './resend';
-import { isDeadSession } from './deadSession';
+import { expiresSession } from './deadSession';
 import { errorCode } from './cm/errors';
 
 export type Member = {
@@ -54,7 +54,9 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
   const headers: Record<string, string> = { 'X-App-Token': PUBLIC_KEY, Accept: 'application/json', ...otaHeaders() };
   const form = typeof FormData !== 'undefined' && body instanceof FormData;
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
-  if (auth && session) headers.Authorization = 'Bearer ' + session.token;
+  // 실어 보낸 세션 — 401 을 만료로 볼지는 이것으로 가른다(expiresSession)
+  const sent = auth && session ? session.token : null;
+  if (sent) headers.Authorization = 'Bearer ' + sent;
 
   const ctl = new AbortController();
   // 끊은 것이 우리 시계인지를 따로 적는다 — expo fetch 는 끊을 때 AbortError 가 아니라 「fetch failed」로 던진다
@@ -84,7 +86,8 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
   if (res.status === 401) {
     const code = String(json?.error ?? 'unauthorized');
     // 세션이 죽은 것은 `unauthorized` 뿐이다 — 소셜 토큰 거절(invalid_token 등)로 지우면 게스트 계정을 잃는다
-    if (isDeadSession({ status: 401, code })) {
+    // 세션을 실어 보낸 요청의 401 만 — 로그인 전 요청의 401 로 「로그인이 풀렸어요」를 띄우지 않는다
+    if (expiresSession(sent, session?.token ?? null, { status: 401, code })) {
       session = null;
       onExpired?.();
     }
