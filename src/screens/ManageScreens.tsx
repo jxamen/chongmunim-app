@@ -5,7 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { amountInput, kstNow, readAmount, readWhen, whenLong, won } from '../cm/format';
+import { amountInput, kstNow, mdInput, mdWord, readAmount, readWhen, whenLong, won } from '../cm/format';
+import { isPro } from '../cm/plan';
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
 import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
@@ -158,10 +159,11 @@ export function ReceiptScreen({ id }: { id: string }) {
 /* ── 명단 · 관리자 ── */
 
 export function MembersScreen() {
-  const { group, back, fail, say, reloadGroup } = useApp();
+  const { group, back, fail, say, reloadGroup, showPlan } = useApp();
   const { data, error, reload } = useLoad(cm.roster);
   const [name, setName] = useState('');
   const [pick, setPick] = useState<RosterItem | null>(null);
+  const [bday, setBday] = useState('');   // 고르는 사람의 생일(MM-DD)
   const [list, setList] = useState<RosterItem[] | null>(null);
   const owner = group?.me.role === 'owner';
   const rows = list ?? data;
@@ -189,8 +191,8 @@ export function MembersScreen() {
             {rows.map((m, i) => (
               <View key={m.id}>
                 {i > 0 ? <Sep /> : null}
-                <MenuRow label={m.name} value={[ROLE[m.role], m.hasApp ? null : '앱 없음', m.duesExempt ? '회비 면제' : null].filter(Boolean).join(' · ')}
-                  onPress={m.role === 'owner' ? undefined : () => setPick(m)} />
+                <MenuRow label={m.name} value={[ROLE[m.role], m.hasApp ? null : '앱 없음', m.duesExempt ? '회비 면제' : null, mdWord(m.birthday) ? `🎂 ${mdWord(m.birthday)}` : null].filter(Boolean).join(' · ')}
+                  onPress={() => { setBday(m.birthday ?? ''); setPick(m); }} />
               </View>
             ))}
           </Card>
@@ -202,14 +204,26 @@ export function MembersScreen() {
         buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setPick(null) }]}>
         {pick && group ? (
           <View style={{ gap: S.sm }}>
-            {owner && pick.hasApp ? (
+            {/* 생일 — 월·일만. 그날 아침 총무·관리자 폰에 알림(이름은 잠금 화면에 안 싣는다) · 구독 */}
+            <View style={[k.row, { gap: S.sm, alignItems: 'flex-end' }]}>
+              <Field label="생일(월-일)" style={k.grow} value={bday} onChangeText={(v) => setBday(mdInput(v))} placeholder="예) 03-15"
+                keyboardType="number-pad" maxLength={5} inputStyle={{ fontSize: F.body }} />
+              <Btn label="저장" small style={{ width: 70, marginBottom: 2 }} disabled={bday !== '' && !mdWord(bday)}
+                onPress={() => {
+                  if (!isPro(group)) { setPick(null); showPlan('general'); return; }
+                  void run(() => cm.updateMember(group.id, pick.id, { birthday: bday || null }), bday ? `${pick.name} 님 생일을 적었어요` : '생일을 지웠어요');
+                }} />
+            </View>
+            {pick.role !== 'owner' && owner && pick.hasApp ? (
               <Btn label={pick.role === 'admin' ? '관리자에서 빼기' : '관리자로 지정'} tone="ghost" small
                 onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { role: pick.role === 'admin' ? 'member' : 'admin' }), '바꿨어요'); }} />
             ) : null}
             <Btn label={pick.duesExempt ? '회비 면제 풀기' : '회비 면제'} tone="ghost" small
               onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { duesExempt: !pick.duesExempt }), '바꿨어요'); }} />
-            <Btn label="명단에서 빼기" tone="danger" small
-              onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { remove: true }), `${pick.name} 님을 명단에서 뺐어요`); }} />
+            {pick.role !== 'owner' ? (
+              <Btn label="명단에서 빼기" tone="danger" small
+                onPress={() => { void run(() => cm.updateMember(group.id, pick.id, { remove: true }), `${pick.name} 님을 명단에서 뺐어요`); }} />
+            ) : null}
           </View>
         ) : null}
       </Ask>
@@ -299,13 +313,17 @@ export function ProfileScreen() {
   const [bankName, setBankName] = useState(me?.bankName ?? '');
   const [bankAccount, setBankAccount] = useState(me?.bankAccount ?? '');
   const [bankHolder, setBankHolder] = useState(me?.bankHolder ?? '');
+  const [birthday, setBirthday] = useState(me?.birthday ?? '');
   const [busy, setBusy] = useState(false);
   if (!group || !me) return null;
+  const pro = isPro(group);
 
   const save = async () => {
     setBusy(true);
     try {
-      await cm.updateMe(group.id, { name: name.trim(), bankName: bankName.trim() || null, bankAccount: bankAccount.trim() || null, bankHolder: bankHolder.trim() || null });
+      // 생일은 구독 모임에서만 — 바뀌었을 때만 보낸다(무료 모임에서 이름·계좌 저장이 막히지 않게)
+      const bday = pro && birthday !== (me.birthday ?? '') ? { birthday: birthday || null } : {};
+      await cm.updateMe(group.id, { name: name.trim(), bankName: bankName.trim() || null, bankAccount: bankAccount.trim() || null, bankHolder: bankHolder.trim() || null, ...bday });
       await reloadGroup();
       say('저장했어요');
       back();
@@ -322,6 +340,10 @@ export function ProfileScreen() {
       <Body bottom={kb > 0 ? kb + 24 : 120}>
         <View style={{ height: 2 }} />
         <Field label="모임에서 쓰는 이름" value={name} onChangeText={setName} maxLength={30} />
+        {pro ? (
+          <Field label="생일(월-일)" value={birthday} onChangeText={(v) => setBirthday(mdInput(v))} placeholder="예) 03-15 · 적어 두면 그날 모임이 알아요"
+            keyboardType="number-pad" maxLength={5} inputStyle={{ fontSize: F.body }} />
+        ) : null}
         <Card style={{ gap: S.md }}>
           <Txt size="small" tone="sub" bold>지급받을 계좌</Txt>
           <Txt size="tiny" tone="dim">지급 요청을 하면 총무님이 이 계좌로 보내요. 총무·관리자만 전체 번호를 봐요.</Txt>
@@ -329,7 +351,7 @@ export function ProfileScreen() {
           <Field value={bankAccount} onChangeText={setBankAccount} placeholder="계좌번호" keyboardType="numbers-and-punctuation" maxLength={40} inputStyle={{ fontSize: F.body }} />
           <Field value={bankHolder} onChangeText={setBankHolder} placeholder="예금주" maxLength={30} inputStyle={{ fontSize: F.body }} />
         </Card>
-        <Btn label="저장" loading={busy} disabled={!name.trim()} onPress={() => { void save(); }} />
+        <Btn label="저장" loading={busy} disabled={!name.trim() || (birthday !== '' && !mdWord(birthday))} onPress={() => { void save(); }} />
       </Body>
     </View>
   );

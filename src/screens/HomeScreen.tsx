@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { entrySub, entryTitle, signed, won } from '../cm/format';
+import { entrySub, entryTitle, mdWord, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
 import { setRemindSnapshot } from '../push';
 import { Ask, Body, Card, Chip, Failed, Head, LedgerRow, Loading, Sep, Soft, Text, Title, Txt, s as k } from '../ui/kit';
@@ -111,6 +111,21 @@ export function HomeScreen() {
             title={h.import.status === 'ready' ? '가져온 장부를 확인해 주세요' : '장부 파일을 읽고 있어요'}
             sub={h.import.status === 'ready' ? `${h.import.fileName ?? '구글 시트'} · 확인한 줄만 넣어요` : '끝나면 여기서 알려 드려요 · 그동안 장부를 그대로 쓰셔도 돼요'}
             onPress={() => open({ kind: 'import', id: h.import!.id })} />
+        ) : null}
+
+        {/* 다가오는 생일(14일 안) — 총무·관리자 · 구독 모임. 회비로 선물을 챙기는 모임이 많다(2026-09-22 태훈님) */}
+        {h.birthdays.length > 0 ? (
+          <Card style={{ gap: 6 }} onPress={() => open({ kind: 'members' })}>
+            <Txt size="small" tone="sub" bold>다가오는 생일</Txt>
+            {h.birthdays.slice(0, 4).map((b) => (
+              <View key={b.id} style={[k.row, { gap: 8 }]}>
+                <Txt bold style={k.grow} numberOfLines={1}>🎂 {b.name}</Txt>
+                <Txt size="small" tone={b.days === 0 ? 'pos' : 'sub'} bold={b.days === 0}>
+                  {b.days === 0 ? '오늘' : b.days === 1 ? '내일' : `${b.days}일 뒤`} · {mdWord(b.md)}
+                </Txt>
+              </View>
+            ))}
+          </Card>
         ) : null}
 
         {h.notice ? (

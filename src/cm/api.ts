@@ -27,12 +27,12 @@ export const updateGroup = async (gid: number, b: { name?: string; duesAmount?: 
   toGroup(await api.put(g(gid), b));
 export const roster = async (gid: number) => toRoster(await api.get(g(gid, 'members')));
 export const addMember = async (gid: number, name: string) => toRoster(await api.post(g(gid, 'members'), { name }));
-export const updateMember = async (gid: number, id: number, b: { name?: string; duesExempt?: boolean; role?: 'admin' | 'member'; remove?: boolean }) =>
+export const updateMember = async (gid: number, id: number, b: { name?: string; duesExempt?: boolean; role?: 'admin' | 'member'; remove?: boolean; birthday?: string | null }) =>
   toRoster(await api.put(g(gid, `members/${id}`), b));
 export const transferOwner = async (gid: number, memberId: number) => toGroup(await api.post(g(gid, 'owner'), { memberId }));
 export const acceptOwner = async (gid: number) => toGroup(await api.post(g(gid, 'owner/accept')));
 export const cancelOwner = async (gid: number) => toGroup(await api.post(g(gid, 'owner/cancel')));
-export const updateMe = async (gid: number, b: { name?: string; bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null; notify?: Partial<NotifyPrefs> }) =>
+export const updateMe = async (gid: number, b: { name?: string; bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null; notify?: Partial<NotifyPrefs>; birthday?: string | null }) =>
   toGroup(await api.put(g(gid, 'me'), b));
 export const setPublicLink = async (gid: number, on: boolean) =>
   String((await api.post<{ publicToken?: string | null }>(g(gid, 'public-link'), { on })).publicToken ?? '');

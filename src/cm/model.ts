@@ -27,7 +27,9 @@ export const toGroups = (j: unknown): GroupItem[] =>
     .filter((g) => g.id > 0);
 
 export type NotifyPrefs = { notice: boolean; dues: boolean; request: boolean };
-export type Me = { id: number; name: string; role: Role; bankName: string | null; bankAccount: string | null; bankHolder: string | null; notify: NotifyPrefs };
+export type Me = { id: number; name: string; role: Role; bankName: string | null; bankAccount: string | null; bankHolder: string | null; notify: NotifyPrefs;
+  /** 생일 「MM-DD」(월·일만) */
+  birthday: string | null };
 export type Group = {
   id: number; name: string; owner: string | null; members: number; admins: number; categories: number; duesAmount: number; me: Me;
   inviteCode: string | null; publicToken: string | null; openingBalance: number; openingDate: string | null;
@@ -50,6 +52,7 @@ export function toGroup(j: unknown): Group {
       id: num(me.id), name: str(me.name) ?? '', role: role(me.role),
       bankName: str(me.bankName), bankAccount: str(me.bankAccount), bankHolder: str(me.bankHolder),
       notify: { notice: n.notice !== false, dues: n.dues !== false, request: n.request !== false },
+      birthday: str(me.birthday),
     },
     inviteCode: str(g.inviteCode), publicToken: str(g.publicToken),
     plan: g.plan === 'free' ? 'free' : 'pro', freeMembers: num(g.freeMembers, 10),
@@ -58,12 +61,12 @@ export function toGroup(j: unknown): Group {
   };
 }
 
-export type RosterItem = { id: number; name: string; role: Role; hasApp: boolean; duesExempt: boolean; bank: string | null };
+export type RosterItem = { id: number; name: string; role: Role; hasApp: boolean; duesExempt: boolean; bank: string | null; birthday: string | null };
 export const toRoster = (j: unknown): RosterItem[] =>
   arr(obj(j).members).map((m) => {
     const o = obj(m);
 
-    return { id: num(o.id), name: str(o.name) ?? '', role: role(o.role), hasApp: bool(o.hasApp), duesExempt: bool(o.duesExempt), bank: str(o.bank) };
+    return { id: num(o.id), name: str(o.name) ?? '', role: role(o.role), hasApp: bool(o.hasApp), duesExempt: bool(o.duesExempt), bank: str(o.bank), birthday: str(o.birthday) };
   }).filter((m) => m.id > 0);
 
 /* ── 장부 ── */
@@ -111,7 +114,9 @@ export type Home = {
   /** 가져오는 장부 파일 — 읽는 중이거나 확인을 기다리는 것(총무·관리자에게만 온다) */
   import: { id: string; status: 'reading' | 'ready'; fileName: string | null; rows: number | null } | null;
   /** 로컬 알림(`remind.ts`)이 쓸 셈 — 총무·관리자에게만 온다 */
-  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[] } | null;
+  remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[]; birthdays: string[] } | null;
+  /** 다가오는 생일(14일 안) — 총무·관리자 · 구독 모임에만 온다 */
+  birthdays: { id: number; name: string; md: string; days: number }[];
 };
 
 export function toHome(j: unknown): Home {
@@ -132,6 +137,8 @@ export function toHome(j: unknown): Home {
     categories: toNames(o.categories),
     import: toPendingImport(o.import),
     remind: o.remind && typeof o.remind === 'object' ? toRemind(obj(o.remind)) : null,
+    birthdays: arr(o.birthdays).map((x) => ({ id: num(obj(x).id), name: str(obj(x).name) ?? '', md: str(obj(x).md) ?? '', days: num(obj(x).days) }))
+      .filter((x) => /^\d{2}-\d{2}$/.test(x.md)),
   };
 }
 
@@ -140,6 +147,7 @@ function toRemind(r: J): NonNullable<Home['remind']> {
     uncategorized: num(r.uncategorized), reconciled: bool(r.reconciled), duesUnpaid: idOrNull(r.duesUnpaid),
     events: arr(r.events).map((e) => ({ name: str(obj(e).name) ?? '', endsOn: str(obj(e).endsOn) ?? '' }))
       .filter((e) => e.name !== '' && /^\d{4}-\d{2}-\d{2}$/.test(e.endsOn)),
+    birthdays: arr(r.birthdays).filter((x): x is string => typeof x === 'string' && /^\d{2}-\d{2}$/.test(x)),
   };
 }
 

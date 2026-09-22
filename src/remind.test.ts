@@ -64,7 +64,7 @@ describe('재방문 로컬 알림 — 총무가 앞에 앉는 때', () => {
   });
 
   it('스위치 — 「장부 챙김 알림」을 끄면 전부, 회비·지급 요청은 모임 스위치도 따른다', () => {
-    expect(Object.values(remindPrefs({ dues: true, request: true, remind: false }))).toEqual([false, false, false, false, false, false]);
+    expect(Object.values(remindPrefs({ dues: true, request: true, remind: false }))).toEqual([false, false, false, false, false, false, false]);
     expect(remindPrefs({ dues: false, request: true, remind: true })).toMatchObject({ [KEYS.duesCheck]: false, [KEYS.requestWait]: true, [KEYS.tidyMonth]: true });
   });
 
@@ -84,5 +84,23 @@ describe('재방문 로컬 알림 — 총무가 앞에 앉는 때', () => {
     expect(plan.find((p) => p.key === KEYS.eventSettle)!.title).toBe('「가을 산행」 정산할 때예요');
     // 밤에 걸린 시각은 아침으로 — 이 앱이 거는 시각(10·19·19:30·20시)은 모두 낮이라 그대로다
     expect(plan.every((p) => new Date(p.at).getHours() >= 9 && new Date(p.at).getHours() < 21)).toBe(true);
+  });
+});
+
+describe('회원 생일 — 그날 아침 9시, 이름은 싣지 않는다', () => {
+  it('앞으로 오는 생일만 가까운 순으로 · 오늘 9시가 지났으면 빠진다', () => {
+    const b = remindBases(manager({ birthdays: ['09-24', '10-03', '09-22'] }), t(2026, 9, 22, 14));
+    expect(b[KEYS.birthday]).toEqual([t(2026, 9, 24, 9), t(2026, 10, 3, 9)]);
+    expect(remindBases(manager({ birthdays: ['09-22'] }), t(2026, 9, 22, 8))[KEYS.birthday]).toEqual([t(2026, 9, 22, 9)]);
+  });
+  it('해를 넘긴 생일 · 평년의 2월 29일은 28일', () => {
+    expect(remindBases(manager({ birthdays: ['01-05'] }), t(2026, 12, 20))[KEYS.birthday]).toEqual([t(2027, 1, 5, 9)]);
+    expect(remindBases(manager({ birthdays: ['02-29'] }), t(2027, 2, 1))[KEYS.birthday]).toEqual([t(2027, 2, 28, 9)]);
+  });
+  it('생일이 없으면 안 건다 · 회원 폰에는 안 건다 · 문구에 이름이 없다', () => {
+    expect(remindBases(manager({ birthdays: [] }), t(2026, 9, 22))).not.toHaveProperty(KEYS.birthday);
+    expect(remindBases({ manager: false, pending: 0, remind: null }, t(2026, 9, 22))).not.toHaveProperty(KEYS.birthday);
+    const item = (DEFAULT_CONFIG.items ?? []).find((i) => i.key === KEYS.birthday)!;
+    expect(item.title + item.body).not.toMatch(/\{/);
   });
 });
