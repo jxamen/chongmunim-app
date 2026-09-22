@@ -9,7 +9,7 @@ import { StyleSheet, View } from 'react-native';
 import { defaultMyName, useApp } from '../store';
 import * as cm from '../cm/api';
 import { readAmount, amountInput } from '../cm/format';
-import { Body, Btn, Card, Chip, Field, Head, MenuRow, Sep, Tabs, Txt } from '../ui/kit';
+import { Ask, Body, Btn, Card, Chip, Field, Head, MenuRow, Sep, Tabs, Txt } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { track } from '../track';
 import { S } from '../ui/theme';
@@ -17,8 +17,9 @@ import { S } from '../ui/theme';
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
 
 export function GroupsScreen({ asPage }: { asPage?: boolean }) {
-  const { member, groups, group, enterGroup, selectGroup, back, fail } = useApp();
+  const { member, groups, group, enterGroup, selectGroup, back, fail, logout } = useApp();
   const [mode, setMode] = useState<'make' | 'join'>('make');
+  const [out, setOut] = useState(false);
   const [name, setName] = useState('');
   const [myName, setMyName] = useState(defaultMyName(member?.name));
   const [dues, setDues] = useState('');
@@ -84,7 +85,21 @@ export function GroupsScreen({ asPage }: { asPage?: boolean }) {
             </>
           )}
         </Card>
+
+        {/* 다른 방법으로 로그인해 새 계정이 된 사람의 출구 — 이 화면에는 설정(로그아웃)이 없다
+            (2026-09-23 태훈님: 카카오로 만든 모임을 두고 구글로 로그인하니 「기능이 싹 사라짐」) */}
+        {!asPage && groups.length === 0 && member?.provider !== 'guest' ? (
+          <Card style={{ gap: S.sm }}>
+            <Txt bold>전에 쓰던 모임이 안 보이나요?</Txt>
+            <Txt tone="sub" size="small">처음 가입한 방법(카카오·구글·애플)으로 로그인해야 그 모임이 보여요. 다른 방법으로 들어오면 새 계정이 돼요.</Txt>
+            <Btn label="다른 방법으로 로그인하기" tone="ghost" onPress={() => setOut(true)} />
+          </Card>
+        ) : null}
       </Body>
+
+      <Ask open={out} title="로그아웃하고 다시 로그인할까요?" mood="sleeping" onClose={() => setOut(false)}
+        body="카카오·구글·애플 중 다른 방법으로 들어가 볼 수 있어요. 지금 계정은 그대로 남아요."
+        buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setOut(false) }, { label: '로그아웃', onPress: () => { setOut(false); void logout(); } }]} />
     </View>
   );
 }
