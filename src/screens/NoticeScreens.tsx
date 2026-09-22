@@ -166,8 +166,9 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
         </View>
       </Body>
 
-      <Ask open={confirm} title={`${n}명에게 보낼까요?`} mood="phone" onClose={() => setConfirm(false)}
-        body={`「${title.trim()}」${push ? '\n푸시로도 알려요. 보낸 뒤에는 취소할 수 없어요.' : '\n앱에서만 보여요(푸시 없음).'}${push && isNight() ? '\n\n지금은 밤이에요. 아침에 보내는 편이 좋아요.' : ''}`}
+      {/* 받는 사람 수는 쓰는 나를 빼고 센다(서버 audience) — 0명이면 공지만 남는다 */}
+      <Ask open={confirm} title={n > 0 ? `${n}명에게 보낼까요?` : '공지만 올릴까요?'} mood="phone" onClose={() => setConfirm(false)}
+        body={`「${title.trim()}」${n === 0 ? '\n받을 사람이 아직 없어요(쓰는 나는 빼고 세요). 공지는 남아서 나중에 들어온 사람도 봐요.' : push ? '\n푸시로도 알려요. 보낸 뒤에는 취소할 수 없어요.' : '\n앱에서만 보여요(푸시 없음).'}${n > 0 && push && isNight() ? '\n\n지금은 밤이에요. 아침에 보내는 편이 좋아요.' : ''}`}
         buttons={[{ label: '다시 보기', tone: 'ghost', onPress: () => setConfirm(false) }, { label: busy ? '보내는 중…' : '보내기', onPress: () => { void submit(false); } }]} />
     </View>
   );
