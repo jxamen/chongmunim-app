@@ -151,6 +151,10 @@ export const saveNotice = async (gid: number, id: number, b: NoticeInput) => {
 export const notice = async (gid: number, id: number) => toNotice(await api.get(g(gid, `notices/${id}`)));
 /** 받는 사람 — 이름 · 알림 결과 · 읽은 시각(총무·관리자) */
 export const noticeRecipients = async (gid: number, id: number) => toRecipients(await api.get(g(gid, `notices/${id}/recipients`)));
+/** 공지 지우기(총무·관리자) — 보낸 공지도 모두의 목록에서 사라진다 */
+export const deleteNotice = async (gid: number, id: number): Promise<void> => { await api.post(g(gid, `notices/${id}/delete`)); };
+/** 시험 알림 — 이 폰(내 기기)으로만. 공지 알림을 꺼 둬도 온다 */
+export const testPush = async (gid: number) => toPush((await api.post<{ push?: unknown }>(g(gid, 'notify/test'))).push);
 
 /* ── 마감 ── */
 /** 지금 잠긴 것들(풀지 않은 마감) */

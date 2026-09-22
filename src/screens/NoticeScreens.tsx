@@ -17,9 +17,28 @@ import { S } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
 export function NoticeScreen({ id }: { id: number }) {
-  const { group, back, open } = useApp();
+  const { group, back, open, bump, say, fail } = useApp();
   const { data, error, reload } = useLoad((gid) => cm.notice(gid, id), [id]);
   const manager = group ? isManager(group.me.role) : false;
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  /* 지우기 — 총무·관리자(2026-09-22 태훈님 「삭제 기능이 없음」). 이미 간 알림은 되돌릴 수 없다 */
+  const remove = async () => {
+    if (!group) return;
+    setBusy(true);
+    try {
+      await cm.deleteNotice(group.id, id);
+      say('공지를 지웠어요');
+      bump();
+      back();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+      setAsk(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -37,8 +56,13 @@ export function NoticeScreen({ id }: { id: number }) {
           </Card>
           {data.closingId ? <Btn label="결산 보기" onPress={() => open({ kind: 'closing', id: data.closingId! })} /> : null}
           {manager && data.status === 'sent' ? <Recipients id={id} reads={data.reads} total={data.recipients} /> : null}
+          {manager ? <Btn label="공지 지우기" tone="ghost" small onPress={() => setAsk(true)} /> : null}
         </Body>
       )}
+      <Ask open={ask} title="이 공지를 지울까요?" mood="thinking" onClose={() => setAsk(false)}
+        body={'모든 회원의 공지 목록에서 사라져요. 이미 간 알림은 되돌릴 수 없어요.'}
+        buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setAsk(false) },
+          { label: busy ? '지우는 중…' : '지우기', tone: 'danger', onPress: () => { void remove(); } }]} />
     </View>
   );
 }
@@ -52,7 +76,8 @@ const PUSH_LABEL: Record<NonNullable<PushResult>, string> = {
 };
 
 function Recipients({ id, reads, total }: { id: number; reads: number; total: number }) {
-  const [open, setOpen] = useState(false);
+  // 처음부터 펼쳐 둔다 — 누르면 접힌다(2026-09-22 태훈님 「기본 리스트가 나오게 해줘」)
+  const [open, setOpen] = useState(true);
   const list = useLoad((gid) => (open ? cm.noticeRecipients(gid, id) : Promise.resolve(null)), [id, open]);
 
   return (
@@ -117,6 +142,24 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
 
   const n = counts[audience];
   const ready = title.trim() !== '' && body.trim() !== '' && !busy;
+  const [drop, setDrop] = useState(false);
+
+  /* 임시저장 지우기 */
+  const removeDraft = async () => {
+    if (!group || !draftId) return;
+    setBusy(true);
+    try {
+      await cm.deleteNotice(group.id, draftId);
+      say('임시저장을 지웠어요');
+      bump();
+      back();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+      setDrop(false);
+    }
+  };
 
   const submit = async (draft: boolean) => {
     if (!group) return;
@@ -166,7 +209,11 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
           {/* 0명이어도 누를 수 있다 — 확인 창이 「공지만 올릴까요?」로 묻는다(앱빌드 A32: 막혀 있어 그 창에 닿지 못했다) */}
           <Btn label={n > 0 ? '발송하기' : '공지 올리기'} style={k.grow} disabled={!ready} onPress={() => setConfirm(true)} />
         </View>
+        {draftId ? <Btn label="임시저장 지우기" tone="ghost" small disabled={busy} onPress={() => setDrop(true)} /> : null}
       </Body>
+      <Ask open={drop} title="임시저장을 지울까요?" mood="thinking" onClose={() => setDrop(false)}
+        buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setDrop(false) },
+          { label: '지우기', tone: 'danger', onPress: () => { void removeDraft(); } }]} />
 
       {/* 받는 사람 수는 쓰는 나를 빼고 센다(서버 audience) — 0명이면 공지만 남는다 */}
       <Ask open={confirm} title={n > 0 ? `${n}명에게 보낼까요?` : '공지만 올릴까요?'} mood="phone" onClose={() => setConfirm(false)}
