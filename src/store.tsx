@@ -18,7 +18,7 @@ import {
 import { auth, isCancel, setServerProviders, signInGuest, type Provider } from './auth';
 import { isDeadSession } from './deadSession';
 import { funnel, track } from './track';
-import { notify, push } from './push';
+import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
 import * as cm from './cm/api';
 import type { Audience, BudgetLine, Entry, Group, GroupItem } from './cm/model';
 import { codeOf, errorText } from './cm/errors';
@@ -42,6 +42,7 @@ export type Page =
   | { kind: 'categories' }
   | { kind: 'profile' }
   | { kind: 'groupEdit' }
+  | { kind: 'import'; id: string }
   | { kind: 'transfer' }
   | { kind: 'groups' }
   | { kind: 'budgetLine'; line: BudgetLine; year: number };
@@ -181,6 +182,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearLocal = useCallback(async () => {
     setSession(null);
+    void resetRemind();   // 남의 모임 알림이 이 폰에 남지 않게
     await storage.clearAccount();
     setMember(null);
     setGroup(null);
@@ -195,6 +197,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let alive = true;
     funnel.appOpen();
     void notify.init();
+    void primeRemind();
     push.init();
     onSessionExpired(() => {
       void clearLocal();
@@ -259,6 +262,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setBusy(false);
         track('login_cancel', { reason: 'returned_without_result' });
       }, 2500);
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  /*
+   | 재방문 로컬 알림(`remind.ts`) — 뒤로 가면 지금 들고 있는 것으로 걸고, 앞으로 오면 지운다(배지도 0).
+   | iOS 는 inactive → background 로 두 번 알리지만 패키지가 예약을 한 줄로 세운다(@jcurve/notify).
+   */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') void notify.clear();
+      else scheduleRemind();
     });
 
     return () => sub.remove();

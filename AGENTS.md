@@ -19,6 +19,32 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 | 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
 | 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
+## 쓰던 장부 파일 가져오기 (2026-09-22 사용자 결정 「b로 해」)
+
+설정 › 모임 정보 › 「쓰던 장부 파일로 가져오기」 — 엑셀(.xlsx)·CSV·PDF 또는 구글 시트 링크.
+서버(`ChongmunimImportController`)가 파일을 공용 OCR 큐에 **kind=ledger** 로 넣고, 맥 워커(영테크 `receipt-analyzer` 브랜치
+`analyzer/`, 텍스트 Qwen · PDF 는 VL)가 날짜·구분·항목·내용·금액·행사로 푼다. 워커 결과 계약은 컨트롤러 머리 주석에 있다.
+확인 표(`LedgerPreview`)가 다른 시트와 겹친 줄 · 이미 장부에 있는 줄 · 날짜 없는 줄을 꺼 두고, 항목을 이 모임 것에 맞추고,
+원본 소계·이월과 **시트별로** 대조한다. **사람이 고른 줄만** 넣고(`src/cm/importRows.ts`), 넣은 것은 한 번에 되돌린다.
+분석은 몇 분 걸린다 — 화면을 떠나도 되고 홈 띠가 알린다. 워커가 없거나 실패해도 붙여넣기·기초 잔액은 늘 열려 있다.
+
+## 재방문 로컬 알림 (`src/remind.ts`, 2026-09-22)
+
+`@jcurve/notify` createNotify — 앱이 뒤로 가면 걸고 앞으로 오면 지운다. 시각은 앱이, 문구는 어드민 「앱 알림」(`content/config/notify`)이
+정하고, 비어 있으면 `remind.ts` 기본값. **어드민에 넣을 때 키가 같아야 한다**(다르면 오류 없이 안 뜬다).
+필요한 사실은 홈을 열 때 받아 둔다(서버 `home.remind`, 총무·관리자만). **잠금 화면에 금액·이름을 싣지 않는다.**
+
+| 키 | 언제 | 누구 |
+|---|---|---|
+| `tidy.month` | 말일 20:00 — 이번 달 항목 없는 기록이 있거나 통장 대사 전 | 총무·관리자 |
+| `dues.check` | 미납이 있으면 5일·20일 19:00, 아니면 다음 달 5일 — 월 회비를 정한 모임 | 총무·관리자(회비 안내 스위치) |
+| `request.wait` | 다음 날 10:00 — 처리 안 한 지급 요청이 남았을 때 | 총무·관리자(지급 요청 스위치) |
+| `event.settle` | 행사 끝난 다음 날 19:00 | 총무·관리자 |
+| `year.settle` | 12월 28일 19:00(11월부터) | 총무·관리자 |
+| `idle` | 마지막으로 연 뒤 7일(회원 14일) 19:30 | 모두 |
+
+전체 스위치는 설정 › 내 정보 › 「장부 챙김 알림(이 폰)」. 안 울리는 시간 21~8시(아침 9시로 미룸).
+
 ## 공용 패키지 (vendor tgz, `file:` 설치)
 
 `@jcurve/auth` 2.1.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.4.1 — 원본 `..\..\jcurve-packages\packages\<이름>`.
@@ -57,7 +83,7 @@ Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2
 
 ### 아직 없는 것
 
-- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴), DB jc_chongmunim, cm_* 14 설치.
+- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴) · be3acc7 · 8cc44d6(장부 파일 가져오기), DB jc_chongmunim, cm_* 15 설치(cm_imports · cm_entries.import_id 포함).
   **어드민 앱 등록은 DB 를 만들지 않는다**(apps.db_name 도 안 채운다) — 새 앱은 서버에서 DB 생성 + 공용 표 migrate + db_name 등록을 따로 한다.
   스모크: `cm/groups` 401 · `auth/providers` 200 **`providers: []`** — 아래 SNS 키가 들어가야 로그인 버튼이 생긴다
   푸시 발송 키(FCM V1)는 서버 `/www/jcurve/secrets/chongmunim-fcm.json` 에 있다(자동화 세션, project_id chongmunim-d7971 확인)

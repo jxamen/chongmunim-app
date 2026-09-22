@@ -7,8 +7,9 @@
 import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
-  toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
+  toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
 } from './model';
+import type { CommitRow } from './importRows';
 
 const g = (gid: number, path = ''): string => `cm/g/${gid}${path ? '/' + path : ''}`;
 const q = (params: Record<string, string | number | undefined>): string => {
@@ -93,6 +94,25 @@ export const mergeCategory = async (gid: number, id: number, into: number) => to
 /** 작년 항목별 집행 가져오기(붙여넣기) */
 export const importPrior = (gid: number, y: number, lines: { name: string; amount: number }[]) =>
   api.post<{ year: number; lines: number; newCategories: number }>(g(gid, 'prior'), { year: y, lines });
+
+/* ── 쓰던 장부 파일 가져오기 — 서버 `ChongmunimImportController` ── */
+/** 파일(폼의 `file`)을 맡긴다 — 워커가 몇 분 걸려 푼다. 같은 파일을 다시 올리면 앞선 건 */
+export const uploadLedger = async (gid: number, form: FormData) => toImport(await api.upload(g(gid, 'imports'), form));
+/**
+ * 구글 시트 링크 — 서버가 xlsx 로 받아 둔다(공유가 「링크가 있는 모든 사용자」여야 한다). 서버가 구글에서 받아 오느라
+ * 오래 걸릴 수 있어 느린 요청(40초)으로 보낸다
+ */
+export const importSheet = async (gid: number, sheetUrl: string) => {
+  const form = new FormData();
+  form.append('sheetUrl', sheetUrl);
+
+  return toImport(await api.upload(g(gid, 'imports'), form));
+};
+export const ledgerImport = async (gid: number, id: string) => toImport(await api.get(g(gid, `imports/${id}`)));
+export const commitImport = (gid: number, id: string, rows: CommitRow[], opening: { amount: number; date: string | null } | null) =>
+  api.post<{ committed: number; newCategories: number; newEvents: number }>(g(gid, `imports/${id}/commit`), opening ? { rows, opening } : { rows });
+export const undoImport = (gid: number, id: string) => api.post<{ voided: number }>(g(gid, `imports/${id}/undo`));
+export const cancelImport = (gid: number, id: string) => api.post(g(gid, `imports/${id}/cancel`));
 
 /* ── 회비 ── */
 export const dues = async (gid: number, period?: string) => toDues(await api.get(g(gid, 'dues') + q({ period })));

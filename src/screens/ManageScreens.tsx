@@ -7,8 +7,9 @@ import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { amountInput, kstNow, readAmount, readWhen, whenLong, won } from '../cm/format';
 import { chipOrder, parsePasted } from '../cm/rules';
+import { pickLedgerFile } from '../cm/ledgerFile';
 import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
-import { notify, push } from '../push';
+import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { F, S, useT } from '../ui/theme';
@@ -298,7 +299,16 @@ export function ProfileScreen() {
   const [bankAccount, setBankAccount] = useState(me?.bankAccount ?? '');
   const [bankHolder, setBankHolder] = useState(me?.bankHolder ?? '');
   const [busy, setBusy] = useState(false);
+  const [remind, setRemind] = useState(remindOn());
   if (!group || !me) return null;
+
+  /* 재방문 로컬 알림 전체 — 이 폰에만 걸리므로 이 폰에 둔다(remind.ts) */
+  const toggleRemind = async (on: boolean) => {
+    // 스위치가 먼저다 — 권한 창을 기다리다 스위치가 안 바뀌면 안 된다. 권한은 그다음에 묻는다(한 실행에 한 번)
+    setRemind(on);
+    await setRemindOn(on);
+    if (on) void notify.ask();
+  };
 
   const save = async () => {
     setBusy(true);
@@ -346,6 +356,14 @@ export function ProfileScreen() {
           <Sep />
           <MenuRow label="지급 요청" right={<Toggle on={me.notify.request} onChange={(v) => { void setNotify('request', v); }} />} />
         </Card>
+        <Card style={{ paddingVertical: 2 }}>
+          <MenuRow label="장부 챙김 알림 (이 폰)" right={<Toggle on={remind} onChange={(v) => { void toggleRemind(v); }} />} />
+          <Txt size="tiny" tone="dim" style={{ paddingBottom: 12, lineHeight: 19 }}>
+            {me.role === 'member'
+              ? '한동안 안 열면 공지와 내 회비를 확인하라고 알려 드려요.'
+              : '월말 정리 · 회비 확인 · 처리 안 한 지급 요청 · 행사 정산 · 연말 결산 때를 알려 드려요. 금액과 이름은 알림에 나오지 않아요.'}
+          </Txt>
+        </Card>
       </Body>
     </View>
   );
@@ -354,8 +372,10 @@ export function ProfileScreen() {
 /* ── 모임 정보 · 월 회비 · 기초 잔액(과거 데이터) ── */
 
 export function GroupEditScreen() {
-  const { group, back, say, fail, reloadGroup } = useApp();
+  const { group, back, say, fail, reloadGroup, open } = useApp();
   const kb = useKeyboardPad();
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [sending, setSending] = useState(false);
   const [name, setName] = useState(group?.name ?? '');
   const [dues, setDues] = useState(group?.duesAmount ? won(group.duesAmount) : '');
   const [opening, setOpening] = useState(group?.openingBalance ? won(group.openingBalance) : '');
@@ -378,6 +398,27 @@ export function GroupEditScreen() {
       fail(e);
     } finally {
       setBusy(false);
+    }
+  };
+
+  /* 쓰던 장부 파일 — 맡기고 확인 표로 간다(몇 분 걸리니 기다리지 않는다) */
+  const sendLedger = async (how: 'file' | 'sheet') => {
+    setSending(true);
+    try {
+      let imp;
+      if (how === 'file') {
+        const picked = await pickLedgerFile();
+        if (!picked) return;
+        imp = await cm.uploadLedger(group.id, await picked.form());
+      } else {
+        imp = await cm.importSheet(group.id, sheetUrl.trim());
+        setSheetUrl('');
+      }
+      open({ kind: 'import', id: imp.id });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -406,6 +447,21 @@ export function GroupEditScreen() {
         <View style={{ height: 2 }} />
         <Field label="모임 이름" value={name} onChangeText={setName} maxLength={40} />
         <Field label="월 회비" value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="없으면 비워 두세요" right={<Txt tone="sub">원</Txt>} />
+        <Card style={{ gap: S.md }}>
+          <View style={[k.row, { gap: 10 }]}>
+            <Mascot mood="calculator" size={46} />
+            <View style={k.grow}>
+              <Txt bold>쓰던 장부 파일로 가져오기</Txt>
+              <Txt size="tiny" tone="sub">엑셀(.xlsx) · CSV · PDF 를 올리거나 구글 시트 링크를 붙이면 날짜 · 항목 · 금액으로 풀어 드려요. 확인한 줄만 넣어요.</Txt>
+            </View>
+          </View>
+          <Btn label="파일 고르기" loading={sending} onPress={() => { void sendLedger('file'); }} />
+          <Field value={sheetUrl} onChangeText={setSheetUrl} placeholder="구글 시트 링크 https://docs.google.com/…" autoCapitalize="none"
+            autoCorrect={false} inputStyle={{ fontSize: F.small, fontWeight: '400' }} />
+          <Btn label="링크로 가져오기" tone="ghost" disabled={!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(sheetUrl.trim())} loading={sending}
+            onPress={() => { void sendLedger('sheet'); }} />
+          <Txt size="tiny" tone="dim">시트는 공유를 「링크가 있는 모든 사용자」로 바꿔야 읽혀요. 서버가 그 시트를 한 번 받아 읽어요.</Txt>
+        </Card>
         <Card style={{ gap: S.md }}>
           <View style={[k.row, { gap: 10 }]}>
             <Mascot mood="stack" size={46} />

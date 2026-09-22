@@ -44,10 +44,30 @@ const TEXT: Record<string, string> = {
   ocr_disabled: '지금은 영수증을 읽을 수 없어요. 직접 적어 주세요',
   invalid: '적은 내용을 다시 확인해 주세요',
   api_unavailable: '서버에 닿지 않아요. 잠시 뒤 다시 해 주세요',
+  // 장부 파일 가져오기 — 막힌 까닭과 대신 할 수 있는 일을 같이(기획 「이유와 대안을 같이 보여주지 않으면 영원히 기다린다」)
+  old_excel: '옛 엑셀(.xls)은 못 읽어요. 엑셀에서 「다른 이름으로 저장 › .xlsx」로 바꿔 올려 주세요',
+  bad_file: '엑셀(.xlsx) · CSV · PDF 파일만 올릴 수 있어요',
+  file_missing: '파일을 읽지 못했어요. 다시 골라 주세요',
+  file_required: '파일을 고르거나 구글 시트 링크를 붙여 주세요',
+  file_too_big: '파일이 너무 커요(10MB 까지). 올해 시트만 따로 저장해 올려 주세요',
+  bad_sheet_url: '구글 시트 링크가 아니에요. 시트의 「공유 › 링크 복사」로 받은 주소를 붙여 주세요',
+  sheet_private: '시트를 열 수 없어요. 공유를 「링크가 있는 모든 사용자」로 바꾼 뒤 다시 해 주세요',
+  sheet_unreachable: '구글 시트에 닿지 않아요. 잠시 뒤 다시 해 주세요',
+  import_closed: '이미 넣었거나 그만둔 가져오기예요',
+  import_not_done: '아직 넣지 않은 가져오기예요',
+  category_not_found: '항목이 바뀌었어요. 새로 고침한 뒤 다시 골라 주세요',
+  event_not_found: '행사가 바뀌었어요. 새로 고침한 뒤 다시 골라 주세요',
+  unreadable: '파일을 열지 못했어요(암호가 걸렸거나 깨진 파일). 암호를 풀어 다시 올리거나, 아래 붙여넣기로 넣어 주세요',
+  no_rows: '파일에서 장부 줄을 찾지 못했어요. 장부가 있는 시트인지 확인하거나, 아래 붙여넣기로 넣어 주세요',
+  ocr_failed: '파일을 끝까지 읽지 못했어요. 다시 올리거나, 아래 붙여넣기 · 기초 잔액으로 먼저 시작해 주세요',
+  bad_result: '읽은 결과가 이상해요. 다시 올려 주세요',
 };
 
 export function errorText(code: string): string {
   if (TEXT[code]) return TEXT[code];
+  // 넣을 줄 하나가 이상하다 — 서버가 몇 번째인지 알려 준다
+  const row = /^bad_row_(\d+)$/.exec(code);
+  if (row) return `${Number(row[1]) + 1}번째 줄의 날짜·금액을 다시 확인해 주세요`;
   if (/^http_5\d\d$/.test(code)) return '서버에 잠시 문제가 있어요. 잠시 뒤 다시 해 주세요';
 
   return '잠시 뒤 다시 해 주세요';
