@@ -10,6 +10,7 @@ import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { entrySub, entryTitle, mdWord, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
+import { isPro } from '../cm/plan';
 import { setRemindSnapshot } from '../push';
 import * as receiptQueue from '../receiptQueue';
 import type { Queued } from '../cm/shots';
@@ -22,7 +23,7 @@ import { F, S, useT } from '../ui/theme';
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
 
 export function HomeScreen() {
-  const { group, open, setTab, reloadGroup, say, fail } = useApp();
+  const { group, open, setTab, reloadGroup, say, fail, showPlan } = useApp();
   const T = useT();
   const { data, error, loading, reload } = useLoad(cm.home);
   const manager = group ? isManager(group.me.role) : false;
@@ -162,7 +163,8 @@ export function HomeScreen() {
             <Txt tone="sub">›</Txt>
           </Card>
         ) : manager ? (
-          <Soft title="첫 공지를 써 보세요" sub="회원 모두에게 푸시로 알려 드려요" onPress={() => open({ kind: 'compose' })} />
+          <Soft title="첫 공지를 써 보세요" sub="회원 모두에게 푸시로 알려 드려요"
+            onPress={() => { if (isPro(group)) open({ kind: 'compose' }); else showPlan('notice'); }} />
         ) : null}
 
         <Card style={{ paddingVertical: 2 }}>
