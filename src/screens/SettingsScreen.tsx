@@ -73,7 +73,7 @@ export function SettingsScreen() {
         <Card style={{ paddingVertical: 2 }}>
           <MenuRow label="내 정보 · 받을 계좌" value={group.me.bankAccount ? '적어 둠' : '비어 있음'} onPress={() => open({ kind: 'profile' })} />
           <Sep />
-          <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'profile' })} />
+          <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'notify' })} />
           {manager ? (
             <>
               <Sep />

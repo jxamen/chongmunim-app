@@ -1,5 +1,5 @@
 /**
- * 탭 위에 겹쳐 뜨는 작은 화면들 — 장부 한 줄 고치기 · 영수증 보기 · 명단 · 항목 · 내 정보/알림 · 모임 정보 · 총무 넘기기 · 예산 한 줄.
+ * 탭 위에 겹쳐 뜨는 작은 화면들 — 장부 한 줄 고치기 · 영수증 보기 · 명단 · 항목 · 내 정보 · 알림 · 모임 정보 · 총무 넘기기 · 예산 한 줄.
  */
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
@@ -288,7 +288,7 @@ export function CategoriesScreen() {
   );
 }
 
-/* ── 내 정보 · 받을 계좌 · 알림 ── */
+/* ── 내 정보 · 받을 계좌 ── */
 
 export function ProfileScreen() {
   const { group, back, say, fail, reloadGroup } = useApp();
@@ -299,16 +299,7 @@ export function ProfileScreen() {
   const [bankAccount, setBankAccount] = useState(me?.bankAccount ?? '');
   const [bankHolder, setBankHolder] = useState(me?.bankHolder ?? '');
   const [busy, setBusy] = useState(false);
-  const [remind, setRemind] = useState(remindOn());
   if (!group || !me) return null;
-
-  /* 재방문 로컬 알림 전체 — 이 폰에만 걸리므로 이 폰에 둔다(remind.ts) */
-  const toggleRemind = async (on: boolean) => {
-    // 스위치가 먼저다 — 권한 창을 기다리다 스위치가 안 바뀌면 안 된다. 권한은 그다음에 묻는다(한 실행에 한 번)
-    setRemind(on);
-    await setRemindOn(on);
-    if (on) void notify.ask();
-  };
 
   const save = async () => {
     setBusy(true);
@@ -321,16 +312,6 @@ export function ProfileScreen() {
       fail(e);
     } finally {
       setBusy(false);
-    }
-  };
-
-  const setNotify = async (key: 'notice' | 'dues' | 'request', on: boolean) => {
-    try {
-      if (on && await notify.ask()) void push.register();
-      await cm.updateMe(group.id, { notify: { [key]: on } });
-      await reloadGroup();
-    } catch (e) {
-      fail(e);
     }
   };
 
@@ -348,6 +329,42 @@ export function ProfileScreen() {
           <Field value={bankHolder} onChangeText={setBankHolder} placeholder="예금주" maxLength={30} inputStyle={{ fontSize: F.body }} />
         </Card>
         <Btn label="저장" loading={busy} disabled={!name.trim()} onPress={() => { void save(); }} />
+      </Body>
+    </View>
+  );
+}
+
+/* ── 알림 — 모임 푸시(서버, 모임마다) · 장부 챙김(이 폰) ── */
+
+export function NotifyScreen() {
+  const { group, back, fail, reloadGroup } = useApp();
+  const me = group?.me;
+  const [remind, setRemind] = useState(remindOn());
+  if (!group || !me) return null;
+
+  /* 재방문 로컬 알림 전체 — 이 폰에만 걸리므로 이 폰에 둔다(remind.ts) */
+  const toggleRemind = async (on: boolean) => {
+    // 스위치가 먼저다 — 권한 창을 기다리다 스위치가 안 바뀌면 안 된다. 권한은 그다음에 묻는다(한 실행에 한 번)
+    setRemind(on);
+    await setRemindOn(on);
+    if (on) void notify.ask();
+  };
+
+  const setNotify = async (key: 'notice' | 'dues' | 'request', on: boolean) => {
+    try {
+      if (on && await notify.ask()) void push.register();
+      await cm.updateMe(group.id, { notify: { [key]: on } });
+      await reloadGroup();
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Head title="알림" onClose={back} />
+      <Body bottom={120}>
+        <View style={{ height: 2 }} />
         <Card style={{ paddingVertical: 2 }}>
           <Txt size="small" tone="sub" bold style={{ paddingTop: 12 }}>{group.name} 알림</Txt>
           <MenuRow label="공지" right={<Toggle on={me.notify.notice} onChange={(v) => { void setNotify('notice', v); }} />} />

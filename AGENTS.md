@@ -51,7 +51,7 @@ App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 
 ## 공용 패키지 (GitHub 릴리스 주소로 설치 — API 문서 §0-B-1)
 
-`@jcurve/auth` 2.1.1 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
+`@jcurve/auth` 2.1.2 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
 릴리스 파일 주소를 적는다(공개 저장소라 토큰 없이 어디서든 받는다). 예전 `vendor/*.tgz`(`file:`)는 공개 저장소에 없어 클론만으로는 설치가 안 됐다.
 API 요청 헤더의 OTA 판은 앱이 만들지 않고 `otaHeaders()`(updates 2.5.1)를 쓴다.
 `@jcurve/ocr` 1.0.0 의 업로드는 Expo 57 에서 `{uri,name,type}` 이 깨진다 — 앱의 `post` 가 `expo-file-system` 의
@@ -72,7 +72,8 @@ DB                jc_chongmunim (배포 세션 생성 2026-09-22 — 공용 표 
 카카오 앱 ID      1584900
 카카오 네이티브키 2e519559d34fa6fd107cf3a3f23cb284   ← app.json 두 곳(플러그인 nativeAppKey + extra.kakaoNativeAppKey)
 카카오 Redirect   https://api.j-curve.co.kr/v1/chongmunim/auth/callback/kakao
-동의항목          닉네임·프로필사진 (필수)
+동의항목          닉네임·프로필사진 → 「사용 안 함」으로 바꾸는 중 (2026-09-22 태훈님: 카카오에서 이름·사진을 받지 않는다.
+                  앱은 이름이 없으면 「회원」으로 가입하고, 모임 만들 때 부를 이름을 받는다)
 
 Firebase 프로젝트 chongmunim-d7971   (GA4: 애널리틱스 계정 「제이커브 앱」)
   Android 앱      1:279587750736:android:157daaf115a16f2b386255

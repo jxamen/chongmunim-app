@@ -13,7 +13,6 @@ import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID, KAKAO_NATIVE_APP_KEY } from
 import { loginApple, loginGoogle, loginGuest, loginKakao, type AuthResult } from './api';
 import { resendIfDropped } from './resend';
 import { track } from './track';
-import { normalizeProviders } from './providers';
 
 export type { Provider } from '@jcurve/auth';
 
@@ -29,8 +28,8 @@ export const auth = createAuth<AuthResult>({
   },
   server: { kakao: loginKakao, google: loginGoogle, apple: loginApple },
   track,
-  // 카카오톡 앱 로그인(kakao_native)만 켜진 서버도 카카오 버튼이 서버까지 가게(`providers.ts`)
-  providers: () => normalizeProviders(serverProviders),
+  // kakao_native 만 켜진 서버도 카카오를 켜진 것으로 본다(@jcurve/auth 2.1.2 부터 패키지가 한다)
+  providers: () => serverProviders,
 });
 
 export { isCancel };

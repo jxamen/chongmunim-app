@@ -6,7 +6,7 @@
  */
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useApp } from '../store';
+import { defaultMyName, useApp } from '../store';
 import * as cm from '../cm/api';
 import { readAmount, amountInput } from '../cm/format';
 import { Body, Btn, Card, Chip, Field, Head, MenuRow, Sep, Tabs, Txt } from '../ui/kit';
@@ -20,7 +20,7 @@ export function GroupsScreen({ asPage }: { asPage?: boolean }) {
   const { member, groups, group, enterGroup, selectGroup, back, fail } = useApp();
   const [mode, setMode] = useState<'make' | 'join'>('make');
   const [name, setName] = useState('');
-  const [myName, setMyName] = useState(String(member?.name ?? '').slice(0, 30));
+  const [myName, setMyName] = useState(defaultMyName(member?.name));
   const [dues, setDues] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);

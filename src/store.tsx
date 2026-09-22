@@ -41,6 +41,7 @@ export type Page =
   | { kind: 'members' }
   | { kind: 'categories' }
   | { kind: 'profile' }
+  | { kind: 'notify' }
   | { kind: 'groupEdit' }
   | { kind: 'import'; id: string }
   | { kind: 'transfer' }
@@ -90,6 +91,20 @@ export function useApp(): Ctx {
 }
 
 const platform = (): 'ios' | 'android' => (Platform.OS === 'ios' ? 'ios' : 'android');
+
+/** 가입 이름 — 서버가 2자 이상을 요구한다. SNS 이름이 없으면(카카오 닉네임을 받지 않는다) 자리값. 화면은 이 자리값을 기본값으로 쓰지 않는다 */
+export const SIGNUP_PLACEHOLDER = '회원';
+export const signupName = (name?: string | null): string => {
+  const n = String(name ?? '').trim().slice(0, 20);
+
+  return n.length >= 2 ? n : SIGNUP_PLACEHOLDER;
+};
+/** 모임에서 쓸 이름의 기본값 — 가입 자리값이면 비운다 */
+export const defaultMyName = (name?: string | null): string => {
+  const n = String(name ?? '').trim();
+
+  return n === SIGNUP_PLACEHOLDER ? '' : n.slice(0, 30);
+};
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>('boot');
@@ -165,12 +180,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await enterGroup(await cm.getGroup(pick.id));
   }, [enterGroup]);
 
-  const afterLogin = useCallback(async (s: Session, m: Member) => {
+  const afterLogin = useCallback(async (s: Session, m0: Member) => {
+    let m = m0;
     setSession(s);
     await storage.setJson('cm.session', s);
+    setGuestNow(m.provider === 'guest');
+    /*
+     | 처음 온 SNS 계정은 **약관 창 없이 여기서 가입까지 끝낸다**(당근캐시 2026-09-18 지시와 같다 — 화면 하나에서 38% 가 빠졌다).
+     | 고지는 로그인 버튼 아래 한 줄(「계속하면 이용약관 · 개인정보처리방침에 동의합니다」)이 한다. 카카오 동의를 한 사람에게
+     | 앱이 또 동의를 받던 것(2026-09-22 태훈님 「카카오 동의 했는데 … 또 동의가 뜸」). 세션을 먼저 둔 뒤라 auth/complete 가 인증된다.
+     | 이름은 모임마다 따로 받으므로(모임 만들기·들어가기의 「내 이름」) 여기서는 서버 규칙(2자 이상)만 맞춘다 — 카카오 닉네임을
+     | 받지 않는다(태훈님 「프로필사진, 닉네임도 불러오지마」). 실패하면 이름만 적는 화면으로(동의 칸 없음).
+     */
+    if (m.needsSignup) {
+      try {
+        const r = await completeSignup(signupName(m.name), platform());
+        track('signup_done');
+        m = { ...m, ...r.member, needsSignup: false };
+      } catch (e) {
+        track('signup_fail', { code: codeOf(e) });
+      }
+    }
     await storage.setJson('cm.member', m);
     setMember(m);
-    setGuestNow(m.provider === 'guest');
     void push.register();
     if (m.needsSignup) {
       setPhase('signup');

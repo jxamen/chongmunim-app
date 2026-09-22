@@ -294,6 +294,19 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
                       : '영수증에서 읽은 값이에요. 틀리면 고쳐 주세요'
                     : when ? whenLong(when) : '날짜는 2026-09-21 처럼 적어요'}
                 </Txt>
+                {/* 산 것 — 모임 돈은 합계만으로는 어디에 썼는지 모른다(2026-09-22 태훈님). 영수증 보기와 같은 줄 모양 */}
+                {receipt ? (
+                  <>
+                    <Sep style={{ marginVertical: 3 }} />
+                    <Txt size="small" tone="sub" bold>{receipt.items.length ? `산 것 ${receipt.items.length}가지` : '산 것'}</Txt>
+                    {receipt.items.length ? receipt.items.map((i, n) => (
+                      <View key={n} style={[k.row, { justifyContent: 'space-between', gap: S.sm }]}>
+                        <Txt size="small" style={k.grow} numberOfLines={2}>{i.name}{i.count > 1 ? ` ×${i.count}` : ''}</Txt>
+                        <Txt size="small" style={k.amt}>{i.price !== null ? won(i.price) : ''}</Txt>
+                      </View>
+                    )) : <Txt size="tiny" tone="dim">품목은 읽지 못했어요. 무엇을 샀는지 아래 「내용」에 적어 두면 회원들이 알아봐요</Txt>}
+                  </>
+                ) : null}
               </Card>
             ) : null}
 
