@@ -148,8 +148,11 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   Play 연동       서비스 계정에 pubsub.admin · monitoring.viewer, Play Console 총무님 앱에만 초대(재무 데이터 · 주문 및 구독 관리)
                   RTDN 토픽 projects/chongmunim-d7971/topics/Play-Store-Notifications — 테스트 알림 수신 확인(2026-09-22)
                   RC 자격 증명 3개 중 1개(package name not found)는 첫 AAB 업로드 뒤 다시 검사
-  남은 것         ASC 유료 앱 계약 서명(「신규」) · 은행 · 세금(태훈님) — 그전엔 RC 의 App Store 상품이 「Could not check」 /
-                  내부 테스트 테스터 · 라이선스 테스터 지정 / 구독 심사 스크린샷 / 해외 가격이 스토어마다 다름(App Store 미국 $2.99 · Play $4.09)
+  해외 가격        스토어마다 다르게 둔다(App Store 미국 $2.99 · Play $4.09 — 2026-09-23 대표님 결정 「그대로 두기」). 한국은 둘 다 ₩5,500
+  테스터           Play 내부 테스트 「총무님 내부 테스트」 목록 · 라이선스 테스터 jxamen@gmail.com(RESPOND_NORMALLY — 시험 결제, 청구 없음)
+                  참여 링크 https://play.google.com/apps/internaltest/4701002911810070114
+  남은 것         ASC 유료 앱 계약 — W-8BEN-E 제출(활성), 은행 · 국내 세금 처리 대기 → 그전엔 RC 의 App Store 상품이 「Could not check」 /
+                  안드로이드 실제 결제 시험(대표님 폰) / 구독 심사 스크린샷
 ```
 
 ### 아직 없는 것
