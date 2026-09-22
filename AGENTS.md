@@ -66,7 +66,7 @@ Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2
 
 ### 아직 없는 것
 
-- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴), DB jc_chongmunim, cm_* 14 설치.
+- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴) · be3acc7 · 8cc44d6(장부 파일 가져오기), DB jc_chongmunim, cm_* 15 설치(cm_imports · cm_entries.import_id 포함).
   **어드민 앱 등록은 DB 를 만들지 않는다**(apps.db_name 도 안 채운다) — 새 앱은 서버에서 DB 생성 + 공용 표 migrate + db_name 등록을 따로 한다.
   스모크: `cm/groups` 401 · `auth/providers` 200 **`providers: []`** — 아래 SNS 키가 들어가야 로그인 버튼이 생긴다
   푸시 발송 키(FCM V1)는 서버 `/www/jcurve/secrets/chongmunim-fcm.json` 에 있다(자동화 세션, project_id chongmunim-d7971 확인)
