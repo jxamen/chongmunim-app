@@ -111,7 +111,14 @@
           }
         }
       ],
-      "@react-native-firebase/analytics"
+      [
+        "@react-native-firebase/analytics",
+        {
+          "ios": {
+            "withoutAdIdSupport": true
+          }
+        }
+      ]
     ],
     "extra": {
       "appSlug": "chongmunim",
