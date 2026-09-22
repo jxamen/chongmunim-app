@@ -293,7 +293,7 @@ function ExportAsk({ open, year, onClose }: { open: boolean; year: number; onClo
 /* ── 행사별 ── */
 
 export function EventsTab({ manager }: { manager: boolean }) {
-  const { open } = useApp();
+  const { open, group, showPlan } = useApp();
   const T = useT();
   const { data, error, loading, reload } = useLoad(cm.events);
 
@@ -318,7 +318,9 @@ export function EventsTab({ manager }: { manager: boolean }) {
           {e.budget > 0 ? <Gauge percent={e.budgetPercent} /> : null}
         </Card>
       ))}
-      {manager ? <Btn label="+ 행사 만들기" tone="ghost" onPress={() => open({ kind: 'eventNew' })} /> : null}
+      {/* 공지와 같다 — 이름 · 날짜 · 예산을 다 적고 나서 막지 않고 들어올 때 안내한다(2026-09-23 A32 시험) */}
+      {manager ? <Btn label="+ 행사 만들기" tone="ghost"
+        onPress={() => { if (isPro(group)) open({ kind: 'eventNew' }); else showPlan('event'); }} /> : null}
     </Body>
   );
 }

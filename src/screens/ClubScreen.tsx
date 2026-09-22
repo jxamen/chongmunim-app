@@ -244,7 +244,7 @@ function MyDues() {
 /* ── 공지 ── */
 
 function NoticesTab({ manager }: { manager: boolean }) {
-  const { open } = useApp();
+  const { group, open, showPlan } = useApp();
   const T = useT();
   const { data, error, loading, reload } = useLoad(cm.notices);
 
@@ -254,7 +254,8 @@ function NoticesTab({ manager }: { manager: boolean }) {
   return (
     <Body refresh={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={T.deep} />}>
       <View style={{ height: 2 }} />
-      {manager ? <Btn label="+ 공지 쓰기" onPress={() => open({ kind: 'compose' })} /> : null}
+      {/* 무료 모임은 다 쓰고 보내기에서 막지 않고 들어올 때 안내한다(2026-09-23 A32 시험 — 서버 403 은 안전망으로 남는다) */}
+      {manager ? <Btn label="+ 공지 쓰기" onPress={() => { if (isPro(group)) open({ kind: 'compose' }); else showPlan('notice'); }} /> : null}
       {list.length === 0 ? <Card><Empty mood="phone" title="공지가 아직 없어요" /></Card> : list.map((n) => (
         <Card key={n.id} onPress={() => open(n.status === 'draft' ? { kind: 'compose', draftId: n.id } : { kind: 'notice', id: n.id })} style={{ gap: 6 }}>
           <View style={[k.row, { gap: 8 }]}>

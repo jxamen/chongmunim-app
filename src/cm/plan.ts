@@ -29,7 +29,7 @@ export const PRO_FEATURES = [
 export const isPro = (g: { plan?: 'free' | 'pro' } | null | undefined): boolean => (g?.plan ?? 'pro') === 'pro';
 
 /** 무엇 때문에 구독 안내가 떴는지 — 안내 창 머리 한 줄 */
-export type PlanReason = 'general' | 'photos' | 'request' | 'dues' | 'budget' | 'pdf' | 'server';
+export type PlanReason = 'general' | 'photos' | 'request' | 'dues' | 'budget' | 'pdf' | 'notice' | 'event' | 'server';
 
 export const PLAN_REASON: Record<PlanReason, string> = {
   general: '모임을 함께 쓰려면 구독해 주세요',
@@ -38,5 +38,7 @@ export const PLAN_REASON: Record<PlanReason, string> = {
   dues: '회비 체크와 미납 안내는 구독에서 돼요',
   budget: '예산은 구독에서 쓸 수 있어요',
   pdf: '결산서 PDF 는 구독에서 받을 수 있어요',
+  notice: '공지 보내기는 구독에서 돼요',
+  event: '행사는 구독에서 만들 수 있어요',
   server: '이 기능은 구독한 모임에서 쓸 수 있어요',
 };
