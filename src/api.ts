@@ -27,7 +27,8 @@ export type AuthResult = { session: Session; member: Member };
 
 /** 서버가 준 코드 한 단어를 그대로 던진다 — 화면이 사유별로 다르게 말할 수 있게 */
 export class ApiError extends Error {
-  constructor(public code: string, public status: number) {
+  /** data: 서버가 오류와 함께 준 본문(예: plan_in_use 의 groupName) */
+  constructor(public code: string, public status: number, public data: unknown = null) {
     super(code);
   }
 }
@@ -89,7 +90,7 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
     }
     throw new ApiError(code, 401);
   }
-  if (!res.ok || json?.ok === false) throw new ApiError(errorCode(res.status, json), res.status);
+  if (!res.ok || json?.ok === false) throw new ApiError(errorCode(res.status, json), res.status, json);
 
   return json as T;
 }

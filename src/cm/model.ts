@@ -35,6 +35,8 @@ export type Group = {
   inviteCode: string | null; publicToken: string | null; openingBalance: number; openingDate: string | null;
   /** 구독 — 옛 서버처럼 안 오면 pro(막지 않는다). freeMembers: 무료로 받을 수 있는 인원(총무 빼고) */
   plan: 'free' | 'pro'; freeMembers: number;
+  /** 결제한 구독이면 끝(서버 UTC)과 누가 내는지 — 결제 없이 켠 구독은 planPaid false · planUntil null(끝 없음) */
+  planUntil: string | null; planPaid: boolean; planMine: boolean;
   /** 총무 넘기기 진행 중 — 받을 사람과 그게 나인지 */
   transfer: { to: string | null; toMe: boolean } | null;
 };
@@ -56,6 +58,7 @@ export function toGroup(j: unknown): Group {
     },
     inviteCode: str(g.inviteCode), publicToken: str(g.publicToken),
     plan: g.plan === 'free' ? 'free' : 'pro', freeMembers: num(g.freeMembers, 10),
+    planUntil: str(g.planUntil), planPaid: bool(g.planPaid), planMine: bool(g.planMine),
     openingBalance: num(g.openingBalance), openingDate: str(g.openingDate),
     transfer: tr ? { to: str(tr.to), toMe: bool(tr.toMe) } : null,
   };

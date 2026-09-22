@@ -33,6 +33,8 @@ export const updateMember = async (gid: number, id: number, b: { name?: string; 
 export const transferOwner = async (gid: number, memberId: number) => toGroup(await api.post(g(gid, 'owner'), { memberId }));
 export const acceptOwner = async (gid: number) => toGroup(await api.post(g(gid, 'owner/accept')));
 export const cancelOwner = async (gid: number) => toGroup(await api.post(g(gid, 'owner/cancel')));
+/** 구매 · 복원 뒤 이 모임에 내 구독을 쓴다 — 서버가 RevenueCat 에 직접 확인한다. move: 다른 모임에서 옮겨 오기 */
+export const claimPlan = async (gid: number, move = false) => toGroup(await api.post(g(gid, 'plan/claim'), { move }));
 export const updateMe = async (gid: number, b: { name?: string; bankName?: string | null; bankAccount?: string | null; bankHolder?: string | null; notify?: Partial<NotifyPrefs>; birthday?: string | null }) =>
   toGroup(await api.put(g(gid, 'me'), b));
 export const setPublicLink = async (gid: number, on: boolean) =>

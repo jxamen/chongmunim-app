@@ -19,6 +19,7 @@ import { auth, isCancel, setServerProviders, signInGuest, type Provider } from '
 import { isDeadSession } from './deadSession';
 import { funnel, track } from './track';
 import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
+import { billingLogin } from './billing';
 import * as cm from './cm/api';
 import type { Audience, BudgetLine, Entry, Group, GroupItem } from './cm/model';
 import { codeOf, errorText } from './cm/errors';
@@ -373,6 +374,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     return () => sub.remove();
   }, []);
+
+  // 구독 결제(RevenueCat)를 로그인한 회원으로 — 켤 때 한 번 맞춰 두어야 끊겼던 결제도 마무리된다(billing.ts)
+  useEffect(() => {
+    if (member) billingLogin(member.id).catch(() => undefined);
+  }, [member]);
 
   const handleLogin = useCallback(async (r: AuthResult, how: string) => {
     track(r.member.needsSignup ? 'signup_start' : 'login_done', { provider: how });
