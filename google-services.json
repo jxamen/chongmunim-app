@@ -14,6 +14,38 @@
       },
       "oauth_client": [
         {
+          "client_id": "279587750736-915a99rqs1dv05of1ggjm94ivmi6kg9h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "kr.co.jcurve.chongmunim",
+            "certificate_hash": "cdf7f1d3d2e513fc33816eab78f181bacb4082e8"
+          }
+        },
+        {
+          "client_id": "279587750736-r7srsjs7qb2sjinjmml0ac5govkivket.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "kr.co.jcurve.chongmunim",
+            "certificate_hash": "0f29b8a2036dd420f8b11ede8c4030f4f218d23e"
+          }
+        },
+        {
+          "client_id": "279587750736-u3b2rfi4g99ro7djt5nre0mqe180hd5a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "kr.co.jcurve.chongmunim",
+            "certificate_hash": "83fac4d39372a3b7f2fb141127e2fefd799c3ad9"
+          }
+        },
+        {
+          "client_id": "279587750736-vepo2d5ogj4vqqr5jsd9h3898gpfjmf0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "kr.co.jcurve.chongmunim",
+            "certificate_hash": "15d02b3ba150f0bf1e3c4c07ed5ba6a4a6db5e3f"
+          }
+        },
+        {
           "client_id": "279587750736-1ktgbrua5pjih1npv3g5h9tbe9t3ioui.apps.googleusercontent.com",
           "client_type": 3
         }
