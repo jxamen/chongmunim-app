@@ -114,6 +114,11 @@ iosUrlScheme      com.googleusercontent.apps.279587750736-gulso497ilpe3givj7r7bp
 구글 Redirect     https://api.j-curve.co.kr/v1/chongmunim/auth/callback/google
 
 Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2G)
+
+스토어 앱 (2026-09-22 맥크롬 생성 — 태훈님 지시로 이름에 「스마트」)
+  Play Console    앱 ID 4972498678274145678 · 「총무님 - 스마트 모임 회비 장부·정산」 · 무료
+  App Store       Apple ID 6814784833 · 「총무님 - 스마트 모임 회비 장부」 · 부제 「스마트한 모임 총무, 회비·장부·영수증 정산」 · SKU chongmunim
+  (앱 콘텐츠 · 앱 개인정보 · 스크린샷 · 빌드는 아직 — 값은 머리말의 약관 페이지 주소와 개인정보처리방침을 따른다)
 ```
 
 ### 아직 없는 것
