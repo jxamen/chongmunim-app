@@ -308,10 +308,11 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
     const left = shotsRef.current.filter((s) => !done.has(s.key));
     const word = manager ? `${done.size > 1 ? `${done.size}장을 ` : ''}장부에 적었어요` : `${done.size > 1 ? `${done.size}건 ` : ''}지급 요청을 보냈어요`;
     // 못 읽은 장만 남았으면 닫는다 — 다시 찍으면 되니까
-    if (left.every((s) => s.state === 'failed' && !why[s.key])) {
+    // 못 읽은 장 · 이미 장부에 적은 장만 남았으면 닫는다 — 빼서 홈 띠에 남지 않게(2026-09-23 A32: 이미 적은 장이 띠에 남았다)
+    if (left.every((s) => (s.state === 'failed' || isUsed(s)) && !why[s.key])) {
       queue.forget([...done]);                  // 기록한 장 — 서버 기다림에서 저절로 빠진다
-      queue.remove(left.map((s) => s.key));     // 못 읽은 장은 빼서 홈 띠에 남지 않게
-      say(left.length ? `${word} · 못 읽은 ${left.length}장은 뺐어요` : manager ? word : `${word} · 총무님이 확인하면 알려 드려요`);
+      queue.remove(left.map((s) => s.key));
+      say(left.length ? `${word} · 못 읽었거나 이미 적은 ${left.length}장은 뺐어요` : manager ? word : `${word} · 총무님이 확인하면 알려 드려요`);
       back();
 
       return;
