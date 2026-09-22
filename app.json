@@ -29,7 +29,10 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID"
+      ]
     },
     "plugins": [
       [
@@ -123,7 +126,7 @@
     "extra": {
       "appSlug": "chongmunim",
       "apiBase": "https://api.j-curve.co.kr/v1/chongmunim",
-      "legalBase": "https://chongmunim.j-curve.co.kr/legal",
+      "legalBase": "https://api.j-curve.co.kr/v1/chongmunim/cm/legal",
       "publicKey": "ZANRRxH3H7eoRYHIVc80eDE6WH7j1pPLHny5rK3T",
       "kakaoNativeAppKey": "2e519559d34fa6fd107cf3a3f23cb284",
       "kakaoAppId": "1584900",

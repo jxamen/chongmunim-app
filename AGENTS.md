@@ -8,6 +8,11 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 `withoutAdIdSupport: true`(app.json 플러그인 → Podfile `$RNFirebaseAnalyticsWithoutAdIdSupport`)로 광고 식별자 지원을 뺀다 — 기본 빌드는
 `FirebaseAnalytics/IdentitySupport` 가 ATT 를 참조해서 애플이 「ATT 를 쓰는데 요청이 안 보인다」(2.1)로 반려한다(머니트리 2026-09-21).
 App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
+Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_adid_collection_enabled: false` 등) + app.json
+`android.blockedPermissions` 로 `AD_ID` 권한을 뺀다(네이티브 빌드부터 적용). Play Console 「광고 ID」 선언은 **「사용 안 함」**.
+약관 · 개인정보처리방침 · 계정 삭제 안내는 서버 페이지 `https://api.j-curve.co.kr/v1/chongmunim/cm/legal/{terms,privacy,delete}`
+(jcurve-api `resources/views/chongmunim/legal`, 앱 `extra.legalBase`). 스토어의 개인정보 · 계정 삭제 URL 도 이 주소를 쓴다.
+방침 문구는 실제 동작(탈퇴 = `Club::forget`, 모임 안 공개 범위)과 맞춰야 한다 — 동작을 바꾸면 방침도 고친다.
 기획은 `docs/01-기획.md`, 화면 시안은 `design/chongmunim-app.html`, 캐릭터는 `design/receipt_mascot_30_transparent/`.
 
 ## 확정값
@@ -125,4 +130,4 @@ Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2
   ② Play 앱 서명 키(첫 AAB 뒤 Play Console › 앱 무결성). 설치 경로마다 실제로 서명한 키가 등록돼야 로그인이 된다
 - **구글 드라이브에서 고르기**(장부 가져오기) — 구글 클라우드 Picker·Drive API · API 키(→ `app_configs` 'picker') · 웹 클라이언트 JS 원본·리디렉션
   `https://api.j-curve.co.kr/v1/chongmunim/cm/picker` · 동의 화면 drive.file 범위. 키가 없으면 앱이 「준비하고 있어요」
-- **약관·개인정보 기본본** — 등록 안 함(총무님 전용 문안이 필요하다)
+- **어드민 약관·개인정보 기본본** — 등록 안 함. 총무님 전용 문안은 서버 페이지(`cm/legal/*`, 위 머리말)로 대신한다
