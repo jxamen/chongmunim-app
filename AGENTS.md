@@ -136,7 +136,11 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
                   가격표에 ₩4,900 이 없어 **₩5,500**(태훈님 결정 — Play 도 같은 값). 앱 화면의 결제 단추는 스토어 priceString
   Play            서비스 계정 revenuecat-play@chongmunim-d7971 JSON 등록. Play 상품 chongmunim_pro/monthly 는 첫 AAB 뒤
   웹훅            …/v1/chongmunim/cm/revenuecat · 두 환경 · 모든 이벤트. 비밀 키(V1) · 웹훅 인증값은 배포가 app_configs 에(파일로 받음)
-  남은 것         ASC 유료 앱 계약 서명(「신규」) · 은행 · 세금 / 서비스 계정 Pub/Sub 역할 + Play Console 초대 / 구독 심사 스크린샷
+  Play 연동       서비스 계정에 pubsub.admin · monitoring.viewer, Play Console 총무님 앱에만 초대(재무 데이터 · 주문 및 구독 관리)
+                  RTDN 토픽 projects/chongmunim-d7971/topics/Play-Store-Notifications — 테스트 알림 수신 확인(2026-09-22)
+                  RC 자격 증명 3개 중 1개(package name not found)는 첫 AAB 업로드 뒤 다시 검사
+  남은 것         ASC 유료 앱 계약 서명(「신규」) · 은행 · 세금(태훈님) / RC 가입 메일 확인(태훈님) / EAS 안드로이드 키스토어(태훈님, 맥) →
+                  AAB 내부 테스트 업로드 → Play 구독 chongmunim_pro/monthly ₩5,500 → RC 연결 / 구독 심사 스크린샷
 ```
 
 ### 아직 없는 것
