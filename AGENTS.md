@@ -9,7 +9,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 `FirebaseAnalytics/IdentitySupport` 가 ATT 를 참조해서 애플이 「ATT 를 쓰는데 요청이 안 보인다」(2.1)로 반려한다(머니트리 2026-09-21).
 App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_adid_collection_enabled: false` 등) + app.json
-`android.blockedPermissions` 로 `AD_ID` 권한을 뺀다(네이티브 빌드부터 적용). Play Console 「광고 ID」 선언은 **「사용 안 함」**.
+`android.blockedPermissions` 로 `AD_ID` 권한과 Privacy Sandbox 광고 권한(`ACCESS_ADSERVICES_AD_ID` · `ATTRIBUTION`, Firebase Analytics 가 끌고 옴)을 뺀다(네이티브 빌드부터 적용). Play Console 「광고 ID」 선언은 **「사용 안 함」**.
 약관 · 개인정보처리방침 · 계정 삭제 안내는 서버 페이지 `https://api.j-curve.co.kr/v1/chongmunim/cm/legal/{terms,privacy,delete}`
 (jcurve-api `resources/views/chongmunim/legal`, 앱 `extra.legalBase`). 스토어의 개인정보 · 계정 삭제 URL 도 이 주소를 쓴다.
 방침 문구는 실제 동작(탈퇴 = `Club::forget`, 모임 안 공개 범위)과 맞춰야 한다 — 동작을 바꾸면 방침도 고친다.
