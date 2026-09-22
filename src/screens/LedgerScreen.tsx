@@ -6,18 +6,20 @@
  * 계산은 전부 서버가 한다(`ledger/month` · `ledger/year` · `budget`) — 앱은 그린다.
  */
 import React, { useState } from 'react';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { barPercent, dayShort, entryTitle, kstNow, monthChip, monthWord, plusMinus, shiftMonth, signed, won } from '../cm/format';
+import { barPercent, dayShort, entryTitle, kstNow, monthWord, plusMinus, shiftMonth, signed, won } from '../cm/format';
 import { isManager, type Budget, type ClubEvent, type Month, type Year } from '../cm/model';
 import { reportHtml, toCsv } from '../cm/export';
 import { rollup } from '../cm/rules';
 import { shareCsv, sharePdf } from '../share';
 import {
-  Amount, Ask, Body, Btn, Card, Chip, Empty, Failed, Head, KV, Loading, Sep, Soft, Tabs, Txt, s as k,
+  Amount, Ask, Body, Btn, Card, Chip, Empty, Failed, Head, KV, Loading, Sep, Soft, Tabs, Text, Txt, s as k,
 } from '../ui/kit';
 import { Gauge, YearBars } from '../ui/skia';
+import { Hero } from '../ui/Hero';
+import { MonthPicker, YearPicker } from '../ui/PeriodPicker';
 import { F, S, useT } from '../ui/theme';
 
 type Sub = 'month' | 'year' | 'events' | 'budget';
@@ -28,22 +30,27 @@ export function LedgerScreen() {
   const [ym, setYm] = useState(kstNow().ym);
   const [year, setYear] = useState(kstNow().year);
   const [exportOpen, setExportOpen] = useState(false);
+  const [picker, setPicker] = useState(false);
   const manager = group ? isManager(group.me.role) : false;
+  const now = kstNow();
 
-  const periodChip = sub === 'month'
-    ? <Stepper label={monthChip(ym)} onPrev={() => setYm(shiftMonth(ym, -1))} onNext={() => setYm(shiftMonth(ym, 1))} />
+  /*
+   | 기간은 머리의 작은 칩이 아니라 **히어로 띠 안에 크게** 둔다(2026-09-22 태훈님 「달력이 너무 작아」 · 「너무 비어 보인다」).
+   | 가운데 글자를 누르면 달(해) 고르기가 뜨고, ‹ › 는 한 칸씩.
+   */
+  const period = sub === 'month'
+    ? <Stepper label={`${ym.slice(0, 4)}년 ${monthWord(ym)}`} onPrev={() => setYm(shiftMonth(ym, -1))} onNext={() => setYm(shiftMonth(ym, 1))} onPick={() => setPicker(true)} />
     : sub === 'year' || sub === 'budget'
-      ? <Stepper label={`${year}년`} onPrev={() => setYear(year - 1)} onNext={() => setYear(year + 1)} />
-      : null;
+      ? <Stepper label={`${year}년`} onPrev={() => setYear(year - 1)} onNext={() => setYear(year + 1)} onPick={() => setPicker(true)} />
+      : <Txt bold size="title">행사별 장부</Txt>;
 
   return (
     <View style={{ flex: 1 }}>
-      <Head title="장부" right={(
-        <View style={[k.row, { gap: 6 }]}>
-          {periodChip}
-          {sub === 'year' ? <Chip label="내보내기" tone="tint" onPress={() => setExportOpen(true)} /> : null}
-        </View>
-      )} />
+      <Head title="장부" right={sub === 'year' ? <Chip label="내보내기" tone="tint" onPress={() => setExportOpen(true)} /> : null} />
+      <Hero mood={HERO[sub].mood} mascot={70} style={{ marginHorizontal: S.lg, marginBottom: 4 }}>
+        {period}
+        <Txt size="small" tone="sub" numberOfLines={1}>{HERO[sub].sub}</Txt>
+      </Hero>
       <Tabs items={[{ id: 'month', label: '월별' }, { id: 'year', label: '연간' }, { id: 'events', label: '행사별' }, { id: 'budget', label: '예산' }]}
         value={sub} onChange={setSub} />
       {sub === 'month' ? <MonthTab ym={ym} manager={manager} />
@@ -51,18 +58,35 @@ export function LedgerScreen() {
           : sub === 'events' ? <EventsTab manager={manager} />
             : <BudgetTab year={year} manager={manager} />}
       <ExportAsk open={exportOpen} year={year} onClose={() => setExportOpen(false)} />
+      <MonthPicker open={picker && sub === 'month'} ym={ym} now={now.ym} onClose={() => setPicker(false)}
+        onPick={(v) => { setYm(v); setPicker(false); }} />
+      <YearPicker open={picker && (sub === 'year' || sub === 'budget')} year={year} now={now.year} onClose={() => setPicker(false)}
+        onPick={(v) => { setYear(v); setPicker(false); }} />
     </View>
   );
 }
 
-function Stepper({ label, onPrev, onNext }: { label: string; onPrev: () => void; onNext: () => void }) {
+/** 탭마다 띠의 표정과 한 줄 */
+const HERO: Record<Sub, { mood: 'calculator' | 'stack' | 'celebrate' | 'thinking'; sub: string }> = {
+  month: { mood: 'calculator', sub: '전월 이월에서 시작해 당월 이월로 끝나요' },
+  year: { mood: 'stack', sub: '열두 달 흐름 · 항목별 누계 · 결산서 PDF' },
+  events: { mood: 'celebrate', sub: '행사마다 들어오고 나간 돈을 따로 봐요' },
+  budget: { mood: 'thinking', sub: '항목마다 세운 예산과 쓴 돈을 견줘요' },
+};
+
+function Stepper({ label, onPrev, onNext, onPick }: { label: string; onPrev: () => void; onNext: () => void; onPick: () => void }) {
   const T = useT();
+  const arrow = [st.arrow, { borderColor: T.tintLine, backgroundColor: T.white }];
 
   return (
-    <View style={[k.row, k.chip, { borderColor: T.line, backgroundColor: T.white, paddingHorizontal: 4, paddingVertical: 2, gap: 2 }]}>
-      <Pressable onPress={onPrev} hitSlop={8} style={{ paddingHorizontal: 6 }}><Txt tone="sub">‹</Txt></Pressable>
-      <Txt size="tiny" tone="sub" bold>{label}</Txt>
-      <Pressable onPress={onNext} hitSlop={8} style={{ paddingHorizontal: 6 }}><Txt tone="sub">›</Txt></Pressable>
+    <View style={[k.row, { gap: 8 }]}>
+      <Pressable onPress={onPrev} hitSlop={8} style={({ pressed }) => [arrow, pressed && k.pressed]} accessibilityLabel="이전"><Txt bold tone="sub">‹</Txt></Pressable>
+      <Pressable onPress={onPick} hitSlop={6} style={({ pressed }) => [k.row, { gap: 4, flexShrink: 1 }, pressed && k.pressed]}
+        accessibilityRole="button" accessibilityLabel={`${label} · 눌러서 고르기`}>
+        <Text style={{ fontSize: F.title, fontWeight: '900', color: T.deep }} numberOfLines={1}>{label}</Text>
+        <Txt tone="sub">▾</Txt>
+      </Pressable>
+      <Pressable onPress={onNext} hitSlop={8} style={({ pressed }) => [arrow, pressed && k.pressed]} accessibilityLabel="다음"><Txt bold tone="sub">›</Txt></Pressable>
     </View>
   );
 }
@@ -329,3 +353,7 @@ function BudgetTab({ year, manager }: { year: number; manager: boolean }) {
     </Body>
   );
 }
+
+const st = StyleSheet.create({
+  arrow: { width: 34, height: 34, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+});

@@ -107,7 +107,7 @@ export function Head({ title, right, onClose, onBack, left }: {
   );
 }
 
-/** 탭 줄(시안 .tabs) — 밑줄 */
+/** 탭 줄(시안 .tabs) — 밑줄. 글자는 머리 크기(17) — 15.5 는 폰에서 너무 작았다(2026-09-22 태훈님) */
 export function Tabs<K extends string>({ items, value, onChange }: { items: { id: K; label: string }[]; value: K; onChange: (k: K) => void }) {
   const T = useT();
 
@@ -119,7 +119,7 @@ export function Tabs<K extends string>({ items, value, onChange }: { items: { id
         return (
           <Pressable key={it.id} onPress={() => onChange(it.id)} hitSlop={6}
             style={[s.tab, on && { borderBottomColor: T.ink }]}>
-            <Text style={{ fontSize: F.body, color: on ? T.ink : T.sub, fontWeight: on ? '700' : '400' }}>{it.label}</Text>
+            <Text style={{ fontSize: F.head, color: on ? T.ink : T.sub, fontWeight: on ? '800' : '600' }}>{it.label}</Text>
           </Pressable>
         );
       })}
@@ -446,8 +446,8 @@ export const s = StyleSheet.create({
   pad: { paddingHorizontal: S.lg, gap: 10 },
 
   card: { borderWidth: 1, borderRadius: R.card, padding: S.lg },
-  tabs: { flexDirection: 'row', gap: 18, paddingHorizontal: S.lg, borderBottomWidth: 1 },
-  tab: { paddingTop: 10, paddingBottom: 9, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
+  tabs: { flexDirection: 'row', gap: 22, paddingHorizontal: S.lg, borderBottomWidth: 1 },
+  tab: { paddingTop: 12, paddingBottom: 10, borderBottomWidth: 3, borderBottomColor: 'transparent' },
 
   chip: { borderWidth: 1, borderRadius: R.chip, paddingHorizontal: 11, paddingVertical: 6, alignSelf: 'flex-start' },
   pill: { borderRadius: R.chip, paddingHorizontal: 9, paddingVertical: 3 },
