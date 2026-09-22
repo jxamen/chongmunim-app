@@ -159,17 +159,19 @@ export function ComposeScreen({ draftId, audience: startAudience }: { draftId?: 
           </View>
           <Toggle on={push} onChange={setPush} />
         </Card>
-        {push ? <Soft tone="warn" title={`${n}명에게 발송됩니다`} sub="보낸 뒤에는 취소할 수 없어요" /> : null}
+        {n === 0 ? <Soft title="받을 사람이 아직 없어요" sub="쓰는 나는 빼고 세요 · 공지는 남아서 나중에 들어온 사람도 봐요" />
+          : push ? <Soft tone="warn" title={`${n}명에게 발송됩니다`} sub="보낸 뒤에는 취소할 수 없어요" /> : null}
         <View style={[k.row, { gap: S.sm }]}>
           <Btn label="임시저장" tone="ghost" style={{ width: 104 }} disabled={!ready} onPress={() => { void submit(true); }} />
-          <Btn label="발송하기" style={k.grow} disabled={!ready || n === 0} onPress={() => setConfirm(true)} />
+          {/* 0명이어도 누를 수 있다 — 확인 창이 「공지만 올릴까요?」로 묻는다(앱빌드 A32: 막혀 있어 그 창에 닿지 못했다) */}
+          <Btn label={n > 0 ? '발송하기' : '공지 올리기'} style={k.grow} disabled={!ready} onPress={() => setConfirm(true)} />
         </View>
       </Body>
 
       {/* 받는 사람 수는 쓰는 나를 빼고 센다(서버 audience) — 0명이면 공지만 남는다 */}
       <Ask open={confirm} title={n > 0 ? `${n}명에게 보낼까요?` : '공지만 올릴까요?'} mood="phone" onClose={() => setConfirm(false)}
         body={`「${title.trim()}」${n === 0 ? '\n받을 사람이 아직 없어요(쓰는 나는 빼고 세요). 공지는 남아서 나중에 들어온 사람도 봐요.' : push ? '\n푸시로도 알려요. 보낸 뒤에는 취소할 수 없어요.' : '\n앱에서만 보여요(푸시 없음).'}${n > 0 && push && isNight() ? '\n\n지금은 밤이에요. 아침에 보내는 편이 좋아요.' : ''}`}
-        buttons={[{ label: '다시 보기', tone: 'ghost', onPress: () => setConfirm(false) }, { label: busy ? '보내는 중…' : '보내기', onPress: () => { void submit(false); } }]} />
+        buttons={[{ label: '다시 보기', tone: 'ghost', onPress: () => setConfirm(false) }, { label: busy ? '보내는 중…' : n > 0 ? '보내기' : '올리기', onPress: () => { void submit(false); } }]} />
     </View>
   );
 }
