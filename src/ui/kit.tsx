@@ -235,15 +235,18 @@ export function KV({ label, value, strong, tone }: { label: string; value: strin
 /** 설정 목록 한 줄 — 「관리자 3명 ›」 */
 export function MenuRow({ label, value, onPress, right, danger }: { label: string; value?: string; onPress?: () => void; right?: React.ReactNode; danger?: boolean }) {
   const T = useT();
-
-  return (
-    <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [s.menu, pressed && s.pressed]}>
+  const body = (
+    <>
       <Text style={[s.grow, { fontSize: F.body, fontWeight: '700', color: danger ? T.danger : T.ink }]}>{label}</Text>
       {value ? <Text style={{ fontSize: F.small, color: T.sub }}>{value}</Text> : null}
       {right}
       {onPress && !right ? <Text style={{ color: T.dim, fontSize: F.head }}>›</Text> : null}
-    </Pressable>
+    </>
   );
+  // 누를 곳이 없는 줄(오른쪽에 토글만)은 그냥 줄이다 — 꺼 둔 Pressable 로 감싸면 안의 토글까지 「비활성」으로 읽힌다
+  if (!onPress) return <View style={s.menu}>{body}</View>;
+
+  return <Pressable onPress={onPress} style={({ pressed }) => [s.menu, pressed && s.pressed]}>{body}</Pressable>;
 }
 
 /* ── 입력 ── */
