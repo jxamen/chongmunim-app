@@ -365,10 +365,34 @@ export function ProfileScreen() {
 /* ── 알림 — 모임 푸시(서버, 모임마다) · 장부 챙김(이 폰) ── */
 
 export function NotifyScreen() {
-  const { group, back, fail, reloadGroup } = useApp();
+  const { group, back, say, fail, reloadGroup } = useApp();
   const me = group?.me;
   const [remind, setRemind] = useState(remindOn());
+  const [testing, setTesting] = useState(false);
   if (!group || !me) return null;
+
+  /*
+   | 시험 알림 — 이 폰으로만(2026-09-22 태훈님 「푸시 오는지 확인하고 싶은데 어드민이라 안 옴」 — 쓴 사람은 공지 알림에서 빠진다).
+   | 권한을 먼저 묻고 토큰을 올린 뒤 보낸다. 앱을 켜 둔 채로도 위에 배너로 뜬다(@jcurve/notify).
+   */
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      if (!(await notify.ask())) {
+        say('폰 설정 › 총무님 › 알림을 켜 주세요');
+        return;
+      }
+      await push.register();
+      const p = await cm.testPush(group.id);
+      say(p && p.sent > 0 ? '시험 알림을 보냈어요 · 곧 위에 떠요'
+        : p && p.noToken > 0 ? '이 폰이 아직 알림 받을 준비가 안 됐어요 · 잠시 뒤 다시 눌러 주세요'
+        : '알림을 보내지 못했어요 · 잠시 뒤 다시 해 주세요');
+    } catch (e) {
+      fail(e);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   /* 재방문 로컬 알림 전체 — 이 폰에만 걸리므로 이 폰에 둔다(remind.ts) */
   const toggleRemind = async (on: boolean) => {
@@ -409,6 +433,8 @@ export function NotifyScreen() {
               : '월말 정리 · 회비 확인 · 처리 안 한 지급 요청 · 행사 정산 · 연말 결산 때를 알려 드려요. 금액과 이름은 알림에 나오지 않아요.'}
           </Txt>
         </Card>
+        <Btn label="이 폰으로 시험 알림 보내기" tone="ghost" loading={testing} onPress={() => { void sendTest(); }} />
+        <Txt size="tiny" tone="dim" style={{ textAlign: 'center', marginTop: -6 }}>공지를 쓴 사람에겐 공지 알림이 가지 않아요 · 알림이 오는지는 여기서 확인해요</Txt>
       </Body>
     </View>
   );
