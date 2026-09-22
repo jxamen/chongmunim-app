@@ -34,6 +34,9 @@ export const EAS_PROJECT_ID =
  */
 export const LEGAL_BASE = extra.legalBase || 'https://api.j-curve.co.kr/v1/chongmunim/cm/legal';
 
+/** RevenueCat 공개 SDK 키(appl_… · goog_…) — 비어 있으면 결제 단추 대신 「준비하고 있어요」(`src/billing.ts`) */
+export const BILLING_KEY: string = (Platform.OS === 'ios' ? extra.revenuecatIos : extra.revenuecatAndroid) || '';
+
 export const KAKAO_NATIVE_APP_KEY = extra.kakaoNativeAppKey || '';
 export const GOOGLE_WEB_CLIENT_ID = extra.googleWebClientId || '';
 export const GOOGLE_IOS_CLIENT_ID = extra.googleIosClientId || '';

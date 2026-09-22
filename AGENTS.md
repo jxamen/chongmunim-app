@@ -30,8 +30,17 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 
 ## 구독 (2026-09-22 사용자 결정)
 
-**모임마다 월 4,900원. 무료는 계속 쓸 수 있다(체험 없음).** 결제(앱 안 구독)는 출시 직전에 붙인다 — 그전엔 운영 DB 에서
-`jc_chongmunim.cm_groups.plan` 을 `pro` 로 바꾼다. `plan` 칸이 생길 때 **있던 모임은 모두 pro**, 새 모임은 free.
+**모임마다 월 4,900원. 무료는 계속 쓸 수 있다(체험 없음).** `plan` 칸이 생길 때 **있던 모임은 모두 pro**, 새 모임은 free.
+
+**결제는 RevenueCat**(2026-09-22 태훈님 「구독은 레비뉴캣으로」) — 앱 `src/billing.ts` · 서버 `Billing`(jcurve-api).
+- 사는 사람 = 회원 한 명, RC 사용자 `cm-{회원번호}`. 상품 `chongmunim_pro_monthly`(iOS) · `chongmunim_pro`/`monthly`(Play), 권한 `pro`, 오퍼링 `default`
+- 사고 나면 앱이 `POST cm/g/{gid}/plan/claim` → 서버가 **RC 에 직접 물어**(V1 비밀 키) 확인하고 그 모임을 덮는다(`cm_subscriptions.group_id`,
+  `cm_groups.plan_until`). 갱신 · 해지 · 환불은 RC 웹훅 `POST /v1/chongmunim/cm/revenuecat` → 그 사람을 다시 읽는다. 끝이 지나면 저절로 무료
+- **한 사람의 구독 = 모임 하나**(스토어는 Apple ID 하나에 같은 그룹 구독을 하나만 준다). 다른 모임으로 옮기기는 된다(`move`, 떼인 모임은 무료).
+  두 모임 이상을 받으려면 상품(자리)을 더 만든다
+- `plan_until` 이 비어 있는 pro 는 결제 없이 켠 것(끝 없음) — 운영에서 켜려면 plan 만 pro 로
+- 설정: 앱 `extra.revenuecatIos` · `revenuecatAndroid`(공개 SDK 키), 서버 `app_configs(20,'revenuecat')` = {secretKey, webhookAuth}
+- SDK(react-native-purchases)는 네이티브 모듈 — 넣은 빌드 전의 판에는 결제 단추 대신 「준비하고 있어요」(billingState)
 
 | 무료 | 구독 |
 |---|---|
