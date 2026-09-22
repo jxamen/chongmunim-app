@@ -64,7 +64,9 @@ export const getReceipt = async (gid: number, id: string) => toReceipt(await api
 
 /* ── 지급 요청 ── */
 export const requests = async (gid: number, status: RequestStatus) => toRequests(await api.get(g(gid, 'requests') + q({ status })));
-export const addRequest = (gid: number, b: Omit<EntryInput, 'direction'>) => api.post(g(gid, 'requests'), b);
+/** `bank` — 등록 안 한 계좌를 이번 요청에만 싣는다(없으면 내 정보에 등록한 계좌) */
+export const addRequest = (gid: number, b: Omit<EntryInput, 'direction'> & { bank?: { name: string | null; account: string | null; holder: string | null } }) =>
+  api.post(g(gid, 'requests'), b);
 export const updateRequest = (gid: number, id: number, b: { categoryId?: number | null; eventId?: number | null; memo?: string | null; merchant?: string | null }) =>
   api.put(g(gid, `requests/${id}`), b);
 export const payRequest = (gid: number, id: number) => api.post(g(gid, `requests/${id}/pay`));

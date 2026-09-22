@@ -12,6 +12,7 @@ import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
 import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
+import { BankField } from '../ui/BankField';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -324,7 +325,7 @@ export function ProfileScreen() {
         <Card style={{ gap: S.md }}>
           <Txt size="small" tone="sub" bold>지급받을 계좌</Txt>
           <Txt size="tiny" tone="dim">지급 요청을 하면 총무님이 이 계좌로 보내요. 총무·관리자만 전체 번호를 봐요.</Txt>
-          <Field value={bankName} onChangeText={setBankName} placeholder="은행 예) 국민" maxLength={20} inputStyle={{ fontSize: F.body }} />
+          <BankField value={bankName} onChange={setBankName} />
           <Field value={bankAccount} onChangeText={setBankAccount} placeholder="계좌번호" keyboardType="numbers-and-punctuation" maxLength={40} inputStyle={{ fontSize: F.body }} />
           <Field value={bankHolder} onChangeText={setBankHolder} placeholder="예금주" maxLength={30} inputStyle={{ fontSize: F.body }} />
         </Card>

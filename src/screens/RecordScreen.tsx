@@ -28,6 +28,7 @@ import { holdWebFile } from '../upload';
 import { track } from '../track';
 import { Ask, Body, Btn, Card, Chip, Choices, Field, Head, Sep, Soft, Tabs, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
+import { BankField } from '../ui/BankField';
 import { S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -60,6 +61,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   const [bankHolder, setBankHolder] = useState(group?.me.bankHolder ?? '');
   const [addCat, setAddCat] = useState(false);
   const [newCat, setNewCat] = useState('');
+  const [bankAsk, setBankAsk] = useState<null | { skip: boolean }>(null);   // 처음 적은 계좌 — 등록해 둘지 묻는 중
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
@@ -169,7 +171,15 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
   const used = !!receipt?.duplicate?.used;
   const canSave = !!amountValue && !!when && bankOk && !busy && !used && (step === 'ready' || step === 'manual');
 
-  const save = async (skip: boolean) => {
+  /*
+   | 받을 계좌를 등록해 두지 않은 회원이 여기서 처음 적었으면 — 보내기 전에 「등록해 두고 쓸까요?」를 묻는다(2026-09-22 태훈님).
+   | 등록하면 내 정보에 남아 다음부터 자동으로 채워지고, 이번만이면 이 요청에만 싣는다(서버 `bank`).
+   | 이미 등록한 계좌를 고쳐 적은 것은 묻지 않고 바꾼다(한 번 적으면 다음부터 자동 — 전과 같다).
+   */
+  const firstBank = !manager && !group?.me.bankAccount && bankAccount.trim() !== '';
+  const submit = (skip: boolean) => { if (firstBank) setBankAsk({ skip }); else void save(skip); };
+
+  const save = async (skip: boolean, once = false) => {
     if (!group || !amountValue || !when) return;
     setBusy(true);
     const body = {
@@ -184,11 +194,12 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
       } else {
         // 받을 계좌 — 한 번 적으면 다음부터 자동(바뀌었을 때만 저장)
         const me = group.me;
-        if (bankName.trim() !== (me.bankName ?? '') || bankAccount.trim() !== (me.bankAccount ?? '') || bankHolder.trim() !== (me.bankHolder ?? '')) {
-          await cm.updateMe(group.id, { bankName: bankName.trim() || null, bankAccount: bankAccount.trim() || null, bankHolder: bankHolder.trim() || null });
+        const bank = { name: bankName.trim() || null, account: bankAccount.trim() || null, holder: bankHolder.trim() || null };
+        if (!once && (bankName.trim() !== (me.bankName ?? '') || bankAccount.trim() !== (me.bankAccount ?? '') || bankHolder.trim() !== (me.bankHolder ?? ''))) {
+          await cm.updateMe(group.id, { bankName: bank.name, bankAccount: bank.account, bankHolder: bank.holder });
           void reloadGroup();
         }
-        await cm.addRequest(group.id, body);
+        await cm.addRequest(group.id, once ? { ...body, bank } : body);
         say('지급 요청을 보냈어요 · 총무님이 확인하면 알려 드려요');
       }
       track(manager ? 'entry_add' : 'request_add', { receipt: !!receipt, skip });
@@ -331,12 +342,14 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
               <Card style={{ gap: S.sm }}>
                 <Txt size="small" tone="sub" bold>받을 계좌</Txt>
                 <View style={[k.row, { gap: S.sm }]}>
-                  <Field style={{ flex: 0.8 }} value={bankName} onChangeText={setBankName} placeholder="은행" maxLength={20} inputStyle={{ fontSize: 15.5 }} />
+                  <BankField style={{ flex: 0.8 }} value={bankName} onChange={setBankName} />
                   <Field style={{ flex: 1.4 }} value={bankAccount} onChangeText={setBankAccount} placeholder="계좌번호" keyboardType="numbers-and-punctuation"
                     maxLength={40} inputStyle={{ fontSize: 15.5 }} />
                 </View>
                 <Field value={bankHolder} onChangeText={setBankHolder} placeholder="예금주" maxLength={30} inputStyle={{ fontSize: 15.5 }} />
-                <Txt size="tiny" tone="dim">한 번 적으면 다음부터 자동으로 채워져요. 총무·관리자만 전체 번호를 봐요.</Txt>
+                <Txt size="tiny" tone="dim">{group?.me.bankAccount
+                  ? '내 정보에 등록한 계좌예요. 고쳐 적으면 등록한 계좌도 바뀌어요. 총무·관리자만 전체 번호를 봐요.'
+                  : '처음 적는 계좌예요. 요청할 때 등록해 둘지 여쭤볼게요. 총무·관리자만 전체 번호를 봐요.'}</Txt>
               </Card>
             ) : null}
 
@@ -348,8 +361,8 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
             </View>
 
             <View style={[k.row, { gap: S.sm, paddingTop: 2 }]}>
-              <Btn label="건너뛰기" tone="ghost" style={{ width: 104 }} disabled={!canSave} onPress={() => { void save(true); }} />
-              <Btn label={manager ? '기록하기' : '지급 요청하기'} style={k.grow} disabled={!canSave} loading={busy} onPress={() => { void save(false); }} />
+              <Btn label="건너뛰기" tone="ghost" style={{ width: 104 }} disabled={!canSave} onPress={() => submit(true)} />
+              <Btn label={manager ? '기록하기' : '지급 요청하기'} style={k.grow} disabled={!canSave} loading={busy} onPress={() => submit(false)} />
             </View>
             {step === 'ready' ? (
               <Pressable onPress={() => { setReceipt(null); setStep('pick'); }} style={{ alignSelf: 'center', padding: S.sm }}>
@@ -364,6 +377,13 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' }) 
         buttons={[{ label: '닫기', tone: 'ghost', onPress: () => setAddCat(false) }, { label: '만들기', onPress: () => { void addCategory(); } }]}>
         <Field value={newCat} onChangeText={setNewCat} placeholder={direction === 'in' ? '예) 후원금' : '예) 경조사비'} maxLength={20} autoFocus />
       </Ask>
+
+      <Ask open={bankAsk !== null} title="이 계좌를 등록해 둘까요?" mood="coin" onClose={() => setBankAsk(null)}
+        body={`${[bankName.trim(), bankAccount.trim(), bankHolder.trim()].filter(Boolean).join(' · ')}\n\n등록해 두면 다음 요청부터 자동으로 채워져요. 설정 › 내 정보에서 바꿀 수 있어요.`}
+        buttons={[
+          { label: '이번만 쓰기', tone: 'ghost', onPress: () => { const a = bankAsk; setBankAsk(null); if (a) void save(a.skip, true); } },
+          { label: '등록하고 요청', onPress: () => { const a = bankAsk; setBankAsk(null); if (a) void save(a.skip); } },
+        ]} />
     </View>
   );
 }

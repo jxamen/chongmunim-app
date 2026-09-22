@@ -154,6 +154,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPages([]);
     setTab('home');
     setPhase('main');
+    /*
+     | 알림 권한은 **모임에 들어온 때** 묻는다(한 실행에 한 번 — 이미 허용했으면 창 없이 넘어간다). 허용돼야 기기 토큰이 올라간다 —
+     | `push.register()` 는 권한이 없으면 조용히 돌아선다(@jcurve/notify: 「허용 요청은 앱이 한다」). 전에는 설정 › 알림 스위치를
+     | 건드려야만 물어서, 스위치가 처음부터 켜져 있는 이 앱에선 아무도 안 물어봤다 → 운영 push_tokens 0행, 지급 요청 알림이
+     | 총무에게 한 번도 안 갔다(2026-09-22 태훈님 「요청 들어오면 담당자한테 알림이 와야 함」, 배포 조회 chongmunim_push_no_token).
+     */
+    void notify.ask().then((ok) => { if (ok) void push.register(); }).catch(() => undefined);
   }, []);
 
   const selectGroup = useCallback(async (gid: number) => {
@@ -305,8 +312,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    */
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') void notify.clear();
-      else scheduleRemind();
+      if (st === 'active') {
+        void notify.clear();
+        void push.register();   // 기기 설정에서 나중에 허용했으면 이제 올라간다(같은 토큰은 한 실행에 한 번만)
+      } else scheduleRemind();
     });
 
     return () => sub.remove();
