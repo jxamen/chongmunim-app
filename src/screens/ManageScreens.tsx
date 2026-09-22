@@ -11,6 +11,8 @@ import { amountInput, kstNow, mdInput, mdWord, readAmount, readWhen, whenLong, w
 import { isPro } from '../cm/plan';
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
+import { sheetFileId } from '../cm/importRows';
+import { codeOf } from '../cm/errors';
 import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
 import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
@@ -418,7 +420,6 @@ export function GroupEditScreen() {
   const { group, back, say, fail, reloadGroup, open } = useApp();
   const kb = useKeyboardPad();
   const [sheetUrl, setSheetUrl] = useState('');
-  const [linkOpen, setLinkOpen] = useState(false);   // 링크 붙이기는 접어 둔다 — 남이 공유해 준 시트일 때만
   const [sending, setSending] = useState(false);
   const [name, setName] = useState(group?.name ?? '');
   const [dues, setDues] = useState(group?.duesAmount ? won(group.duesAmount) : '');
@@ -461,6 +462,14 @@ export function GroupEditScreen() {
       }
       open({ kind: 'import', id: imp.id });
     } catch (e) {
+      // 받은 링크가 공개가 아니면(남이 나에게만 공유) 구글 로그인으로 그 시트를 연다 — 남의 시트 공유는 내가 못 바꾼다(2026-09-22 태훈님)
+      const id = how === 'sheet' ? sheetFileId(sheetUrl) : null;
+      if (id && codeOf(e) === 'sheet_private') {
+        say('공개 링크가 아니라서 구글 계정으로 열어요');
+        setSheetUrl('');
+        await fromDrive(id);
+        return;
+      }
       fail(e);
     } finally {
       setSending(false);
@@ -468,15 +477,17 @@ export function GroupEditScreen() {
   };
 
   /*
-   | 구글 드라이브에서 고르기 — 링크를 복사해 붙이지 않는다(2026-09-22 태훈님). 폰 브라우저로 서버 페이지를 열면 구글 로그인
+   | 구글 드라이브에서 고르기 — 링크를 복사해 붙이지 않아도 된다(2026-09-22 태훈님). 폰 브라우저로 서버 페이지를 열면 구글 로그인
    | (고른 파일만 읽는 권한) → 내 드라이브 목록(구글 Picker) → 고르면 서버가 받아 가져오기에 맡기고 chongmunim://import/{id} 로
    | 돌려보낸다 → 확인 표를 연다. 로그인은 앱 안 웹뷰에서 구글이 막아서 폰 브라우저(인증 세션)로 연다.
+   | fileId 가 있으면(받은 링크가 공개가 아닐 때) 목록 대신 그 시트 하나만 띄운다.
    */
-  const fromDrive = async () => {
+  const fromDrive = async (fileId?: string) => {
     setSending(true);
     try {
       const ticket = await cm.googlePickerTicket(group.id);
-      const r = await WebBrowser.openAuthSessionAsync(`${API_BASE}/cm/picker?t=${encodeURIComponent(ticket)}`, 'chongmunim://import');
+      const f = fileId ? `&f=${encodeURIComponent(fileId)}` : '';
+      const r = await WebBrowser.openAuthSessionAsync(`${API_BASE}/cm/picker?t=${encodeURIComponent(ticket)}${f}`, 'chongmunim://import');
       if (r.type !== 'success') return;
       const m = /^chongmunim:\/\/import\/([\w-]+)/.exec(r.url);
       if (m && m[1] !== 'cancel') open({ kind: 'import', id: m[1] });
@@ -531,19 +542,14 @@ export function GroupEditScreen() {
           <Btn label="구글 드라이브에서 고르기" loading={sending} onPress={() => { void fromDrive(); }} />
           <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>구글에 로그인하면 내 시트 목록이 떠요 · 고른 파일만 읽어요</Txt>
           <Btn label="폰에 있는 파일 고르기" tone="ghost" loading={sending} onPress={() => { void sendLedger('file'); }} />
-          {linkOpen ? (
-            <>
-              <Field value={sheetUrl} onChangeText={setSheetUrl} placeholder="구글 시트 링크 https://docs.google.com/…" autoCapitalize="none"
-                autoCorrect={false} inputStyle={{ fontSize: F.small, fontWeight: '400' }} />
-              <Btn label="링크로 가져오기" tone="ghost" disabled={!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(sheetUrl.trim())} loading={sending}
-                onPress={() => { void sendLedger('sheet'); }} />
-              <Txt size="tiny" tone="dim">남이 공유해 준 시트는 공유가 「링크가 있는 모든 사용자」여야 읽혀요.</Txt>
-            </>
-          ) : (
-            <Pressable onPress={() => setLinkOpen(true)} hitSlop={8} style={{ alignSelf: 'center' }}>
-              <Txt size="small" tone="sub">다른 사람이 공유한 시트 링크로 가져오기</Txt>
-            </Pressable>
-          )}
+          {/* 드라이브에서 고르기와 링크 넣기 둘 다 — 남이 준 링크도 있다(2026-09-22 태훈님 「2가지 다 돼야돼」) */}
+          <Sep />
+          <Txt bold>받은 구글 시트 링크로 가져오기</Txt>
+          <Field value={sheetUrl} onChangeText={setSheetUrl} placeholder="https://docs.google.com/spreadsheets/…" autoCapitalize="none"
+            autoCorrect={false} inputStyle={{ fontSize: F.small, fontWeight: '400' }} />
+          <Btn label="링크로 가져오기" tone="ghost" disabled={!sheetFileId(sheetUrl)} loading={sending}
+            onPress={() => { void sendLedger('sheet'); }} />
+          <Txt size="tiny" tone="dim" style={{ marginTop: -4 }}>나에게만 공유된 시트면 구글 로그인으로 이어서 열어요</Txt>
         </Card>
         <Card style={{ gap: S.md }}>
           <View style={[k.row, { gap: 10 }]}>

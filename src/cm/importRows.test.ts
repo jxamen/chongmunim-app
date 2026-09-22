@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toImport } from './model';
-import { byMonth, created, draftsFrom, ledgerExt, mapCategory, summary, targetOf, toCommit, toggle, update } from './importRows';
+import { byMonth, created, draftsFrom, ledgerExt, mapCategory, sheetFileId, summary, targetOf, toCommit, toggle, update } from './importRows';
 
 // 서버 응답(LedgerPreview) 모양 그대로 — 테스트 「확인 표는 겹친 줄과 이미 있는 줄을 빼고…」와 같은 장부
 const server = {
@@ -85,5 +85,16 @@ describe('장부 파일 형식 — 확장자로 거른다', () => {
     expect(ledgerExt('옛장부.xls')).toBe('xls');
     expect(ledgerExt('사진.jpg')).toBeNull();
     expect(ledgerExt('확장자없음')).toBeNull();
+  });
+});
+
+describe('구글 시트 링크 — 파일 id', () => {
+  it('공유 링크에서 id 를 꺼내고, 시트가 아니면 null', () => {
+    const id = '1AbC_def-GHIjklMNOpqrSTUvwxYZ0123456789';
+    expect(sheetFileId(`https://docs.google.com/spreadsheets/d/${id}/edit?usp=sharing`)).toBe(id);
+    expect(sheetFileId(`  https://docs.google.com/spreadsheets/d/${id}  `)).toBe(id);
+    expect(sheetFileId(`https://drive.google.com/file/d/${id}/view`)).toBeNull();
+    expect(sheetFileId('https://docs.google.com/spreadsheets/d/짧음')).toBeNull();
+    expect(sheetFileId('http://example.com')).toBeNull();
   });
 });
