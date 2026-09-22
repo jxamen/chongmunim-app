@@ -44,6 +44,7 @@ export type Page =
   | { kind: 'profile' }
   | { kind: 'notify' }
   | { kind: 'closing'; id: number }
+  | { kind: 'plan' }
   | { kind: 'groupEdit' }
   | { kind: 'import'; id: string }
   | { kind: 'transfer' }

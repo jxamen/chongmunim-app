@@ -11,6 +11,7 @@ import { TidyScreen } from './TidyScreen';
 import { GroupsScreen } from './GroupsScreen';
 import { ImportScreen } from './ImportScreen';
 import { ClosingScreen } from './Closing';
+import { PlanScreen } from './Plan';
 import {
   BudgetLineScreen, CategoriesScreen, EntryScreen, GroupEditScreen, MembersScreen, NotifyScreen, ProfileScreen, ReceiptScreen, TransferScreen,
 } from './ManageScreens';
@@ -31,6 +32,7 @@ export function PageView({ page }: { page: Page }) {
     case 'profile': return <ProfileScreen />;
     case 'notify': return <NotifyScreen />;
     case 'closing': return <ClosingScreen id={page.id} />;
+    case 'plan': return <PlanScreen />;
     case 'groupEdit': return <GroupEditScreen />;
     case 'import': return <ImportScreen id={page.id} />;
     case 'transfer': return <TransferScreen />;

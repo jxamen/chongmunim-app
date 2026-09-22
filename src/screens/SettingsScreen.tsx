@@ -88,6 +88,8 @@ export function SettingsScreen() {
           <MenuRow label="내 정보 · 받을 계좌" value={group.me.bankAccount ? '적어 둠' : '비어 있음'} onPress={() => open({ kind: 'profile' })} />
           <Sep />
           <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'notify' })} />
+          <Sep />
+          <MenuRow label="구독 관리" value={isPro(group) ? '구독 중' : '무료'} onPress={() => open({ kind: 'plan' })} />
           {manager ? (
             <>
               <Sep />
