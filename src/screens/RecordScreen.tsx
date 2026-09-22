@@ -82,7 +82,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   const [shots, setShots] = useState<Shot[]>([]);                 // 읽기 줄에 선 장(이 모임) — receiptQueue 를 따라간다
   const [drafts, setDrafts] = useState<Draft[]>([]);              // 보내기 전에 살피는 장
   const [turning, setTurning] = useState<string | null>(null);    // 돌리는 중인 장
-  const [sent, setSent] = useState<number | null>(null);          // 방금 보낸 장 수 — 지금 기록 / 나중에 기록
+  const [sent, setSent] = useState<{ batch: string; n: number } | null>(null);   // 방금 보낸 묶음 — 지금 기록 / 나중에 기록
   // 영수증 없이 적기
   const [direction, setDirection] = useState<'out' | 'in'>('out');
   const [form, setForm] = useState<ShotForm>(emptyForm(today));
@@ -112,7 +112,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
     const sync = () => setShots((cur) => mergeShots(cur, queue.list(gid), today, (d) => suggestEvent(evsRef.current, d)));
     sync();
 
-    return queue.subscribe(sync);
+    return queue.subscribe(gid, sync);
     // 모임이 바뀔 때만
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gid]);
@@ -181,8 +181,9 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   const sendDrafts = () => {
     if (!group || !drafts.length) return;
     track('receipt_submit', { batch: drafts.length });
-    void queue.add(group.id, drafts);
-    setSent(drafts.length);
+    const batch = `${Date.now()}`;
+    void queue.add(group.id, batch, drafts);
+    setSent({ batch, n: drafts.length });
     setDrafts([]);
   };
 
@@ -308,14 +309,15 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
     const word = manager ? `${done.size > 1 ? `${done.size}장을 ` : ''}장부에 적었어요` : `${done.size > 1 ? `${done.size}건 ` : ''}지급 요청을 보냈어요`;
     // 못 읽은 장만 남았으면 닫는다 — 다시 찍으면 되니까
     if (left.every((s) => s.state === 'failed' && !why[s.key])) {
-      queue.remove([...done, ...left.map((s) => s.key)]);   // 기록한 장 · 못 읽은 장 모두 줄에서 — 홈 띠에 남지 않게
+      queue.forget([...done]);                  // 기록한 장 — 서버 기다림에서 저절로 빠진다
+      queue.remove(left.map((s) => s.key));     // 못 읽은 장은 빼서 홈 띠에 남지 않게
       say(left.length ? `${word} · 못 읽은 ${left.length}장은 뺐어요` : manager ? word : `${word} · 총무님이 확인하면 알려 드려요`);
       back();
 
       return;
     }
     setShots(left.map((s) => (why[s.key] ? { ...s, note: why[s.key] } : s)));
-    queue.remove([...done]);
+    queue.forget([...done]);
     say(`${word} · 남은 ${left.length}장을 확인해 주세요`);
   };
 
@@ -515,10 +517,11 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
       </Ask>
 
       {/* 전송 뒤 — 지금 기록 / 나중에 기록(2026-09-22 태훈님). 닫으면 지금 기록 */}
-      <Ask open={sent !== null} title={`영수증 ${sent ?? 0}장을 보냈어요`} mood="receipt" onClose={() => { setSent(null); setStep('shots'); }}
-        body={'한 장에 10~15초쯤 걸려요.\n지금 여기서 읽히는 대로 기록할까요?\n나중에 하면 다 읽혔을 때 홈에 「기록 기다림」으로 모아 둘게요.'}
+      <Ask open={sent !== null} title={`영수증 ${sent?.n ?? 0}장을 보냈어요`} mood="receipt" onClose={() => { setSent(null); setStep('shots'); }}
+        body={'한 장에 10~15초쯤 걸려요.\n지금 여기서 읽히는 대로 기록할까요?\n나중에 하면 다 읽었을 때 알림으로 알려 드려요.'}
         buttons={[
-          { label: '나중에 기록', tone: 'ghost', onPress: () => { setSent(null); say('다 읽히면 홈에서 이어서 기록해요 · 그동안 다른 일을 하셔도 돼요'); back(); } },
+          // 나중에 — 서버가 다 읽히면 푸시로 알린다(ReceiptJobs). 안내는 한 줄로(두 줄이면 읽기 전에 사라졌다 — 태훈님)
+          { label: '나중에 기록', tone: 'ghost', onPress: () => { if (sent) queue.later(sent.batch); setSent(null); say('다 읽으면 알림으로 알려 드릴게요'); back(); } },
           { label: '지금 기록', onPress: () => { setSent(null); setStep('shots'); } },
         ]} />
 
@@ -554,7 +557,9 @@ function ShotCard({ shot, single, manager, categories, events, onPatch, onRemove
   return (
     <Card style={{ gap: S.sm }}>
       <View style={[k.row, { gap: S.md, alignItems: 'flex-start' }]}>
-        <Image source={{ uri: shot.uri }} style={{ width: 54, height: 72, borderRadius: 9, backgroundColor: T.track }} />
+        {/* 다른 폰에서 보낸 장은 읽히기 전엔 사진이 없다 — 빈 칸 */}
+        {shot.uri ? <Image source={{ uri: shot.uri }} style={{ width: 54, height: 72, borderRadius: 9, backgroundColor: T.track }} />
+          : <View style={{ width: 54, height: 72, borderRadius: 9, backgroundColor: T.track }} />}
         <View style={[k.grow, { gap: 2 }]}>
           {shot.state === 'reading' ? (
             <>

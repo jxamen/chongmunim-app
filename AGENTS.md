@@ -52,6 +52,14 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 구독 안내(`src/screens/Plan.tsx` PlanAsk)를 띄운다(store `fail`). 여러 장 · PDF · 회원의 가운데 카메라는 앱이 먼저 막는다.
 문구·목록은 `src/cm/plan.ts` 한 곳.
 
+## 영수증 보내기 (2026-09-22 태훈님)
+
+찍기 · 고르기 → **살피기**(한 장씩 ↻ 시계 방향 · 180° 뒤집기 · 빼기 — expo-image-manipulator 로 픽셀을 돌려 새 파일) → 「N장 전송하기」 →
+**지금 기록 / 나중에 기록**(한 장이어도 같다). 올리기만 폰에서(`src/receiptQueue.ts` — 공용 OCR 에 올리고 서버에 맡김),
+**읽기 · 기록 대기는 서버**(jcurve-api `ReceiptJobs`, `cm_receipt_jobs`): 워커가 다 읽는 순간(OcrWorkerController result · fail 훅)
+서버가 `cm_receipts` 로 옮긴다. 「기록 기다림」은 `GET receipts/pending`(폰을 바꿔도 남음) — 홈 띠 · 기록 화면이 3초마다 따라간다.
+나중에 기록 묶음은 다 읽히면 **푸시**(「영수증 N장을 다 읽었어요」, `chongmunim://record?g=` → 기록 기다림 카드). 이미 다 기록했으면 조용히.
+
 ## 마감 (2026-09-22 사용자 결정 「잠그기」)
 
 장부 월별 · 연간, 행사 화면의 「마감하고 알리기」 — 그 순간 숫자로 **결산 한 장**(서버 `cm_closings.snapshot`, 장부 화면과 같은 모양)을

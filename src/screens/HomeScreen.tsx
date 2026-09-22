@@ -12,6 +12,7 @@ import { entrySub, entryTitle, mdWord, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
 import { setRemindSnapshot } from '../push';
 import * as receiptQueue from '../receiptQueue';
+import type { Queued } from '../cm/shots';
 import { Ask, Body, Card, Chip, Failed, Head, LedgerRow, Loading, Sep, Soft, Text, Title, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
@@ -27,14 +28,14 @@ export function HomeScreen() {
   const manager = group ? isManager(group.me.role) : false;
   const [offer, setOffer] = useState(false);
   // 보내 놓고 아직 기록 안 한 영수증(읽기 줄) — 「나중에 기록」
-  const [queued, setQueued] = useState<receiptQueue.QItem[]>([]);
+  const [queued, setQueued] = useState<Queued[]>([]);
   const gid = group?.id ?? 0;
   useEffect(() => {
     if (!gid) return;
     const sync = () => setQueued(receiptQueue.list(gid));
     sync();
 
-    return receiptQueue.subscribe(sync);
+    return receiptQueue.subscribe(gid, sync);
   }, [gid]);
   const queuedReading = queued.filter((q) => q.state === 'sending' || q.state === 'reading').length;
 
@@ -121,7 +122,7 @@ export function HomeScreen() {
         {queued.length ? (
           <Soft pill={`${queued.length}장`}
             title={queuedReading ? `영수증 ${queuedReading}장을 읽고 있어요` : `영수증 ${queued.length}장이 기록을 기다려요`}
-            sub={queuedReading ? '다 읽히면 여기서 알려 드려요 · 지금 눌러 확인해도 돼요' : '눌러서 확인하고 한 번에 기록해요'}
+            sub={queuedReading ? '다 읽으면 알림으로 알려 드려요 · 지금 눌러 봐도 돼요' : '눌러서 확인하고 한 번에 기록해요'}
             onPress={() => open({ kind: 'record', start: 'pending' })} />
         ) : null}
 

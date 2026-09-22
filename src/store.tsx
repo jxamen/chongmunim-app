@@ -138,7 +138,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const say = useCallback((text: string) => {
     setToast(text);
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2400);
+    // 긴 말은 더 오래(최대 5초) — 두 줄짜리가 다 읽기 전에 사라졌다(2026-09-22 태훈님)
+    toastTimer.current = setTimeout(() => setToast(null), Math.min(5000, Math.max(2400, 1200 + text.length * 70)));
   }, []);
   const showPlan = useCallback((why: PlanReason = 'general') => { track('plan_view', { why }); setPlanAsk(why); }, []);
   const closePlan = useCallback(() => setPlanAsk(null), []);
@@ -266,16 +267,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   groupRef.current = group?.id ?? null;
   const openLink = useCallback(async (url: string) => {
     const m = /^chongmunim:\/\/notice\/(\d+)(?:\?g=(\d+))?/.exec(url);
-    if (!m) return;
+    // 「나중에 기록」 영수증이 다 읽혔다는 알림 — 기록 기다림 카드로(서버 ReceiptJobs)
+    const rec = /^chongmunim:\/\/record\?g=(\d+)/.exec(url);
+    if (!m && !rec) return;
     if (lastLink.current && lastLink.current.url === url && Date.now() - lastLink.current.at < 5000) return;
     lastLink.current = { url, at: Date.now() };
-    const gid = Number(m[2] ?? 0);
+    const gid = Number((m ? m[2] : rec![1]) ?? 0);
     try {
       if (gid && gid !== groupRef.current) await enterGroup(await cm.getGroup(gid));
-      setPages((cur) => [...cur, { kind: 'notice', id: Number(m[1]) }]);
-      track('push_open', { kind: 'notice' });
+      setPages((cur) => [...cur, m ? { kind: 'notice', id: Number(m[1]) } : { kind: 'record', start: 'pending' }]);
+      track('push_open', { kind: m ? 'notice' : 'receipt' });
     } catch {
-      say('알림의 공지를 열지 못했어요');
+      say(m ? '알림의 공지를 열지 못했어요' : '알림의 영수증을 열지 못했어요');
     }
   }, [enterGroup, say]);
   useEffect(() => {
