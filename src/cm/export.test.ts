@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventShareText, reportHtml, settle, toCsv } from './export';
+import { PRETENDARD_CSS, eventShareText, reportHtml, settle, toCsv } from './export';
 import { toEntry, type ExportData } from './model';
 
 const data: ExportData = {
@@ -61,6 +61,12 @@ describe('결산서', () => {
     expect(html).toContain('&lt;b&gt;등산&lt;/b&gt; 2026년 결산서');
     expect(html).toContain('107,600');
     expect(html).toContain('감사');
+  });
+
+  it('결산서 글꼴도 Pretendard — 못 받으면 기기 글꼴', () => {
+    const html = reportHtml(data, '2026.12.31');
+    expect(html).toContain(`<link rel="stylesheet" href="${PRETENDARD_CSS}">`);
+    expect(html).toContain("font-family: 'Pretendard', -apple-system");
   });
 });
 

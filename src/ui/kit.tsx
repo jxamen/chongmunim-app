@@ -8,18 +8,28 @@
  */
 import React from 'react';
 import {
-  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View,
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from 'react-native';
-import { F, R, S, TITLE_FONT, shadow, useT } from './theme';
+import { F, R, S, shadow, useT } from './theme';
+import { withPretendard } from './font';
 import { Mascot, type Mood } from './Mascot';
 import { signed, won } from '../cm/format';
 
 /* ── 글자 ── */
 
+/** 앱의 모든 글자 — Pretendard, `fontWeight` 는 그 무게의 글꼴로 바꿔 그린다(`./font`). RN `Text` 대신 이것을 쓴다 */
+export function Text({ style, ...rest }: React.ComponentProps<typeof RNText>) {
+  return <RNText {...rest} style={withPretendard(StyleSheet.flatten(style))} />;
+}
+
+function TextInput({ style, ...rest }: TextInputProps) {
+  return <RNTextInput {...rest} style={withPretendard(StyleSheet.flatten(style))} />;
+}
+
 type TextProps = { children: React.ReactNode; style?: StyleProp<TextStyle>; numberOfLines?: number };
 
-/** 화면 제목 — Jua */
+/** 화면 제목 — Pretendard ExtraBold */
 export function Title({ children, style, numberOfLines = 1 }: TextProps) {
   const T = useT();
 
@@ -373,7 +383,7 @@ export function Toast({ text }: { text: string | null }) {
 }
 
 export const s = StyleSheet.create({
-  title: { fontFamily: TITLE_FONT, fontSize: F.title, letterSpacing: -0.2 },
+  title: { fontSize: F.title, fontWeight: '800', letterSpacing: -0.4 },
   num: { fontWeight: '900', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
   amt: { fontVariant: ['tabular-nums'] },
   row: { flexDirection: 'row', alignItems: 'center' },

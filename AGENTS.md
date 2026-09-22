@@ -17,6 +17,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 | API base | `https://api.j-curve.co.kr/v1/chongmunim` |
 | 앱 DB | `jc_chongmunim` |
 | 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
+| 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
 ## 공용 패키지 (vendor tgz, `file:` 설치)
 
@@ -56,11 +57,11 @@ Apple App ID      kr.co.jcurve.chongmunim (Sign in with Apple 켬, 팀 7H9T37RL2
 
 ### 아직 없는 것
 
-- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812, DB jc_chongmunim, cm_* 14 설치.
+- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴), DB jc_chongmunim, cm_* 14 설치.
   **어드민 앱 등록은 DB 를 만들지 않는다**(apps.db_name 도 안 채운다) — 새 앱은 서버에서 DB 생성 + 공용 표 migrate + db_name 등록을 따로 한다.
   스모크: `cm/groups` 401 · `auth/providers` 200 **`providers: []`** — 아래 SNS 키가 들어가야 로그인 버튼이 생긴다
+  푸시 발송 키(FCM V1)는 서버 `/www/jcurve/secrets/chongmunim-fcm.json` 에 있다(자동화 세션, project_id chongmunim-d7971 확인)
 - **어드민 SNS 로그인 키**(`app_configs.social`) — 카카오 REST 키·시크릿, 구글 웹 시크릿은 사람이 넣는다(자동화 세션은 시크릿을 옮기지 않는다)
-- **FCM V1 서비스 계정 키** → 서버 `/www/jcurve/secrets/chongmunim-fcm.json` — 자동화 세션 권한 검사에 막혀 사람이 실행해야 한다
 - **구글 OAuth 게시 상태**가 「테스트 중」 — 다른 앱(꾹테크)과 같다. 테스트 사용자 외에는 구글 로그인이 안 되니 출시 전에 게시한다
 - **구글 Android OAuth 클라이언트·카카오 키 해시** — 첫 AAB 뒤(Play 앱 서명 키 SHA-1 필요)
 - **약관·개인정보 기본본** — 등록 안 함(총무님 전용 문안이 필요하다)

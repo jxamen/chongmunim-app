@@ -48,9 +48,6 @@ export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 /** 글자 크기 */
 export const F = { hero: 32, big: 26, title: 20, head: 17, body: 15.5, small: 14, tiny: 13.5 } as const;
 
-/** 제목 글꼴 — 시안의 Jua(`@expo-google-fonts/jua`). 읽기 전에는 시스템 글꼴로 그린다 */
-export const TITLE_FONT = 'Jua_400Regular';
-
 /** 그림자 — 떠 있는 것(촬영 버튼·띠)에만. 카드는 테두리로 가른다(시안) */
 export const shadow = {
   shadowColor: '#0E1A15',

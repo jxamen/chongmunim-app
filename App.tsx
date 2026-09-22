@@ -6,17 +6,18 @@
  * 한 장만 그린다 — 왼쪽 가장자리를 쓸거나 안드로이드 뒤로 버튼을 누르면 한 장씩 닫힌다.
  */
 import React, { startTransition, useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Keyboard, Platform, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Keyboard, Platform, Pressable, StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Jua_400Regular } from '@expo-google-fonts/jua';
+import { useFonts } from 'expo-font';
 import { applyUpdate, canApplyNow } from '@jcurve/updates';
 import { AppProvider, useApp, type Page, type Tab } from './src/store';
-import { F, PALETTES, S, TITLE_FONT, ThemeProvider, shadow, useT } from './src/ui/theme';
+import { F, PALETTES, S, ThemeProvider, shadow, useT } from './src/ui/theme';
+import { PRETENDARD } from './src/ui/font';
 import { SkiaBackdrop } from './src/ui/skia';
 import { Mascot } from './src/ui/Mascot';
-import { Toast } from './src/ui/kit';
+import { Text, Toast } from './src/ui/kit';
 import { SwipeBack } from './src/ui/SwipeBack';
 import { tabBottomPad } from './src/ui/tabPad';
 import { CameraIcon, ClubIcon, GearIcon, HomeIcon, LedgerIcon } from './src/ui/Icons';
@@ -29,6 +30,16 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { PageView } from './src/screens/pages';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+/** 모든 글자는 Pretendard(`src/ui/font.ts`) — 무게마다 파일이 따로다 */
+const FONTS = {
+  [PRETENDARD[400]]: require('./assets/fonts/Pretendard-Regular.otf'),
+  [PRETENDARD[500]]: require('./assets/fonts/Pretendard-Medium.otf'),
+  [PRETENDARD[600]]: require('./assets/fonts/Pretendard-SemiBold.otf'),
+  [PRETENDARD[700]]: require('./assets/fonts/Pretendard-Bold.otf'),
+  [PRETENDARD[800]]: require('./assets/fonts/Pretendard-ExtraBold.otf'),
+  [PRETENDARD[900]]: require('./assets/fonts/Pretendard-Black.otf'),
+};
 
 /**
  * 화면 한 곳에서 난 예외가 앱 전체를 검은 화면으로 만들지 않게 막는다(용돈캡슐과 같다).
@@ -55,7 +66,9 @@ class Boundary extends React.Component<{ children: React.ReactNode }, { failed: 
 }
 
 export default function App() {
-  const [fonts] = useFonts({ Jua_400Regular });
+  // 못 읽어도 멈추지 않는다 — 시스템 글꼴로 그린다
+  const [fontsLoaded, fontError] = useFonts(FONTS);
+  const fonts = fontsLoaded || !!fontError;
 
   return (
     // 제스처(가장자리 스와이프)는 이 루트 안에서만 동작한다 — 안드로이드는 없으면 아예 안 먹는다
@@ -94,7 +107,8 @@ function Root({ fonts }: { fonts: boolean }) {
       {/* 앱 전체에 깔리는 Skia 바탕 — 화면마다 따로 두지 않고 여기 한 장(탭을 옮겨도 이어진다) */}
       <SkiaBackdrop />
       <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
-      {!ready ? <Splash />
+      {/* 글꼴을 읽기 전에는 그리지 않는다(네이티브 스플래시가 덮고 있다) — 없는 글꼴 이름으로 그리면 iOS 가 경고한다 */}
+      {!fonts ? null : !ready ? <Splash />
         : phase === 'login' ? <LoginScreen />
           : phase === 'signup' ? <SignupScreen />
             : phase === 'groups' ? <GroupsScreen />
@@ -222,7 +236,7 @@ const s = StyleSheet.create({
   fill: { flex: 1 },
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: S.sm },
-  splashTitle: { fontFamily: TITLE_FONT, fontSize: 30, marginTop: S.sm },
+  splashTitle: { fontSize: 30, fontWeight: '900', letterSpacing: -0.6, marginTop: S.sm },
   errorTitle: { fontSize: F.head, fontWeight: '800', color: '#16251F' },
   errorBody: { fontSize: F.small, color: '#5E7169' },
 
