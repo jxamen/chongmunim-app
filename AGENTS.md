@@ -105,6 +105,13 @@ API 요청 헤더의 OTA 판은 앱이 만들지 않고 `otaHeaders()`(updates 2
 `@jcurve/ocr` 1.0.0 의 업로드는 Expo 57 에서 `{uri,name,type}` 이 깨진다 — 앱의 `post` 가 `expo-file-system` 의
 `File` 로 다시 싼다(영테크 `src/receipt/client.ts` 와 같은 수정, `src/ocr.ts`).
 
+`@jcurve/auth` 의 **「로그인이 안 끝났으면 놓아 주기」는 `background` 를 거쳐 돌아온 것만** 센다(`src/loginRescue.ts`).
+iOS 구글 · 웹 로그인은 앱을 떠나지 않고 창을 위에 띄워 `inactive ↔ active` 만 오가므로, 아무 `active` 에서나 놓아 주면
+**계정 고르는 중인 로그인을 버린다**(2026-09-23 머니트리 아이폰 먹통 제보 → 총무님 · 꿀꿀 · 당근 · 용돈캡슐 · 캐시팡 같은 자리 수정).
+**중간의 `inactive` 로 깃발을 지우면 안 된다** — iOS 는 돌아올 때도 `inactive → active` 로 알려서, 그러면 정작 아이콘으로
+나갔다 온 것을 놓쳐 원래 버그(로그인 버튼 영구 먹통)가 되살아난다. 놓아 줄 때 **팝업(RN Modal)을 띄우지 않는다** — 구글 창 위에
+올리려다 보이지 않는 막이 남는다(총무님은 추적 한 줄만 남기고, `Toast` 는 `pointerEvents="none"`).
+
 ## 콘솔 발급값 — 2026-09-22 (자동화 세션 기록)
 
 **공개값만 적는다.** client secret 은 서버 `app_configs.social` 에만 있고 앱에 넣지 않는다.
