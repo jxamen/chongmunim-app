@@ -40,7 +40,8 @@ export function formFrom(rc: Receipt, today: string): ShotForm {
   const hm = rc.paidAt ? rc.paidAt.slice(11, 16) : '';
 
   return {
-    merchant: rc.merchant ?? rc.store ?? '',   // 「영수증 분석」 입구는 상호를 store 에만 줄 때가 있다(2026-09-24 A32 「상호 없음」)
+    // 서버 merchant = 이 모임이 전에 붙인 이름 ?? store — 전에 붙인 이름이 빈 글자('')면 merchant 가 비어 온다(2026-09-24 A32 「상호 없음」)
+    merchant: rc.merchant?.trim() || rc.store?.trim() || '',
     amount: rc.total ? won(rc.total) : '',
     date: rc.paidAt ? rc.paidAt.slice(0, 10) : today,
     time: hm === '00:00' ? '' : hm,
