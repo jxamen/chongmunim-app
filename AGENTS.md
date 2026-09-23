@@ -29,7 +29,7 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 | 앱 이름 | 총무님 |
 | API base | `https://api.j-curve.co.kr/v1/chongmunim` |
 | 앱 DB | `jc_chongmunim` |
-| 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
+| 영수증 | **「영수증 분석」 입구**(`POST receipts`, 2026-09-24 대표님 「모든 영수증은 입구를 1개로 통일」 — 전에는 공용 판독 `ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관. 찍기는 공용 스캐너 `@jcurve/scanner` |
 | 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
 ## 구독 (2026-09-22 사용자 결정)
@@ -61,7 +61,8 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 ## 영수증 보내기 (2026-09-22 태훈님)
 
 찍기 · 고르기 → **살피기**(한 장씩 ↻ 시계 방향 · 180° 뒤집기 · 빼기 — expo-image-manipulator 로 픽셀을 돌려 새 파일) → 「N장 전송하기」 →
-**지금 기록 / 나중에 기록**(한 장이어도 같다). 올리기만 폰에서(`src/receiptQueue.ts` — 공용 OCR 에 올리고 서버에 맡김),
+**지금 기록 / 나중에 기록**(한 장이어도 같다). 올리기만 폰에서(`src/receiptQueue.ts` — 「영수증 분석」 입구에 재시도 키와 올리고
+(`src/receipt.ts`), 받아 준 장을 `receiptId` 로 서버에 맡김. 품질 반려(흐림 등)는 입구가 200 + `rejected` 로 바로 알려 주므로 맡기지 않고 사유를 보인다),
 **읽기 · 기록 대기는 서버**(jcurve-api `ReceiptJobs`, `cm_receipt_jobs`): 워커가 다 읽는 순간(OcrWorkerController result · fail 훅)
 서버가 `cm_receipts` 로 옮긴다. 「기록 기다림」은 `GET receipts/pending`(폰을 바꿔도 남음) — 홈 띠 · 기록 화면이 3초마다 따라간다.
 나중에 기록 묶음은 다 읽히면 **푸시**(「영수증 N장을 다 읽었어요」, `chongmunim://record?g=` → 기록 기다림 카드). 이미 다 기록했으면 조용히.

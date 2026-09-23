@@ -1,7 +1,7 @@
 /**
  * 기록 남기기(시안 2) — 영수증 찍기 → 읽기 → 확인 → 장부 한 줄(총무·관리자) 또는 지급 요청(회원).
  *
- *  1. 찍기    문서 스캐너(`react-native-document-scanner-plugin`, 영테크와 같은 부품) — 테두리를 잡아 반듯하게 편다.
+ *  1. 찍기    공용 문서 스캐너(`@jcurve/scanner` — 영테크 · 리워드 앱과 같은 부품) — 테두리를 잡아 반듯하게 편다.
  *             앨범에서 고를 수도 있다(`expo-image-picker`). 웹 미리보기는 앨범만. **여러 장을 한 번에**(최대 10장, 2026-09-22 태훈님).
  *  2. 살피기  **보내기 전에 한 장씩 본다**(2026-09-22 태훈님) — 시계 방향 회전 · 180° 뒤집기 · 빼기. 돌리면 픽셀을 돌려 새 파일로
  *             저장한다(영테크 turnReceiptImage 와 같은 방식). 한 장이어도 같다. 「N장 전송하기」를 눌러야 올라간다.
@@ -20,6 +20,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Platform, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { scanDocument, scannerMessage, ScannerError } from '@jcurve/scanner';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
@@ -197,26 +198,21 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   };
 
   const openScanner = async () => {
+    /*
+     | 찍기는 공용 스캐너(`@jcurve/scanner` — 리워드 앱과 같은 것, 2026-09-24 입구 통일). 카메라 권한은 패키지가 **아이폰만**
+     | 묻는다 — 안드로이드 스캐너는 구글 Play 서비스 화면이라 앱 권한이 필요 없고, 거기서 「이번만 허용」을 고르면 스캐너가 떠
+     | 있는 동안 권한이 거둬져 **앱이 죽고 찍은 사진을 잃었다**(2026-09-22 앱빌드 A32). 여러 장 — 아이폰 VisionKit 은 장 수를 못
+     | 막으므로 넘게 찍은 것도 받고(`extraPages: 'keep'`) 아래 `take` 가 앞에서 잘라 「N장까지」를 알린다.
+     */
     try {
-      /*
-       | 카메라 권한은 **아이폰만** 묻는다(VisionKit 은 앱 권한이 필요하다). 안드로이드 스캐너는 구글 Play 서비스 화면이라
-       | 앱 권한이 필요 없고, 여기서 「이번만 허용」을 고르면 스캐너가 떠 있는 동안 권한이 거둬져 **앱이 죽고 찍은 사진을 잃었다**
-       | (2026-09-22 앱빌드 A32 — one-time permission revoked).
-       */
-      if (Platform.OS === 'ios') {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) { setNote('카메라를 쓸 수 있게 허락해 주세요. 설정에서 바꿀 수 있어요'); return; }
-      }
-      const { default: scanner, ResponseType } = await import('react-native-document-scanner-plugin');
-      // 여러 장 — 한 장 찍고 이어서 찍으면 된다(안드로이드는 maxNumDocuments 까지, 아이폰 VisionKit 은 원래 여러 장)
-      const r = await scanner.scanDocument({ maxNumDocuments: maxShots, croppedImageQuality: 90, responseType: ResponseType.ImageFilePath });
-      if (r.status === 'cancel') return;
-      const imgs = r.scannedImages ?? [];
-      if (imgs.length) take(imgs.map((uri) => ({ uri })));
-    } catch {
+      const pages = await scanDocument({ maxPages: maxShots, quality: 90, extraPages: 'keep' });
+      if (!pages) return;   // 취소
+      if (pages.length) take(pages.map((uri) => ({ uri })));
+    } catch (e) {
       // 구글 모듈을 못 받았거나 스캐너가 안 열린다 — 앱 카메라로 그냥 찍는 길을 준다(영테크와 같다)
-      setNote('자동 스캔을 열지 못했어요. 다시 해 보거나 일반 촬영으로 찍어 주세요');
-      setScanFailed(true);
+      const code = e instanceof ScannerError ? e.code : 'scanner_failed';
+      setNote(code === 'scanner_permission' ? scannerMessage(code) : '자동 스캔을 열지 못했어요. 다시 해 보거나 일반 촬영으로 찍어 주세요');
+      if (code !== 'scanner_permission') setScanFailed(true);
     }
   };
 

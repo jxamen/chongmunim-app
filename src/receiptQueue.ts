@@ -1,29 +1,37 @@
 /**
  * 보낸 영수증 — **올리기만 이 폰에서, 읽기 · 기록 대기는 서버에서**(2026-09-22 태훈님 「올라간 영수증은 서버에 기록 안 하나?」).
  *
- * 사진을 공용 OCR 에 올리고(`ocr.submit`) 작업을 총무님 서버에 맡긴다(cm.registerReceiptJob). 그다음은 서버가 한다 — 워커가 다
- * 읽는 순간 총무님 표로 옮기고, 「나중에 기록」 묶음이면 다 읽혔을 때 푸시로 알린다(ReceiptJobs). 「기록 기다림」은 서버 목록
+ * 사진을 「영수증 분석」 입구에 올리고(`submitReceipt` — 2026-09-24 대표님 「모든 영수증은 입구를 1개로 통일」) 받아 준 장을
+ * 총무님 서버에 맡긴다(cm.registerReceipt). 품질 반려(흐림 등)는 입구가 바로 알려 주므로 맡기지 않고 사유를 보인다.
+ * 그다음은 서버가 한다 — 다 읽는 순간 총무님 표로 옮기고, 「나중에 기록」 묶음이면 다 읽혔을 때 푸시로 알린다(ReceiptJobs). 「기록 기다림」은 서버 목록
  * (cm.pendingReceipts)이라 폰을 바꾸거나 다시 깔아도 남는다. 이 폰에 두는 것은 **아직 못 맡긴 장**과 묶음뿐(`cm.receiptQueue`, 계정 키).
  * 읽는 중인 장이 있으면 3초마다 서버 목록을 다시 본다(보는 화면이 있을 때만). 올리기는 회원당 분당 30회라 2.1초 간격(`pacer`).
  */
 import { Platform } from 'react-native';
 import * as cm from './cm/api';
-import { codeOf, errorText } from './cm/errors';
+import { codeOf } from './cm/errors';
 import type { PendingJob } from './cm/model';
 import { pacer, type Queued } from './cm/shots';
-import { ocr, ocrMessage, preparePhoto } from './ocr';
-import { holdWebFile } from './upload';
+import { newIdempotencyKey, receiptErrorText, rejectedNote } from './cm/receiptEntry';
+import { holdWebFile, submitReceipt } from './receipt';
 import * as storage from './storage';
 
 /** 이 폰에서 올리는 중인 장 — 맡기면 서버 목록으로 넘어간다 */
-type Local = { key: string; gid: number; uri: string; batch: string; state: 'sending' | 'failed'; jobId: string | null; note: string | null };
+type Local = {
+  key: string; gid: number; uri: string; batch: string; state: 'sending' | 'failed'; note: string | null;
+  /** 입구가 받아 준 영수증 번호 — 있으면 올리기는 끝났고 맡기기만 남았다 */
+  receiptId?: string | null;
+  /** 재시도 키 — 끊겨서 다시 올려도 서버가 한 장으로 본다 */
+  idem?: string;
+  /** 앞선 판(공용 판독)이 남긴 작업 번호 — 업데이트 순간 맡기지 못한 장만. 새 장은 쓰지 않는다 */
+  jobId: string | null;
+};
 /** 한 번에 보낸 묶음 — 「나중에 기록」이면 올리기가 끝난 뒤 서버에 알림을 부탁한다 */
 type Batch = { gid: number; later: boolean; told: boolean; jobIds: string[] };
 type Saved = { locals: Local[]; batches: Record<string, Batch> };
 
-/** 읽기 실패를 사람 말로 — 영수증 읽기 쪽 사유는 OCR 문구, 나머지는 공통 문구 */
-export const readError = (code: string): string =>
-  (code === 'ocr_disabled' || code === 'ocr_failed' || code === 'timeout' || code === 'bad_response' ? ocrMessage(code) : errorText(code));
+/** 올리기 실패를 사람 말로 — 입구 사유(이미 올림 · 오늘 한도 · 반복)는 입구 문장, 나머지는 공통 문장 */
+const readError = (e: unknown): string => receiptErrorText(codeOf(e), (e as { data?: unknown })?.data ?? null);
 
 let locals: Local[] = [];
 let batches: Record<string, Batch> = {};
@@ -52,7 +60,8 @@ function load(): Promise<void> {
       } else if (saved && typeof saved === 'object') {
         const s = saved as Saved;
         // 앱이 꺼졌던 사이 올리다 멈춘 장 — 사진이 없을 수 있어 못 올림으로(작업 번호가 있으면 맡기기만 다시)
-        locals = (Array.isArray(s.locals) ? s.locals : []).map((l) => (l.state === 'sending' && !l.jobId ? { ...l, state: 'failed' as const, note: '보내다 멈췄어요 · 다시 찍어 주세요' } : l));
+        locals = (Array.isArray(s.locals) ? s.locals : []).map((l) => (l.state === 'sending' && !l.jobId && !l.receiptId && !l.idem
+          ? { ...l, state: 'failed' as const, note: '보내다 멈췄어요 · 다시 찍어 주세요' } : l));
         batches = s.batches && typeof s.batches === 'object' ? s.batches : {};
       }
       emit();
@@ -98,7 +107,9 @@ export async function refresh(gid: number): Promise<void> {
 export async function add(gid: number, batch: string, photos: { key: string; uri: string; file?: Blob | null }[]): Promise<void> {
   await load();
   for (const p of photos) webFiles.set(p.key, p.file ?? null);
-  locals = [...locals, ...photos.map((p): Local => ({ key: p.key, gid, uri: p.uri, batch, state: 'sending', jobId: null, note: null }))];
+  locals = [...locals, ...photos.map((p): Local => ({
+    key: p.key, gid, uri: p.uri, batch, state: 'sending', receiptId: null, idem: newIdempotencyKey(), jobId: null, note: null,
+  }))];
   batches = { ...batches, [batch]: { gid, later: false, told: false, jobIds: [] } };
   void save();
   emit();
@@ -182,34 +193,43 @@ async function run(): Promise<void> {
   if (retry) setTimeout(() => { void run(); }, 10_000);
 }
 
-/** 한 장 — 올리고 맡긴다. 끊겨서 맡기지 못했으면 false(작업 번호는 들고 있다) */
+/** 한 장 — 입구에 올리고 장부에 맡긴다. 끊겨서 맡기지 못했으면 false(받아 준 번호는 들고 있다) */
 async function send(l: Local): Promise<boolean> {
-  let jobId = l.jobId;
-  if (!jobId) {
+  let receiptId = l.receiptId ?? null;
+  if (!receiptId && !l.jobId) {
+    const idem = l.idem ?? newIdempotencyKey();
+    if (!l.idem) set(l.key, { idem });
     try {
-      const prepared = await preparePhoto({ uri: l.uri });
+      let got: Awaited<ReturnType<typeof submitReceipt>> | null = null;
       for (let tries = 0; ; tries++) {
         await pace();
         if (!locals.some((x) => x.key === l.key)) return true;   // 뺐다
         if (Platform.OS === 'web') holdWebFile(webFiles.get(l.key) ?? null);
         try {
-          jobId = await ocr.submit(prepared);
+          got = await submitReceipt(l.uri, idem);
           break;
         } catch (e) {
-          // 한도(429) — OCR 한도는 실제로 IP 기준이라 같은 와이파이의 다른 기기와 나눠 쓴다. 조금 쉬었다 다시(세 번까지)
-          if (!/429|too_many|throttle|rate/i.test(codeOf(e)) || tries >= 2) throw e;
+          // 잠깐의 과부하(429 · 5xx)와 끊김만 조금 쉬었다 다시(세 번까지) — 같은 재시도 키라 두 장이 되지 않는다.
+          // 이미 올림 · 오늘 한도 · 같은 사진 반복(receipt_too_many)은 다시 해도 같다 — 바로 사유를 보인다
+          if (!/^(network|timeout|http_429|http_5\d\d)$/.test(codeOf(e)) || tries >= 2) throw e;
           await new Promise((r) => setTimeout(r, 15_000));
         }
       }
-      set(l.key, { jobId });
+      if (got.status === 'rejected') {
+        set(l.key, { state: 'failed', note: rejectedNote(got.reason) });
+
+        return true;
+      }
+      receiptId = got.id;
+      set(l.key, { receiptId });
     } catch (e) {
-      set(l.key, { state: 'failed', note: readError(codeOf(e)) });
+      set(l.key, { state: 'failed', note: readError(e) });
 
       return true;
     }
   }
   try {
-    const job = await cm.registerReceiptJob(l.gid, jobId!);
+    const job = receiptId ? await cm.registerReceipt(l.gid, receiptId) : await cm.registerReceiptJob(l.gid, l.jobId!);
     uris.set(job.jobId, l.uri);
     const cur = pending.get(l.gid) ?? [];
     pending.set(l.gid, cur.some((p) => p.jobId === job.jobId) ? cur : [...cur, job]);
@@ -223,8 +243,9 @@ async function send(l: Local): Promise<boolean> {
 
     return true;
   } catch (e) {
-    if (codeOf(e) === 'job_not_found') { set(l.key, { state: 'failed', note: '맡기지 못했어요 · 다시 찍어 주세요' }); return true; }
+    const code = codeOf(e);
+    if (code === 'job_not_found' || code === 'receipt_not_found') { set(l.key, { state: 'failed', note: '맡기지 못했어요 · 다시 찍어 주세요' }); return true; }
 
-    return false;   // 끊김 — 작업 번호를 들고 조금 뒤 다시
+    return false;   // 끊김 — 받아 준 번호를 들고 조금 뒤 다시
   }
 }
