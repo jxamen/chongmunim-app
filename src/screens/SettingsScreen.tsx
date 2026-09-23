@@ -5,7 +5,7 @@
  * 옛 링크는 죽는다. 연도 넘김은 이월을 따로 적지 않는다(잔액이 이어진다) — 다음 해 예산표를 올해 것으로 채워 둔다.
  */
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { bundleLabel } from '@jcurve/updates';
 import { useApp } from '../store';
@@ -14,6 +14,7 @@ import { kstNow } from '../cm/format';
 import { isManager } from '../cm/model';
 import { APP_VERSION, LEGAL_BASE, publicLedgerUrl } from '../config';
 import { copy, shareText } from '../share';
+import { CONTACT_EMAIL, contactMailto } from '../cm/contact';
 import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Toggle, Txt, s as k } from '../ui/kit';
 import { Hero } from '../ui/Hero';
 import { PlanCard } from './Plan';
@@ -24,6 +25,22 @@ const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', memb
 
 export function SettingsScreen() {
   const { group, theme, setTheme, open, say, fail, reloadGroup, reland, logout, withdraw, updateNotice, setUpdateNotice, member } = useApp();
+  /*
+   | 문의 · 신고(App Store 가이드라인 1.2 — 모임 회원끼리 장부 · 사진 · 공지를 보므로). 메일 쓰기를 열고, 메일 앱이 없으면
+   | 주소를 복사해 알린다 — 누른 사람이 막다른 길에 서지 않게(`src/cm/contact.ts`).
+   */
+  const contact = async () => {
+    const url = contactMailto({
+      groupId: group?.id ?? null, groupName: group?.name ?? null, memberId: member?.id ?? null,
+      app: `총무님 ${APP_VERSION}${bundleLabel() ? ` · ${bundleLabel()}` : ''}`, os: Platform.OS,
+    });
+    try {
+      await Linking.openURL(url);
+    } catch {
+      await copy(CONTACT_EMAIL).catch(() => undefined);
+      say(`메일 주소를 복사했어요 · ${CONTACT_EMAIL} 으로 보내 주세요`);
+    }
+  };
   const T = useT();
   const [ask, setAsk] = useState<null | 'rollover' | 'logout' | 'withdraw' | 'leave' | 'link'>(null);
   const [busy, setBusy] = useState(false);
@@ -124,6 +141,8 @@ export function SettingsScreen() {
           <MenuRow label="이용약관" onPress={() => { void WebBrowser.openBrowserAsync(`${LEGAL_BASE}/terms`).catch(() => undefined); }} />
           <Sep />
           <MenuRow label="개인정보 처리방침" onPress={() => { void WebBrowser.openBrowserAsync(`${LEGAL_BASE}/privacy`).catch(() => undefined); }} />
+          <Sep />
+          <MenuRow label="문의 · 신고" onPress={() => { void contact(); }} />
         </Card>
 
         <Card style={{ paddingVertical: 2 }}>
