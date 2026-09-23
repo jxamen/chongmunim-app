@@ -23,3 +23,10 @@ homepage/
 *.log
 .env
 .env.*
+
+# store/design 은 스토어 이미지를 다시 굽는 스크립트라 올린다(2026-09-24) - 캐릭터 원본 · 로그 · 도구는 빼고
+!store/design/
+store/design/mascot/
+store/design/expo.log
+store/design/pair-reference.png
+store/design/.python/

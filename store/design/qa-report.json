@@ -1,0 +1,225 @@
+{
+  "images": [
+    {
+      "file": "out/01.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 1361115
+    },
+    {
+      "file": "out/02.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 561198
+    },
+    {
+      "file": "out/03.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 971619
+    },
+    {
+      "file": "out/04.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 1212295
+    },
+    {
+      "file": "out/05.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 1015775
+    },
+    {
+      "file": "out/06.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 844899
+    },
+    {
+      "file": "out/07.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 949309
+    },
+    {
+      "file": "out/08.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "bytes": 654325
+    },
+    {
+      "file": "out/play/01.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 1050379
+    },
+    {
+      "file": "out/play/02.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 569946
+    },
+    {
+      "file": "out/play/03.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 770112
+    },
+    {
+      "file": "out/play/04.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 918297
+    },
+    {
+      "file": "out/play/05.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 813938
+    },
+    {
+      "file": "out/play/06.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 868909
+    },
+    {
+      "file": "out/play/07.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 916665
+    },
+    {
+      "file": "out/play/08.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "mode": "RGB",
+      "bytes": 638925
+    },
+    {
+      "file": "raw/01-home.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 321541
+    },
+    {
+      "file": "raw/02-record.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 165097
+    },
+    {
+      "file": "raw/03-ledger.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 266739
+    },
+    {
+      "file": "raw/04-dues.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 243802
+    },
+    {
+      "file": "raw/06-claim.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 205269
+    },
+    {
+      "file": "raw/07-import.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 183900
+    },
+    {
+      "file": "raw/08-budget.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 303613
+    },
+    {
+      "file": "raw/09-closing.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 92122
+    }
+  ],
+  "checks": [
+    "16 final PNGs and 8 raw PNGs have exact sizes; all opaque",
+    "Capture has no page errors; every API call was mocked",
+    "App Store 01+02 are pixel-identical to the uncropped two-panel canvas"
+  ]
+}
