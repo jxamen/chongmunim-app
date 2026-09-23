@@ -1,0 +1,162 @@
+{
+  "viewport": [
+    390,
+    844
+  ],
+  "deviceScaleFactor": 3,
+  "fixedDate": "2026-09-24",
+  "errors": [],
+  "blocked": [],
+  "calls": [
+    {
+      "method": "GET",
+      "path": "auth/providers",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "content/config/notify",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "auth/me",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/groups",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/groups",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/home",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/receipts/pending",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/categories",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/events",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/receipts/pending",
+      "mocked": true
+    },
+    {
+      "method": "POST",
+      "path": "ocr/jobs",
+      "mocked": true
+    },
+    {
+      "method": "POST",
+      "path": "cm/g/901/receipts/jobs",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/receipts/pending",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/ledger/month",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/closings",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/dues",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices/31",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices/31/recipients",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices/32",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices/32/recipients",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/closings/41",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices/32",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/notices/32/recipients",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/home",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/receipts/pending",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/requests",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/categories",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "path": "cm/g/901/events",
+      "mocked": true
+    }
+  ]
+}
