@@ -12,7 +12,7 @@ import * as cm from './cm/api';
 import { codeOf } from './cm/errors';
 import type { PendingJob } from './cm/model';
 import { pacer, type Queued } from './cm/shots';
-import { newIdempotencyKey, receiptErrorText, rejectedNote } from './cm/receiptEntry';
+import { newIdempotencyKey, receiptErrorText, rejectedNote, throttleWaitMs } from './cm/receiptEntry';
 import { holdWebFile, submitReceipt } from './receipt';
 import * as storage from './storage';
 
@@ -201,6 +201,7 @@ async function send(l: Local): Promise<boolean> {
     if (!l.idem) set(l.key, { idem });
     try {
       let got: Awaited<ReturnType<typeof submitReceipt>> | null = null;
+      let throttled = false;
       for (let tries = 0; ; tries++) {
         await pace();
         if (!locals.some((x) => x.key === l.key)) return true;   // 뺐다
@@ -209,9 +210,15 @@ async function send(l: Local): Promise<boolean> {
           got = await submitReceipt(l.uri, idem);
           break;
         } catch (e) {
-          // 잠깐의 과부하(429 · 5xx)와 끊김만 조금 쉬었다 다시(세 번까지) — 같은 재시도 키라 두 장이 되지 않는다.
-          // 이미 올림 · 오늘 한도 · 같은 사진 반복(receipt_too_many)은 다시 해도 같다 — 바로 사유를 보인다
-          if (!/^(network|timeout|http_429|http_5\d\d)$/.test(codeOf(e)) || tries >= 2) throw e;
+          // 같은 재시도 키라 다시 올려도 두 장이 되지 않는다. 이미 올림 · 오늘 한도 · 같은 사진 반복(receipt_too_many)은
+          // 다시 해도 같다 — 바로 사유를 보인다. 일반 스로틀(429)은 서버가 준 만큼 쉬고 **한 번만**, 끊김 · 5xx 는 15초씩 세 번까지
+          const code = codeOf(e);
+          if (code === 'http_429' && !throttled) {
+            throttled = true;
+            await new Promise((r) => setTimeout(r, throttleWaitMs((e as { data?: unknown })?.data)));
+            continue;
+          }
+          if (!/^(network|timeout|http_5\d\d)$/.test(code) || tries >= 2) throw e;
           await new Promise((r) => setTimeout(r, 15_000));
         }
       }

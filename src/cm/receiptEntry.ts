@@ -49,3 +49,13 @@ export function newIdempotencyKey(rand: () => number = Math.random): string {
 
   return `${hex(8)}-${hex(4)}-4${hex(3)}-${variant}${hex(3)}-${hex(12)}`;
 }
+
+/**
+ * 일반 스로틀(429, 코드 없는 「Too Many Attempts.」)에서 쉴 시간 — 서버가 준 Retry-After(초), 없으면 60초. 2분을 넘기지 않는다.
+ * 이때는 **한 번만** 다시 한다(패키지api 2026-09-24). 오늘 한도 · 같은 사진 반복은 코드가 따로 와 여기 오지 않는다.
+ */
+export function throttleWaitMs(data: unknown): number {
+  const sec = Number((data && typeof data === 'object' ? (data as { retryAfterHeader?: unknown }).retryAfterHeader : NaN) ?? NaN);
+
+  return Math.min(120, Number.isFinite(sec) && sec > 0 ? sec : 60) * 1000;
+}

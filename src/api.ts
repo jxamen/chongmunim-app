@@ -93,7 +93,12 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
     }
     throw new ApiError(code, 401);
   }
-  if (!res.ok || json?.ok === false) throw new ApiError(errorCode(res.status, json), res.status, json);
+  if (!res.ok || json?.ok === false) {
+    /* 429 — 서버가 기다리라는 시간(Retry-After 헤더, 초)을 본문 곁에 싣는다. 영수증 줄이 그만큼 쉬었다 한 번 다시 한다 */
+    const wait = res.status === 429 ? Number(res.headers.get('Retry-After')) : NaN;
+    const data = Number.isFinite(wait) && wait > 0 ? { ...(json && typeof json === 'object' ? json : {}), retryAfterHeader: wait } : json;
+    throw new ApiError(errorCode(res.status, json), res.status, data);
+  }
 
   return json as T;
 }

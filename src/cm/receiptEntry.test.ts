@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { newIdempotencyKey, parseSubmitted, receiptErrorText, rejectedNote } from './receiptEntry';
+import { newIdempotencyKey, parseSubmitted, receiptErrorText, rejectedNote, throttleWaitMs } from './receiptEntry';
 
 describe('입구 응답', () => {
   it('받아 준 장 — 번호는 글자로', () => {
@@ -44,6 +44,14 @@ describe('입구 오류 문장', () => {
   });
 });
 
+describe('일반 스로틀에서 쉴 시간', () => {
+  it('Retry-After(초)만큼, 없으면 60초, 2분을 넘기지 않는다', () => {
+    expect(throttleWaitMs({ message: 'Too Many Attempts.', retryAfterHeader: 30 })).toBe(30_000);
+    expect(throttleWaitMs(null)).toBe(60_000);
+    expect(throttleWaitMs({ retryAfterHeader: 900 })).toBe(120_000);
+  });
+});
+
 describe('재시도 키', () => {
   it('uuid v4 모양이고 매번 다르다', () => {
     const a = newIdempotencyKey();
@@ -70,7 +78,8 @@ describe('줄(receiptQueue)이 입구를 쓰는 모양', () => {
     expect(q).toMatch(/receiptId \? await cm\.registerReceipt\(l\.gid, receiptId\) : await cm\.registerReceiptJob\(l\.gid, l\.jobId!\)/);
   });
 
-  it('다시 해도 같은 오류(이미 올림 · 한도 · 반복)는 되풀이하지 않는다 — 끊김 · 429 · 5xx 만 다시', () => {
-    expect(q).toMatch(/\/\^\(network\|timeout\|http_429\|http_5\\d\\d\)\$\//);
+  it('다시 해도 같은 오류(이미 올림 · 한도 · 반복)는 되풀이하지 않는다 — 끊김 · 5xx 는 세 번, 일반 스로틀(429)은 쉬었다 한 번', () => {
+    expect(q).toMatch(/\/\^\(network\|timeout\|http_5\\d\\d\)\$\//);
+    expect(q).toMatch(/if \(code === 'http_429' && !throttled\) \{\s*throttled = true;\s*await new Promise\(\(r\) => setTimeout\(r, throttleWaitMs\(/);
   });
 });
