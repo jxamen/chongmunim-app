@@ -16,7 +16,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 572833
+      "bytes": 561198
     },
     {
       "file": "out/03.png",
@@ -25,7 +25,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 956872
+      "bytes": 971619
     },
     {
       "file": "out/04.png",
@@ -34,7 +34,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 1202624
+      "bytes": 1212295
     },
     {
       "file": "out/05.png",
@@ -43,7 +43,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 1007576
+      "bytes": 1015775
     },
     {
       "file": "out/06.png",
@@ -52,7 +52,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 833618
+      "bytes": 844899
     },
     {
       "file": "out/07.png",
@@ -61,7 +61,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 798298
+      "bytes": 949309
     },
     {
       "file": "out/08.png",
@@ -70,7 +70,7 @@
         2868
       ],
       "mode": "RGB",
-      "bytes": 632205
+      "bytes": 654325
     },
     {
       "file": "out/play/01.png",
@@ -88,7 +88,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 583537
+      "bytes": 569946
     },
     {
       "file": "out/play/03.png",
@@ -97,7 +97,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 733918
+      "bytes": 770112
     },
     {
       "file": "out/play/04.png",
@@ -106,7 +106,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 885895
+      "bytes": 918297
     },
     {
       "file": "out/play/05.png",
@@ -115,7 +115,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 799715
+      "bytes": 813938
     },
     {
       "file": "out/play/06.png",
@@ -124,7 +124,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 840248
+      "bytes": 868909
     },
     {
       "file": "out/play/07.png",
@@ -133,7 +133,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 803654
+      "bytes": 916665
     },
     {
       "file": "out/play/08.png",
@@ -142,7 +142,7 @@
         1920
       ],
       "mode": "RGB",
-      "bytes": 612926
+      "bytes": 638925
     },
     {
       "file": "raw/01-home.png",
@@ -181,25 +181,34 @@
       "bytes": 243802
     },
     {
-      "file": "raw/05-notice.png",
+      "file": "raw/06-claim.png",
       "size": [
         1170,
         2532
       ],
       "mode": "RGB",
-      "bytes": 200602
+      "bytes": 205269
     },
     {
-      "file": "raw/06-request.png",
+      "file": "raw/07-import.png",
       "size": [
         1170,
         2532
       ],
       "mode": "RGB",
-      "bytes": 175700
+      "bytes": 183900
     },
     {
-      "file": "raw/07-closing.png",
+      "file": "raw/08-budget.png",
+      "size": [
+        1170,
+        2532
+      ],
+      "mode": "RGB",
+      "bytes": 303613
+    },
+    {
+      "file": "raw/09-closing.png",
       "size": [
         1170,
         2532
@@ -209,7 +218,7 @@
     }
   ],
   "checks": [
-    "16 final PNGs and 7 raw PNGs have exact sizes; all opaque",
+    "16 final PNGs and 8 raw PNGs have exact sizes; all opaque",
     "Capture has no page errors; every API call was mocked",
     "App Store 01+02 are pixel-identical to the uncropped two-panel canvas"
   ]

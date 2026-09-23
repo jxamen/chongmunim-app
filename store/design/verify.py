@@ -5,7 +5,7 @@ sys.path.insert(0,str(here/'.python'))
 from PIL import Image, ImageChops
 store=here.parent
 report={'images':[], 'checks':[]}
-for folder,size,count in [('out',(1320,2868),8),('out/play',(1080,1920),8),('raw',(1170,2532),7)]:
+for folder,size,count in [('out',(1320,2868),8),('out/play',(1080,1920),8),('raw',(1170,2532),8)]:
     files=sorted((store/folder).glob('0*.png'))
     assert len(files)==count, (folder,len(files))
     for f in files:
@@ -15,7 +15,7 @@ for folder,size,count in [('out',(1320,2868),8),('out/play',(1080,1920),8),('raw
             assert im.mode in ('RGB','RGBA'),(f,im.mode)
             if im.mode=='RGBA': assert im.getextrema()[3]==(255,255)
             report['images'].append({'file':f.relative_to(store).as_posix(),'size':list(im.size),'mode':im.mode,'bytes':f.stat().st_size})
-report['checks'].append('16 final PNGs and 7 raw PNGs have exact sizes; all opaque')
+report['checks'].append('16 final PNGs and 8 raw PNGs have exact sizes; all opaque')
 cap=json.loads((here/'capture-report.json').read_text(encoding='utf8'))
 assert not cap['errors'],cap['errors']
 assert all(c['mocked'] for c in cap['calls'])
