@@ -8,7 +8,7 @@
  * 그동안 `availableProviders()` 는 애플(iOS)만 준다. 게스트 시작은 패키지에 없다(서버 계약이 앱마다 다르다).
  */
 import { Platform } from 'react-native';
-import { createAuth, isCancel } from '@jcurve/auth';
+import { createAuth, createReturnWatch, isCancel } from '@jcurve/auth';
 import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID, KAKAO_NATIVE_APP_KEY } from './config';
 import { loginApple, loginGoogle, loginGuest, loginKakao, type AuthResult } from './api';
 import { resendIfDropped } from './resend';
@@ -32,7 +32,8 @@ export const auth = createAuth<AuthResult>({
   providers: () => serverProviders,
 });
 
-export { isCancel };
+/* 로그인 놓아 주기는 **밖에 다녀온 것만** 센다 — 패키지가 중간 `inactive` 까지 가려 준다(2.2.0, store.tsx 가 쓴다) */
+export { createReturnWatch, isCancel };
 
 /** 게스트로 시작 — SNS 없이 회원을 만든다. 끊겼을 때만 다시 보낸다(보낼 때마다 회원이 새로 생기므로 늦음은 다시 안 보낸다) */
 export function signInGuest(): Promise<AuthResult> {
