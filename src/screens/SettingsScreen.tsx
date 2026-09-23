@@ -12,7 +12,7 @@ import { useApp } from '../store';
 import * as cm from '../cm/api';
 import { kstNow } from '../cm/format';
 import { isManager } from '../cm/model';
-import { APP_VERSION, LEGAL_BASE, publicLedgerUrl } from '../config';
+import { APP_VERSION, LEGAL_BASE, publicLedgerUrl, SUBSCRIPTION_ON } from '../config';
 import { copy, shareText } from '../share';
 import { CONTACT_EMAIL, contactMailto } from '../cm/contact';
 import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Toggle, Txt, s as k } from '../ui/kit';
@@ -105,8 +105,7 @@ export function SettingsScreen() {
           <MenuRow label="내 정보 · 받을 계좌" value={group.me.bankAccount ? '적어 둠' : '비어 있음'} onPress={() => open({ kind: 'profile' })} />
           <Sep />
           <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'notify' })} />
-          <Sep />
-          <MenuRow label="구독 관리" value={isPro(group) ? '구독 중' : '무료'} onPress={() => open({ kind: 'plan' })} />
+          {SUBSCRIPTION_ON ? (<><Sep /><MenuRow label="구독 관리" value={isPro(group) ? '구독 중' : '무료'} onPress={() => open({ kind: 'plan' })} /></>) : null}
           {manager ? (
             <>
               <Sep />

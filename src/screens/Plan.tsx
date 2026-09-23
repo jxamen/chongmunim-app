@@ -17,7 +17,7 @@ import { codeOf } from '../cm/errors';
 import { FREE_FEATURES, PLAN_PRICE, PLAN_REASON, PRO_FEATURES, isPro } from '../cm/plan';
 import { won } from '../cm/format';
 import { billingLogin, billingState, buy, manageUrl, monthlyPackage, restore } from '../billing';
-import { LEGAL_BASE } from '../config';
+import { LEGAL_BASE, SUBSCRIPTION_ON } from '../config';
 import { track } from '../track';
 import { Ask, Body, Btn, Card, Head, KV, Sep, Soft, Text, Txt, s as k } from '../ui/kit';
 import { Hero } from '../ui/Hero';
@@ -27,7 +27,7 @@ import { F, R, S, useT } from '../ui/theme';
 export function PlanCard() {
   const { group, open } = useApp();
   const T = useT();
-  if (!group) return null;
+  if (!group || !SUBSCRIPTION_ON) return null;   // 구독을 안 파는 동안은 카드를 두지 않는다(config)
   if (isPro(group)) {
     return (
       <Pressable onPress={() => open({ kind: 'plan' })} accessibilityRole="button" accessibilityLabel="구독 관리"
@@ -64,6 +64,22 @@ export function PlanAsk() {
   const { planAsk, closePlan, group, say, open } = useApp();
   const T = useT();
   const owner = group?.me.role === 'owner';
+
+  /* 구독을 안 파는 동안(config) — 결제로 가는 길 없이 「곧 열려요」만. 무료로 쓰는 것은 그대로 보인다 */
+  if (!SUBSCRIPTION_ON) {
+    return (
+      <Ask open={planAsk !== null} title="곧 열리는 기능이에요" mood="cheer" onClose={closePlan}
+        buttons={[{ label: '확인', onPress: closePlan }]}>
+        <View style={{ gap: S.sm }}>
+          <View style={[st.box, { borderColor: T.line }]}>
+            <Txt size="small" bold tone="sub">지금 쓸 수 있어요</Txt>
+            {FREE_FEATURES.map((f) => <Txt key={f} size="small">·  {f}</Txt>)}
+          </View>
+          <Txt size="small" tone="sub">나머지 기능은 준비하고 있어요. 열리면 앱에서 알려 드릴게요.</Txt>
+        </View>
+      </Ask>
+    );
+  }
 
   return (
     <Ask open={planAsk !== null} title={planAsk ? PLAN_REASON[planAsk] : ''} mood="cheer" onClose={closePlan}
