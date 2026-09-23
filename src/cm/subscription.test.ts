@@ -25,6 +25,10 @@ describe('구독 판매 스위치', () => {
     expect(read('src/screens/SettingsScreen.tsx')).toMatch(/\{SUBSCRIPTION_ON \? \(<><Sep \/><MenuRow label="구독 관리"/);
   });
 
+  it('꺼져 있으면 설정 머리에 「구독 중 · 무료」를 붙이지 않는다 — 무료 개방(free_open)이면 모든 모임이 pro 로 와서 「구독 중」이 보였다', () => {
+    expect(read('src/screens/SettingsScreen.tsx')).toMatch(/\$\{SUBSCRIPTION_ON \? \(isPro\(group\) \? ' · 구독 중' : ' · 무료'\) : ''\}/);
+  });
+
   it('꺼져 있으면 구독 안내 창에 결제로 가는 단추가 없다 — 「확인」 하나', () => {
     const plan = read('src/screens/Plan.tsx');
     const off = plan.slice(plan.indexOf('if (!SUBSCRIPTION_ON) {'), plan.indexOf('return (', plan.indexOf('if (!SUBSCRIPTION_ON) {') + 30));

@@ -75,7 +75,7 @@ export function SettingsScreen() {
         <Pressable onPress={() => open({ kind: 'profile' })} accessibilityRole="button" accessibilityLabel="내 정보">
           <Hero mood="coffee" mascot={70}>
             <Text style={{ fontSize: F.title, fontWeight: '900', color: T.deep }} numberOfLines={1}>{group.me.name || '내 정보'}</Text>
-            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${isPro(group) ? ' · 구독 중' : ' · 무료'}`}</Txt>
+            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${SUBSCRIPTION_ON ? (isPro(group) ? ' · 구독 중' : ' · 무료') : ''}`}</Txt>
           </Hero>
         </Pressable>
         {/* 구독 — 히어로 바로 밑(2026-09-22 태훈님 「히어로 밑으로 구독 관리 내려」). 무료는 크게, 구독 중은 작게 */}
