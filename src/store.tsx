@@ -15,9 +15,8 @@ import {
   completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
   type AuthResult, type Member, type Session,
 } from './api';
-import { auth, isCancel, setServerProviders, signInGuest, type Provider } from './auth';
+import { auth, createReturnWatch, isCancel, setServerProviders, signInGuest, type Provider } from './auth';
 import { isDeadSession } from './deadSession';
-import { returnedFromOutside } from './loginRescue';
 import { funnel, track } from './track';
 import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
 import { billingLogin } from './billing';
@@ -355,17 +354,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   /*
    | 로그인 창에 갔다가 **아이콘으로** 돌아오면 약속이 영영 안 끝날 수 있다(@jcurve/auth README). 앞으로 돌아오고
    | 2.5초가 지나도 busy 면 풀고 패키지의 약속도 버린다 — 안 그러면 모든 로그인 버튼이 먹통이 된다.
-   | **앱을 떠났다 온 것만** 그렇게 본다(`loginRescue.ts`) — iOS 구글 · 웹 로그인은 창을 앱 위에 띄워 inactive ↔ active 만
-   | 오가는데, 그걸 「돌아왔다」로 보면 계정 고르는 사이에 로그인을 버린다(2026-09-23 머니트리 · 꿀꿀 · 당근과 같은 자리).
+   | **밖에 다녀온 것만** 그렇게 본다(`createReturnWatch`, @jcurve/auth 2.2.0) — iOS 구글 · 웹 로그인은 창을 앱 위에 띄워
+   | inactive ↔ active 만 오가는데, 그걸 「돌아왔다」로 보면 계정 고르는 사이에 로그인을 버린다(2026-09-23 머니트리 제보로
+   | 총무님 · 꿀꿀 · 당근 · 용돈캡슐 · 캐시팡이 같은 자리를 고쳤고, 그 판단이 패키지로 들어갔다). 여기서 팝업은 띄우지 않는다.
    */
   const busyRef = useRef(false);
   busyRef.current = busy;
-  const wentOutRef = useRef(false);
   useEffect(() => {
+    const watch = createReturnWatch();
     const sub = AppState.addEventListener('change', (st) => {
-      const r = returnedFromOutside(wentOutRef.current, st);
-      wentOutRef.current = r.wentOut;
-      if (!r.rescue) return;
+      if (!watch.saw(st)) return;
       setTimeout(() => {
         if (!busyRef.current) return;
         auth.abandon();
