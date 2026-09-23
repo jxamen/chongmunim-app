@@ -12,7 +12,7 @@ import { useApp } from '../store';
 import * as cm from '../cm/api';
 import { kstNow } from '../cm/format';
 import { isManager } from '../cm/model';
-import { APP_VERSION, LEGAL_BASE, publicLedgerUrl } from '../config';
+import { APP_VERSION, LEGAL_BASE, publicLedgerUrl, SUBSCRIPTION_ON } from '../config';
 import { copy, shareText } from '../share';
 import { CONTACT_EMAIL, contactMailto } from '../cm/contact';
 import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Toggle, Txt, s as k } from '../ui/kit';
@@ -75,7 +75,7 @@ export function SettingsScreen() {
         <Pressable onPress={() => open({ kind: 'profile' })} accessibilityRole="button" accessibilityLabel="내 정보">
           <Hero mood="coffee" mascot={70}>
             <Text style={{ fontSize: F.title, fontWeight: '900', color: T.deep }} numberOfLines={1}>{group.me.name || '내 정보'}</Text>
-            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${isPro(group) ? ' · 구독 중' : ' · 무료'}`}</Txt>
+            <Txt size="small" tone="sub" numberOfLines={1}>{`${group.name} · ${ROLE[group.me.role]}${SUBSCRIPTION_ON ? (isPro(group) ? ' · 구독 중' : ' · 무료') : ''}`}</Txt>
           </Hero>
         </Pressable>
         {/* 구독 — 히어로 바로 밑(2026-09-22 태훈님 「히어로 밑으로 구독 관리 내려」). 무료는 크게, 구독 중은 작게 */}
@@ -105,8 +105,7 @@ export function SettingsScreen() {
           <MenuRow label="내 정보 · 받을 계좌" value={group.me.bankAccount ? '적어 둠' : '비어 있음'} onPress={() => open({ kind: 'profile' })} />
           <Sep />
           <MenuRow label="알림" value={notifyOn ? '푸시 켬' : '꺼 둠'} onPress={() => open({ kind: 'notify' })} />
-          <Sep />
-          <MenuRow label="구독 관리" value={isPro(group) ? '구독 중' : '무료'} onPress={() => open({ kind: 'plan' })} />
+          {SUBSCRIPTION_ON ? (<><Sep /><MenuRow label="구독 관리" value={isPro(group) ? '구독 중' : '무료'} onPress={() => open({ kind: 'plan' })} /></>) : null}
           {manager ? (
             <>
               <Sep />

@@ -34,6 +34,14 @@ export const EAS_PROJECT_ID =
  */
 export const LEGAL_BASE = extra.legalBase || 'https://api.j-curve.co.kr/v1/chongmunim/cm/legal';
 
+/**
+ * 구독을 파는가 — `app.json` `extra.subscriptionOn`(참일 때만). 첫 판은 **끈다**(2026-09-24 대표님 「구독 빼고 무료 먼저」): 스토어에
+ * 구독 상품이 없는데 결제를 누르면 심사에서 실패로 보인다(2.1 · 2.3). 끄면 설정의 구독 카드 · 「구독 관리」 줄이 사라지고, 구독 안내 창은
+ * 「곧 열려요」만 보인다(`src/screens/Plan.tsx`). **값은 OTA 로 켤 수 있다** — `extra` 는 업데이트 매니페스트에 실려 온다.
+ * 기능을 열지 잠글지는 앱이 아니라 서버의 모임 `plan` 이 정한다(`isPro`, 서버도 `plan_required` 로 따로 막는다).
+ */
+export const SUBSCRIPTION_ON: boolean = (Constants.expoConfig?.extra as { subscriptionOn?: unknown } | undefined)?.subscriptionOn === true;
+
 /** RevenueCat 공개 SDK 키(appl_… · goog_…) — 비어 있으면 결제 단추 대신 「준비하고 있어요」(`src/billing.ts`) */
 export const BILLING_KEY: string = (Platform.OS === 'ios' ? extra.revenuecatIos : extra.revenuecatAndroid) || '';
 
