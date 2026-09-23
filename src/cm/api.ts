@@ -68,6 +68,9 @@ export const getReceipt = async (gid: number, id: string) => toReceipt(await api
  | 보낸 영수증을 서버가 기록한다(ReceiptJobs) — 올린 작업을 맡기면 워커가 다 읽는 순간 서버가 옮긴다. 「기록 기다림」은 서버 목록이라
  | 폰을 바꿔도 남는다. 나중에 기록 묶음은 다 읽히면 푸시.
  */
+/** 「영수증 분석」 입구가 받아 준 장을 장부에 맡긴다(2026-09-24~) — 응답 `jobId` 칸에 receiptId 가 들어온다 */
+export const registerReceipt = async (gid: number, receiptId: string) => toPendingJob((await api.post<{ job?: unknown }>(g(gid, 'receipts/jobs'), { receiptId })).job);
+/** 앞선 판(공용 판독)이 폰에 남긴 작업 번호 — 업데이트 순간 올리던 장만 이 길로 맡긴다(서버는 둘 다 받는다) */
 export const registerReceiptJob = async (gid: number, jobId: string) => toPendingJob((await api.post<{ job?: unknown }>(g(gid, 'receipts/jobs'), { jobId })).job);
 export const pendingReceipts = async (gid: number) => toPendingJobs(await api.get(g(gid, 'receipts/pending')));
 export const dismissReceiptJob = async (gid: number, jobId: string): Promise<void> => { await api.post(g(gid, `receipts/jobs/${jobId}/dismiss`)); };
