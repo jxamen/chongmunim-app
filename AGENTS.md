@@ -11,8 +11,12 @@ App Store Connect 개인정보 항목도 **「추적 안 함」** 으로 낸다.
 Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_adid_collection_enabled: false` 등) + app.json
 `android.blockedPermissions` 로 `AD_ID` 권한과 Privacy Sandbox 광고 권한(`ACCESS_ADSERVICES_AD_ID` · `ATTRIBUTION`, Firebase Analytics 가 끌고 옴)을 뺀다(네이티브 빌드부터 적용). Play Console 「광고 ID」 선언은 **「사용 안 함」**.
 약관 · 개인정보처리방침 · 계정 삭제 안내는 서버 페이지 `https://api.j-curve.co.kr/v1/chongmunim/cm/legal/{terms,privacy,delete}`
-(jcurve-api `resources/views/chongmunim/legal`, 앱 `extra.legalBase`). 스토어의 개인정보 · 계정 삭제 URL 도 이 주소를 쓴다.
-방침 문구는 실제 동작(탈퇴 = `Club::forget`, 모임 안 공개 범위)과 맞춰야 한다 — 동작을 바꾸면 방침도 고친다.
+(앱 `extra.legalBase`). 스토어의 개인정보 · 계정 삭제 URL 도 이 주소를 쓴다 — **주소는 바꾸지 않는다.**
+**약관 · 방침의 정본은 어드민**(`legal_docs`, 2026-09-23 대표님 「앱은 항상 어드민 약관을 사용」) — **문안을 고칠 곳은 어드민**이고
+서버 페이지(`ChongmunimLegalController`)가 그것을 읽어 그린다. 시행일은 문서의 `published_at` 에서 온다(미리 등록하면 그날 바뀐다).
+어드민을 못 읽으면(문서 없음 · 표 없음 · DB 장애) `resources/views/chongmunim/legal/{terms,privacy}.blade.php` 붙박이로 열고 로그를
+남긴다 — 스토어 심사가 여는 주소라 빈 화면 · 404 · 500 이 되면 안 된다. 계정 삭제 안내는 어드민 문서 대상이 아니라 붙박이 그대로다.
+방침 문구는 실제 동작(탈퇴 = `Club::forget`, 모임 안 공개 범위)과 맞춰야 한다 — 동작을 바꾸면 **어드민 문안도** 고친다.
 기획은 `docs/01-기획.md`, 화면 시안은 `design/chongmunim-app.html`, 캐릭터는 `design/receipt_mascot_30_transparent/`.
 
 ## 확정값
@@ -209,7 +213,8 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
   가는 길은 iframe Picker(아이폰에서 쿠키로 먹통) → 로그인 화면이 곧 고르기(`trigger_onepick`)였고, 마지막 판은 동작했지만 쓰기 불편했다.
   남은 길은 **폰에 있는 파일 고르기**와 **공개된 구글 시트 링크**(OAuth 없이 export 로 받는다) — 그래서 서버가 구글에 요구하는 범위에
   `drive.file` 이 **없다**(동의 화면 게시에 민감 범위 심사가 붙지 않는다)
-- **어드민 약관·개인정보 기본본** — 등록 안 함. 총무님 전용 문안은 서버 페이지(`cm/legal/*`, 위 머리말)로 대신한다
+- ~~어드민 약관·개인정보 기본본 — 등록 안 함~~ → **등록했다**(2026-09-23 대표님 결정으로 뒤집혔다). 이용약관 `legal_docs` #38 ·
+  개인정보처리방침 #37 — 서버 페이지 본문을 그대로 옮긴 것이다(배포가 태그를 뗀 글자열까지 대조). **문안을 고칠 곳은 어드민**, 위 머리말 참고
 - **출시 전 정리 — 대표님께 모아서 여쭌다**(되돌리기 어려운 일은 임의로 하지 않는다):
   ① 시험 모임 「결제 시험」(운영 `jc_chongmunim.cm_groups` id 8, 2026-09-23 구독 시험용) ② 그 모임의 sandbox 구독 행(`cm_subscriptions` id 1,
   member 8 = ourteam.kr) — 만료 상태라 해는 없지만 실제 결제 기록과 섞이지 않게 지울지
