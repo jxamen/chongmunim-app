@@ -357,11 +357,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    | **밖에 다녀온 것만** 그렇게 본다(`createReturnWatch`, @jcurve/auth 2.2.0) — iOS 구글 · 웹 로그인은 창을 앱 위에 띄워
    | inactive ↔ active 만 오가는데, 그걸 「돌아왔다」로 보면 계정 고르는 사이에 로그인을 버린다(2026-09-23 머니트리 제보로
    | 총무님 · 꿀꿀 · 당근 · 용돈캡슐 · 캐시팡이 같은 자리를 고쳤고, 그 판단이 패키지로 들어갔다). 여기서 팝업은 띄우지 않는다.
-   | 시계도 패키지가 맡는다(2.3.0) — 다녀올 때마다 앞서 건 것을 끄고 새로 건다. 안 끄면 옛 시계가 뒤늦게 울려 **그 사이 시작된
+   | 시계도 패키지가 맡는다(2.4.0) — 다녀올 때마다 앞서 건 것을 끄고 새로 건다. 안 끄면 옛 시계가 뒤늦게 울려 **그 사이 시작된
    | 정상 로그인을 놓아 버린다**. `busy` 는 값이 아니라 함수다 — 시계가 터질 때의 상태를 읽어야 한다(`busyRef.current`).
+   | 로그인을 누를 때 `started()` 를 불러 **막 누른 참은 봐준다**(3초) — 돌아온 직후 바로 눌렀으면 대기 중인 시계가 방금 시작한
+   | 로그인을 끊는다.
    */
   const busyRef = useRef(false);
   busyRef.current = busy;
+  const watchRef = useRef<{ started: () => void } | null>(null);
   useEffect(() => {
     const watch = createReturnWatch({
       busy: () => busyRef.current,
@@ -371,9 +374,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         track('login_cancel', { reason: 'returned_without_result' });
       },
     });
+    watchRef.current = watch;
     const sub = AppState.addEventListener('change', (st) => { watch.saw(st); });
 
-    return () => { sub.remove(); watch.stop(); };
+    return () => { sub.remove(); watch.stop(); watchRef.current = null; };
   }, []);
 
   /*
@@ -404,6 +408,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const signInWith = useCallback(async (p: Provider) => {
     if (busyRef.current) return;
     setBusy(true);
+    watchRef.current?.started();   // 막 누른 참 — 돌아온 직후 눌렀어도 이 로그인을 끊지 않는다
     track('login_tap', { provider: p });
     try {
       await handleLogin(await auth.signIn(p), p);
@@ -421,6 +426,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const guestStart = useCallback(async () => {
     if (busyRef.current) return;
     setBusy(true);
+    // 여기도 봐주기를 켠다 — 도는 중에 시계가 터져 단추가 풀리면 또 눌러 둘러보기 회원이 둘 생긴다(`signInGuest` 는 부를 때마다 만든다)
+    watchRef.current?.started();
     track('guest_tap');
     try {
       const r = await signInGuest();
