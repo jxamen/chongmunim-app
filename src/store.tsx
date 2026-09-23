@@ -9,10 +9,10 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
-import { autoApply, onUpdateReady, startupSettled } from '@jcurve/updates';
+import { autoApply, checkStoreVersion, onUpdateReady, startupSettled } from '@jcurve/updates';
 import * as storage from './storage';
 import {
-  completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
+  api, completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
   type AuthResult, type Member, type Session,
 } from './api';
 import { auth, createReturnWatch, isCancel, setServerProviders, signInGuest, type Provider } from './auth';
@@ -295,6 +295,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     pendingLink.current = null;
     void openLink(u);
   }, [phase, openLink]);
+
+  /*
+   | 스토어 업데이트(강제·권장) — 어드민 「앱 관리」의 최소 설치 · 권장 버전을 `app/version` 으로 읽는다
+   | (@jcurve/updates 2.6). 최소보다 낮으면 닫을 수 없는 창, 권장보다 낮으면 「나중에」가 있는 창.
+   | 강제 창은 언제든 뜨고, **권유 창은 로그인 뒤 · 모임 화면에 있고 로그인 중이 아닐 때만** 띄운다(가입 이탈).
+   | `app/version` 은 앱 토큰만 받으므로 로그인 전에도 부른다(auth = false).
+   */
+  useEffect(() => checkStoreVersion({
+    fetch: () => api.get('app/version', false),
+    canRecommend: () => live.current.signedIn && live.current.phase === 'main' && !auth.isAuthorizing(),
+  }), []);
 
   /* ── 부팅 ── */
   useEffect(() => {
