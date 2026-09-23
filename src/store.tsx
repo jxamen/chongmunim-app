@@ -357,14 +357,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    | **밖에 다녀온 것만** 그렇게 본다(`createReturnWatch`, @jcurve/auth 2.2.0) — iOS 구글 · 웹 로그인은 창을 앱 위에 띄워
    | inactive ↔ active 만 오가는데, 그걸 「돌아왔다」로 보면 계정 고르는 사이에 로그인을 버린다(2026-09-23 머니트리 제보로
    | 총무님 · 꿀꿀 · 당근 · 용돈캡슐 · 캐시팡이 같은 자리를 고쳤고, 그 판단이 패키지로 들어갔다). 여기서 팝업은 띄우지 않는다.
+   |
+   | 다녀올 때마다 **앞서 건 시계를 끈다** — 2.5초 안에 두 번 드나들면 먼저 건 것이 살아 있어, 그게 터질 때 아직 로그인 중이면
+   | 진행 중인 로그인을 버린다. 패키지 2.3.0 의 `createReturnWatch({ busy, onStuck })` 가 이것까지 맡으니, 그 판으로 올릴 때
+   | 이 시계는 지운다(2026-09-23 — 자산이 아직 안 올라와 그때까지 앱이 들고 있는다).
    */
   const busyRef = useRef(false);
   busyRef.current = busy;
   useEffect(() => {
     const watch = createReturnWatch();
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const sub = AppState.addEventListener('change', (st) => {
       if (!watch.saw(st)) return;
-      setTimeout(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
         if (!busyRef.current) return;
         auth.abandon();
         setBusy(false);
@@ -372,7 +378,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }, 2500);
     });
 
-    return () => sub.remove();
+    return () => { if (timer) clearTimeout(timer); sub.remove(); };
   }, []);
 
   /*
