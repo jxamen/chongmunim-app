@@ -121,6 +121,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [group, setGroup] = useState<Group | null>(null);
+  const groupNow = useRef<Group | null>(null);   // 렌더 밖(앱이 앞으로 올 때)에서 지금 모임을 읽는다
+  groupNow.current = group;
   const [theme, setThemeState] = useState<ThemeName>('mint');
   const [tab, setTab] = useState<Tab>('home');
   const [pages, setPages] = useState<Page[]>([]);
@@ -400,6 +402,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (st === 'active') {
         void notify.clear();
         void push.register();   // 기기 설정에서 나중에 허용했으면 이제 올라간다(같은 토큰은 한 실행에 한 번만)
+        /*
+         | 모임을 조용히 다시 받는다 — 서버가 plan 을 바꾸면(무료 개방 free_open · 다시 잠금) 앞으로 올 때 맞는다. 안 받으면 켤 때의
+         | 값에 머물러, 설정은 「구독 중」인데 영수증은 「무료는 한 번에 한 장」인 채였다(2026-09-24 앱빌드 A32 — 개방 전부터 켜 둔 앱).
+         */
+        const g = groupNow.current;
+        if (g) void cm.getGroup(g.id).then((fresh) => { if (groupNow.current?.id === fresh.id) setGroup(fresh); }).catch(() => undefined);
       } else scheduleRemind();
     });
 
