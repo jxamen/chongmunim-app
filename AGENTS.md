@@ -99,21 +99,23 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 
 ## 공용 패키지 (GitHub 릴리스 주소로 설치 — API 문서 §0-B-1)
 
-`@jcurve/auth` 2.1.2 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
+`@jcurve/auth` 2.3.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
 릴리스 파일 주소를 적는다(공개 저장소라 토큰 없이 어디서든 받는다). 예전 `vendor/*.tgz`(`file:`)는 공개 저장소에 없어 클론만으로는 설치가 안 됐다.
 API 요청 헤더의 OTA 판은 앱이 만들지 않고 `otaHeaders()`(updates 2.5.1)를 쓴다.
 `@jcurve/ocr` 1.0.0 의 업로드는 Expo 57 에서 `{uri,name,type}` 이 깨진다 — 앱의 `post` 가 `expo-file-system` 의
 `File` 로 다시 싼다(영테크 `src/receipt/client.ts` 와 같은 수정, `src/ocr.ts`).
 
-`@jcurve/auth` 의 **「로그인이 안 끝났으면 놓아 주기」는 `background` 를 거쳐 돌아온 것만** 센다(`src/loginRescue.ts`).
+`@jcurve/auth` 의 **「로그인이 안 끝났으면 놓아 주기」는 `background` 를 거쳐 돌아온 것만** 센다(`store.tsx`).
 iOS 구글 · 웹 로그인은 앱을 떠나지 않고 창을 위에 띄워 `inactive ↔ active` 만 오가므로, 아무 `active` 에서나 놓아 주면
 **계정 고르는 중인 로그인을 버린다**(2026-09-23 머니트리 아이폰 먹통 제보 → 총무님 · 꿀꿀 · 당근 · 용돈캡슐 · 캐시팡 같은 자리 수정).
 **중간의 `inactive` 로 깃발을 지우면 안 된다** — iOS 는 돌아올 때도 `inactive → active` 로 알려서, 그러면 정작 아이콘으로
 나갔다 온 것을 놓쳐 원래 버그(로그인 버튼 영구 먹통)가 되살아난다. 놓아 줄 때 **팝업(RN Modal)을 띄우지 않는다** — 구글 창 위에
 올리려다 보이지 않는 막이 남는다(총무님은 추적 한 줄만 남기고, `Toast` 는 `pointerEvents="none"`).
-→ 이 판단은 **`@jcurve/auth` 2.2.0 `createReturnWatch()`** 가 한다(2026-09-23 — 총무님 지적이 반영돼 패키지로 들어갔다).
-앱은 `src/auth.ts` 에서 그것을 내보내고 `store.tsx` 가 `watch.saw(st)` 로 쓴다. 앱마다 따로 만들던 판단(`loginRescue.ts`)은 지웠다 —
-시험도 패키지가 들고 있다. 2.2.0 은 **순수 JS** 라 네이티브 빌드 없이 OTA 로 나간다.
+→ 이 판단과 **시계까지** `@jcurve/auth` **2.3.0 `createReturnWatch({ busy, onStuck })`** 가 한다(2026-09-23 — 총무님 지적이 반영돼
+패키지로 들어갔다). 앱은 `src/auth.ts` 에서 내보내고 `store.tsx` 가 `watch.saw(st)` 만 부른다(떠날 때 `watch.stop()`).
+앱마다 따로 만들던 판단(`loginRescue.ts`)과 시계는 지웠다 — 시험도 패키지가 들고 있다. **순수 JS** 라 OTA 로 나간다.
+`busy` 는 **값이 아니라 함수**(`() => busyRef.current`) — 시계가 터질 때의 상태를 읽어야 한다. 값을 넘기면 렌더 시점 값이 붙잡혀
+고쳐도 안 고쳐진 것처럼 된다. 앞서 건 시계를 끄지 않으면 옛 시계가 뒤늦게 울려 **그 사이 시작된 정상 로그인을 놓아 버린다**.
 
 ## 콘솔 발급값 — 2026-09-22 (자동화 세션 기록)
 
