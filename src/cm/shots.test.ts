@@ -21,6 +21,10 @@ describe('확인 카드 — 영수증에서 읽은 값으로 채운다', () => {
     expect([f.date, f.time, f.amount]).toEqual(['2026-09-22', '', '']);
     expect(formFrom(rc({ paidAt: '2026-09-21 00:00:00' }), '2026-09-22').time).toBe('');
   });
+  it('상호가 merchant 에 없으면 store 로 — 「영수증 분석」 입구는 store 에만 줄 때가 있다(A32 「상호 없음」)', () => {
+    expect(formFrom(rc({ merchant: null, store: '시험문구 역삼점' }), '2026-09-22').merchant).toBe('시험문구 역삼점');
+    expect(formFrom(rc({ merchant: null, store: null }), '2026-09-22').merchant).toBe('');
+  });
 });
 
 describe('보낼 몸 — 못 보내는 카드는 null', () => {

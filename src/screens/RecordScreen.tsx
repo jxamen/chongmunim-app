@@ -151,9 +151,29 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
 
   const draftsRef = useRef(drafts);
   draftsRef.current = drafts;
+  /*
+   | 더 올릴 칸이 없으면 그 까닭 한 줄 — **찍기 · 고르기를 열기 전에** 본다. 전에는 찍은 뒤에야 세서 토스트 하나로 버렸는데,
+   | 스캐너가 닫히는 중이라 토스트가 안 보여 「조용히 돌아가고 서버에도 안 감」이 됐다(2026-09-24 앱빌드 A32). 안내는 고르기 화면에 남긴다.
+   */
+  const fullNote = (): string | null => {
+    if (maxShots - shotsRef.current.length - draftsRef.current.length > 0) return null;
+
+    return maxShots === 1
+      ? '기록을 기다리는 영수증을 먼저 적어 주세요 · 무료는 한 번에 한 장씩 올려요'
+      : `기록을 기다리는 영수증을 먼저 적어 주세요 · 한 번에 ${maxShots}장까지예요`;
+  };
+  /** 칸이 없으면 열지 않고 안내를 남긴다 — true 면 막혔다 */
+  const blocked = (): boolean => {
+    const why = fullNote();
+    if (!why) return false;
+    setNote(why);
+    setStep('pick');
+
+    return true;
+  };
   const take = (list: Picked[]) => {
     const room = maxShots - shotsRef.current.length - draftsRef.current.length;
-    if (room <= 0) { say(maxShots === 1 ? '무료는 한 번에 한 장이에요 · 먼저 기록하고 다음 장을 올려 주세요' : `한 번에 ${maxShots}장까지예요`); return; }
+    if (room <= 0) { blocked(); return; }
     if (list.length > room) {
       say(maxShots === 1 ? '무료는 한 번에 한 장이에요 · 첫 장만 골랐어요 · 여러 장은 구독에서' : `${maxShots}장까지만 올려요 · 나머지는 기록한 뒤에 다시 골라 주세요`);
     }
@@ -191,6 +211,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   const scan = async () => {
     setNote(null);
     setScanFailed(false);
+    if (blocked()) return;
     if (Platform.OS === 'web') { void album(); return; }
     // 안드로이드 첫 스캔 — 구글 플레이가 모듈을 받는다고 먼저 알린다(기기마다 한 번, 영테크와 같은 안내)
     if (Platform.OS === 'android' && (await storage.get('cm.scanIntro')) !== '1') { setIntro(true); return; }
@@ -219,6 +240,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   /** 일반 촬영 — 스캐너가 안 열릴 때(테두리 보정 없이 사진 그대로) */
   const plainCamera = async () => {
     setNote(null);
+    if (blocked()) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { setNote('카메라를 쓸 수 있게 허락해 주세요. 설정에서 바꿀 수 있어요'); return; }
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85, exif: false });
@@ -228,6 +250,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
 
   const album = async () => {
     setNote(null);
+    if (blocked()) return;
     const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'], allowsEditing: false, quality: 0.85, exif: false,
       allowsMultipleSelection: maxShots > 1, selectionLimit: maxShots, orderedSelection: true,
