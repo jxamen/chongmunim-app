@@ -28,7 +28,6 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 | scheme | `chongmunim` |
 | 앱 이름 | 총무님 |
 | API base | `https://api.j-curve.co.kr/v1/chongmunim` |
-| 앱 DB | `jc_chongmunim` |
 | 영수증 | 공용 OCR(`@jcurve/ocr`, `POST ocr/jobs`) → 총무님 전용 표 `cm_receipts` 로 옮겨 영구 보관 |
 | 글꼴 | **모든 글자 Pretendard**(v1.3.9, `assets/fonts` 400~900, 2026-09-22 사용자 결정). `Text` 는 react-native 가 아니라 `src/ui/kit` 것을 쓴다 — `fontWeight` 를 그 무게의 글꼴로 바꿔 그린다(`src/ui/font.ts`). 결산서 PDF·공개 장부 웹은 같은 판의 웹 글꼴(jsDelivr) |
 
@@ -75,7 +74,7 @@ Play              앱 ID 4972498678274145678 「총무님 - 스마트 모임 회
 - **한 사람의 구독 = 모임 하나**(스토어는 Apple ID 하나에 같은 그룹 구독을 하나만 준다). 다른 모임으로 옮기기는 된다(`move`, 떼인 모임은 무료).
   두 모임 이상을 받으려면 상품(자리)을 더 만든다
 - `plan_until` 이 비어 있는 pro 는 결제 없이 켠 것(끝 없음) — 운영에서 켜려면 plan 만 pro 로
-- 설정: 앱 `extra.revenuecatIos` · `revenuecatAndroid`(공개 SDK 키), 서버 `app_configs(20,'revenuecat')` = {secretKey, webhookAuth}
+- 설정: 앱 `extra.revenuecatIos` · `revenuecatAndroid`(공개 SDK 키), 비밀 키 · 웹훅 인증값은 서버에만
 - SDK(react-native-purchases)는 네이티브 모듈 — 넣은 빌드 전의 판에는 결제 단추 대신 「준비하고 있어요」(billingState)
 
 | 무료 | 구독 |
@@ -157,7 +156,7 @@ iOS 구글 · 웹 로그인은 앱을 떠나지 않고 창을 위에 띄워 `ina
 
 ## 콘솔 발급값 — 2026-09-22 (자동화 세션 기록)
 
-**공개값만 적는다.** client secret 은 서버 `app_configs.social` 에만 있고 앱에 넣지 않는다.
+**공개값만 적는다.** client secret 은 서버에만 있고 앱에 넣지 않는다.
 
 ```
 슬러그            chongmunim
@@ -165,7 +164,6 @@ iOS 구글 · 웹 로그인은 앱을 떠나지 않고 창을 위에 띄워 `ina
 어드민 app_id     20            (영수증 OCR ocr_enabled 켬)
 public_key        ZANRRxH3H7eoRYHIVc80eDE6WH7j1pPLHny5rK3T   ← app.json extra.publicKey (배포 세션 회신 2026-09-22)
 API base          https://api.j-curve.co.kr/v1/chongmunim
-DB                jc_chongmunim (배포 세션 생성 2026-09-22 — 공용 표 51 = jc_stamptech 와 같은 벌 + cm_* 14, apps.db_name 등록)
 
 카카오 앱 ID      1584900
 카카오 네이티브키 2e519559d34fa6fd107cf3a3f23cb284   ← app.json 두 곳(플러그인 nativeAppKey + extra.kakaoNativeAppKey)
@@ -197,7 +195,7 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
                   가격표에 ₩4,900 이 없어 **₩5,500**(태훈님 결정 — Play 도 같은 값). 앱 화면의 결제 단추는 스토어 priceString
   Play            서비스 계정 revenuecat-play@chongmunim-d7971 JSON 등록(자격 증명 Valid). 구독 chongmunim_pro · 기본 요금제 monthly(₩5,500,
                   자동 갱신, 유예 7일, 활성) → RC 권한 pro · 오퍼링 default $rc_monthly 에 연결(2026-09-22, 판매자 계정은 태훈님)
-  웹훅            …/v1/chongmunim/cm/revenuecat · 두 환경 · 모든 이벤트. 비밀 키(V1) · 웹훅 인증값은 배포가 app_configs 에(파일로 받음)
+  웹훅            …/v1/chongmunim/cm/revenuecat · 두 환경 · 모든 이벤트. 비밀 키(V1) · 웹훅 인증값은 서버에만
   Play 연동       서비스 계정에 pubsub.admin · monitoring.viewer, Play Console 총무님 앱에만 초대(재무 데이터 · 주문 및 구독 관리)
                   RTDN 토픽 projects/chongmunim-d7971/topics/Play-Store-Notifications — 테스트 알림 수신 확인(2026-09-22)
                   RC 자격 증명 3개 중 1개(package name not found)는 첫 AAB 업로드 뒤 다시 검사
@@ -218,11 +216,11 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
 
 ### 아직 없는 것
 
-- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴) · be3acc7 · 8cc44d6(장부 파일 가져오기), DB jc_chongmunim, cm_* 15 설치(cm_imports · cm_entries.import_id 포함).
+- 서버는 준비됨(2026-09-22 배포 세션) — 코드 jcurve-api 6d1cf88 · 1dc65ab · 6df8812 · 914f5a3(공개 장부 글꼴) · be3acc7 · 8cc44d6(장부 파일 가져오기), 앱 전용 표 설치.
   **어드민 앱 등록은 DB 를 만들지 않는다**(apps.db_name 도 안 채운다) — 새 앱은 서버에서 DB 생성 + 공용 표 migrate + db_name 등록을 따로 한다.
   스모크: `cm/groups` 401 · `auth/providers` 200 **`providers: []`** — 아래 SNS 키가 들어가야 로그인 버튼이 생긴다
-  푸시 발송 키(FCM V1)는 서버 `/www/jcurve/secrets/chongmunim-fcm.json` 에 있다(자동화 세션, project_id chongmunim-d7971 확인)
-- **어드민 SNS 로그인 키**(`app_configs.social`) — 카카오 REST 키·시크릿, 구글 웹 시크릿은 사람이 넣는다(자동화 세션은 시크릿을 옮기지 않는다)
+  푸시 발송 키(FCM V1)는 서버에만 있다(자동화 세션, project_id chongmunim-d7971 확인)
+- **어드민 SNS 로그인 키** — 카카오 REST 키·시크릿, 구글 웹 시크릿은 사람이 넣는다(자동화 세션은 시크릿을 옮기지 않는다)
 - ~~구글 OAuth 게시 상태가 「테스트 중」~~ — **프로덕션으로 게시했다**(2026-09-23 자동화). 확인(verification) 심사는 붙지 않았다 —
   드라이브를 빼서 **민감 · 제한 범위가 0** 이고 도메인도 10개 아래여서다(로고 없음). 이제 테스트 사용자가 아니어도 구글 로그인이 된다.
   웹 클라이언트의 리디렉션은 `…/auth/callback/google` 하나만 남았고(picker 주소 삭제), 브랜딩은 앱 이름 총무님 · 홈 `https://j-curve.co.kr/` ·
@@ -248,5 +246,5 @@ RevenueCat (2026-09-22 자동화 세션 — 프로젝트 「총무님」)
 - ~~어드민 약관·개인정보 기본본 — 등록 안 함~~ → **등록했다**(2026-09-23 대표님 결정으로 뒤집혔다). 이용약관 `legal_docs` #38 ·
   개인정보처리방침 #37 — 서버 페이지 본문을 그대로 옮긴 것이다(배포가 태그를 뗀 글자열까지 대조). **문안을 고칠 곳은 어드민**, 위 머리말 참고
 - **출시 전 정리 — 대표님께 모아서 여쭌다**(되돌리기 어려운 일은 임의로 하지 않는다):
-  ① 시험 모임 「결제 시험」(운영 `jc_chongmunim.cm_groups` id 8, 2026-09-23 구독 시험용) ② 그 모임의 sandbox 구독 행(`cm_subscriptions` id 1,
+  ① 시험 모임 「결제 시험」(운영 모임 id 8, 2026-09-23 구독 시험용) ② 그 모임의 sandbox 구독 행(`cm_subscriptions` id 1,
   member 8 = ourteam.kr) — 만료 상태라 해는 없지만 실제 결제 기록과 섞이지 않게 지울지
