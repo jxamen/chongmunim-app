@@ -59,7 +59,9 @@ EAS               projectId 12062288-a361-4804-b540-87bb4d0529b9 (owner matthew8
 Apple             번들 ID kr.co.jcurve.chongmunim(Sign in with Apple) · ASC Apple ID 6814784833 「총무님 - 스마트 모임 회비 장부」 · SKU chongmunim
 Play              앱 ID 4972498678274145678 「총무님 - 스마트 모임 회비 장부·정산」 · 무료(앱 안 구독)
 푸시              expo-notifications 채널 chongmunim · FCM V1 = Firebase chongmunim-d7971(서버 secrets/chongmunim-fcm.json)
-스토어 판         Play 내부 테스트 1.0.0 vc2(2026-09-23, 결제 한 바퀴 확인) — 그 뒤 판 · 심사 상태는 앱관리 확인 중(받으면 이 줄을 고친다)
+스토어 판(09-25)  App Store 1.0.0(빌드 3) 출시됨(READY_FOR_SALE) — 09-24 02:52 심사 제출 → 승인 즉시 자동 출시. **이 판에는 구독(인앱)이 없다**
+                  Play 내부 테스트 1.0.0(vc2) 「내부 테스터에게 제공됨」(09-22 21:39) · 비공개 · 프로덕션 판 없음 · 검토 중인 것 없음
+                  (App Bundle 은 vc2 하나). 안드로이드 AAB 업로드 · 프로덕션 제출은 대표님 답 없이 닫힌 [1107] 4번 — 아직 안 했다
 ```
 
 ## 구독 (2026-09-22 사용자 결정)
