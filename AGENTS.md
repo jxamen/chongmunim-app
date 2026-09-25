@@ -35,14 +35,14 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 ## 앱 정보 한눈에 — 2026-09-25 (공개값만)
 
 대표님 2026-09-25 「총무님 앱정보 다 기록해 놔」. 감자밭 · 에그머니 `AGENTS.md` 와 같은 순서로 모았다. 자세한 경위는 아래 「콘솔 발급값」.
-**비밀 값(카카오 REST 키 · 구글 웹 시크릿 · RC V1 비밀 키 · 웹훅 인증값 · FCM 서비스 계정)은 적지 않는다** — 서버 `app_configs` · `/www/jcurve/secrets/` 에만 있다.
+**비밀 값(카카오 REST 키 · 구글 웹 시크릿 · RC V1 비밀 키 · 웹훅 인증값 · FCM 서비스 계정)은 적지 않는다** — 서버에만 있다.
 
 ```
 슬러그 · 스킴     chongmunim / chongmunim://
 번들 · 패키지     kr.co.jcurve.chongmunim (iOS · Android 같음)
 앱 이름           총무님
 API base          https://api.j-curve.co.kr/v1/chongmunim
-어드민 app_id     20 · public_key 는 app.json extra.publicKey · 앱 DB jc_chongmunim
+어드민 app_id     20 · public_key 는 app.json extra.publicKey
 홈페이지 · 약관   https://j-curve.co.kr/ (OAuth 브랜딩 홈) · 약관 · 방침 · 계정 삭제 https://api.j-curve.co.kr/v1/chongmunim/cm/legal/{terms,privacy,delete}
                   (문안 정본은 어드민 legal_docs — 약관 #38 · 방침 #37)
 OTA               https://ota.j-curve.co.kr/chongmunim/manifest · 채널 production · 런타임 정책 appVersion(지금 1.0.0)
@@ -58,7 +58,7 @@ AdMob · SSV       없음 — 리워드 앱이 아니다(광고 · 포인트 · 
 EAS               projectId 12062288-a361-4804-b540-87bb4d0529b9 (owner matthew80) · 버전은 remote(autoIncrement)
 Apple             번들 ID kr.co.jcurve.chongmunim(Sign in with Apple) · ASC Apple ID 6814784833 「총무님 - 스마트 모임 회비 장부」 · SKU chongmunim
 Play              앱 ID 4972498678274145678 「총무님 - 스마트 모임 회비 장부·정산」 · 무료(앱 안 구독)
-푸시              expo-notifications 채널 chongmunim · FCM V1 = Firebase chongmunim-d7971(서버 secrets/chongmunim-fcm.json)
+푸시              expo-notifications 채널 chongmunim · FCM V1 = Firebase chongmunim-d7971(서비스 계정은 서버에만)
 스토어 판(09-25)  App Store 1.0.0(빌드 3) 출시됨(READY_FOR_SALE) — 09-24 02:52 심사 제출 → 승인 즉시 자동 출시. **이 판에는 구독(인앱)이 없다**
                   Play 내부 테스트 1.0.0(vc2) 「내부 테스터에게 제공됨」(09-22 21:39) · 비공개 · 프로덕션 판 없음 · 검토 중인 것 없음
                   (App Bundle 은 vc2 하나). 안드로이드 AAB 업로드 · 프로덕션 제출은 대표님 답 없이 닫힌 [1107] 4번 — 아직 안 했다
