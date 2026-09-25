@@ -103,7 +103,7 @@ Android 도 광고 ID 를 안 모은다 — `firebase.json`(`google_analytics_ad
 
 ## 공용 패키지 (GitHub 릴리스 주소로 설치 — API 문서 §0-B-1)
 
-`@jcurve/auth` 2.4.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.5.1 — `package.json` 에 github.com/jxamen/jcurve-packages
+`@jcurve/auth` 2.6.0 · `@jcurve/ocr` 1.0.0 · `@jcurve/notify` 1.2.0 · `@jcurve/updates` 2.6.0 — `package.json` 에 github.com/jxamen/jcurve-packages
 릴리스 파일 주소를 적는다(공개 저장소라 토큰 없이 어디서든 받는다). 예전 `vendor/*.tgz`(`file:`)는 공개 저장소에 없어 클론만으로는 설치가 안 됐다.
 API 요청 헤더의 OTA 판은 앱이 만들지 않고 `otaHeaders()`(updates 2.5.1)를 쓴다.
 `@jcurve/ocr` 1.0.0 의 업로드는 Expo 57 에서 `{uri,name,type}` 이 깨진다 — 앱의 `post` 가 `expo-file-system` 의

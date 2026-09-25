@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
-    "@jcurve/auth": "https://github.com/jxamen/jcurve-packages/releases/download/auth-v2.4.0/jcurve-auth-2.4.0.tgz",
+    "@jcurve/auth": "https://github.com/jxamen/jcurve-packages/releases/download/auth-v2.6.0/jcurve-auth-2.6.0.tgz",
     "@jcurve/notify": "https://github.com/jxamen/jcurve-packages/releases/download/notify-v1.2.0/jcurve-notify-1.2.0.tgz",
     "@jcurve/ocr": "https://github.com/jxamen/jcurve-packages/releases/download/ocr-v1.0.0/jcurve-ocr-1.0.0.tgz",
     "@jcurve/updates": "https://github.com/jxamen/jcurve-packages/releases/download/updates-v2.6.0/jcurve-updates-2.6.0.tgz",
