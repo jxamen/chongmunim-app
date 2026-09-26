@@ -485,17 +485,24 @@ const ymd = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{
 
 /**
  * 올린 파일 이름 — 아이폰은 한글 이름을 퍼센트로 싸서(「%E1%84%8B…」) 올리고, 글자도 자모가 풀린 꼴(NFD)이다(2026-09-26 앱빌드).
- * 풀고 모아(NFC) 보여 준다. 못 풀면 받은 그대로.
+ * 두 번 싸인 것(「%25E1…」)도 있어 %xx 가 남고 값이 바뀌는 동안 세 번까지 푼 뒤 모아(NFC) 보여 준다. 못 풀면 거기까지.
  */
-export function fileNameOf(v: unknown): string | null {
-  const s = str(v);
-  if (!s) return s;
+export function plainName(s: string): string {
   let out = s;
-  if (/%[0-9A-Fa-f]{2}/.test(s)) {
-    try { out = decodeURIComponent(s); } catch { out = s; }
+  for (let n = 0; n < 3 && /%[0-9A-Fa-f]{2}/.test(out); n++) {
+    let next = out;
+    try { next = decodeURIComponent(out); } catch { break; }
+    if (next === out) break;
+    out = next;
   }
 
   return out.normalize('NFC');
+}
+
+export function fileNameOf(v: unknown): string | null {
+  const s = str(v);
+
+  return s ? plainName(s) : s;
 }
 
 export function toImport(j: unknown): LedgerImport {

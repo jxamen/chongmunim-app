@@ -225,6 +225,7 @@ describe('올린 파일 이름', () => {
     expect(fileNameOf(raw)).toBe('모임장부.xlsx');
     expect(fileNameOf('회계장부.xlsx')).toBe('회계장부.xlsx');
     expect(fileNameOf('100%완료.xlsx')).toBe('100%완료.xlsx');
+    expect(fileNameOf(encodeURIComponent(encodeURIComponent('모임장부.xlsx'.normalize('NFD'))))).toBe('모임장부.xlsx');
     expect(fileNameOf(null)).toBeNull();
   });
 });

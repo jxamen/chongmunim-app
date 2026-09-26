@@ -11,6 +11,7 @@ import { Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ApiError } from '../api';
 import { ledgerExt, type LedgerExt } from './importRows';
+import { plainName } from './model';
 
 export type PickedLedger = { name: string; ext: LedgerExt; size: number | null; form: () => Promise<FormData> };
 
@@ -18,7 +19,9 @@ export type PickedLedger = { name: string; ext: LedgerExt; size: number | null; 
 export async function pickLedgerFile(): Promise<PickedLedger | null> {
   const r = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: false });
   if (r.canceled || !r.assets?.length) return null;
-  const a = r.assets[0];
+  const picked = r.assets[0];
+  // 아이폰은 이름을 퍼센트로 싸서 준다 — 풀어 둬야 캐시 사본을 만들 때 한 번 더 싸이지 않는다(2026-09-26)
+  const a = { ...picked, name: plainName(picked.name) };
   const ext = ledgerExt(a.name);
   if (ext === 'xls') throw new ApiError('old_excel', 0);
   if (!ext) throw new ApiError('bad_file', 0);
