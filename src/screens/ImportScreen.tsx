@@ -128,15 +128,16 @@ export function ImportScreen({ id }: { id: string }) {
 function Choose({ imp, onChosen, onCancel }: { imp: LedgerImport; onChosen: () => void; onCancel: () => void }) {
   const { group, fail } = useApp();
   const T = useT();
-  // 기본은 모두 켬 — 필요 없는 탭만 끈다
-  const [on, setOn] = useState<string[]>(() => imp.sheets.filter((x) => !x.hidden).map((x) => x.name)); // 엑셀에서 숨긴 탭은 꺼 둔 채로 시작
+  // 한 번에 탭 한 장만(2026-09-26 대표님 「시트를 1장짜리만 읽을 수 있게 해야겠다」) — 다른 탭은 다시 올려 하나씩. 처음엔 아무것도 안 고름
+  const [on, setOn] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const read = async () => {
     if (!group) return;
     setBusy(true);
     try {
-      await cm.chooseSheets(group.id, imp.id, imp.sheets.filter((x) => on.includes(x.name)).map((x) => x.name));
+      if (!on) return;
+      await cm.chooseSheets(group.id, imp.id, [on]);
       onChosen();
     } catch (e) {
       fail(e);
@@ -155,20 +156,20 @@ function Choose({ imp, onChosen, onCancel }: { imp: LedgerImport; onChosen: () =
             <Txt size="tiny" tone="sub" numberOfLines={1}>{imp.fileName ?? '구글 시트'}</Txt>
           </View>
         </View>
-        <Txt size="tiny" tone="sub">필요 없는 탭(요약 · 메모 등)은 빼면 더 빨리, 겹치지 않게 읽어요</Txt>
+        <Txt size="tiny" tone="sub">한 번에 탭 하나씩 가져와요. 다른 탭은 다 넣은 뒤 파일을 다시 올려 골라 주세요</Txt>
       </Card>
       <Card style={{ paddingVertical: 2 }}>
         {imp.sheets.map((x, n) => {
-          const picked = on.includes(x.name);
+          const picked = on === x.name;
 
           return (
             <View key={x.name}>
               {n ? <Sep /> : null}
-              <Pressable onPress={() => setOn((xs) => (picked ? xs.filter((y) => y !== x.name) : [...xs, x.name]))}
-                accessibilityRole="checkbox" accessibilityState={{ checked: picked }} style={[k.listrow, { gap: 10 }]}>
-                <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: picked ? T.deep : T.line, backgroundColor: picked ? T.deep : T.white,
+              <Pressable onPress={() => setOn(x.name)}
+                accessibilityRole="radio" accessibilityState={{ checked: picked }} style={[k.listrow, { gap: 10 }]}>
+                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: picked ? T.deep : T.line, backgroundColor: T.white,
                   alignItems: 'center', justifyContent: 'center' }}>
-                  {picked ? <Txt size="tiny" bold tone="white">✓</Txt> : null}
+                  {picked ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: T.deep }} /> : null}
                 </View>
                 <Txt bold numberOfLines={1} style={[k.grow, { opacity: picked ? 1 : 0.55 }]}>{x.name}</Txt>
                 {x.rows !== null ? <Txt size="small" tone="sub">{`약 ${x.rows}줄`}</Txt> : null}
@@ -177,7 +178,7 @@ function Choose({ imp, onChosen, onCancel }: { imp: LedgerImport; onChosen: () =
           );
         })}
       </Card>
-      <Btn label={on.length ? `${on.length}개 탭 읽기` : '읽을 탭을 골라 주세요'} disabled={on.length === 0} loading={busy} onPress={() => { void read(); }} />
+      <Btn label={on ? `「${on}」 탭 읽기` : '읽을 탭 하나를 골라 주세요'} disabled={!on} loading={busy} onPress={() => { void read(); }} />
       <Btn label="취소" tone="ghost" strong onPress={onCancel} />
     </Body>
   );
