@@ -159,7 +159,7 @@ function toPendingImport(v: unknown): Home['import'] {
   const status = i.status === 'choosing' || i.status === 'reading' || i.status === 'ready' ? i.status : null;
   if (!status || !str(i.id)) return null;
 
-  return { id: str(i.id) as string, status, fileName: str(i.fileName), rows: idOrNull(i.rows) };
+  return { id: str(i.id) as string, status, fileName: fileNameOf(i.fileName), rows: idOrNull(i.rows) };
 }
 
 export type MonthGroup = { direction: Direction; categoryId: number | null; name: string | null; count: number; sum: number; entries: Entry[] };
@@ -483,6 +483,21 @@ const IMPORT_STATUS: ImportStatus[] = ['choosing', 'reading', 'ready', 'failed',
 const dirOrNull = (v: unknown): Direction | null => (v === 'in' || v === 'out' ? v : null);
 const ymd = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
 
+/**
+ * 올린 파일 이름 — 아이폰은 한글 이름을 퍼센트로 싸서(「%E1%84%8B…」) 올리고, 글자도 자모가 풀린 꼴(NFD)이다(2026-09-26 앱빌드).
+ * 풀고 모아(NFC) 보여 준다. 못 풀면 받은 그대로.
+ */
+export function fileNameOf(v: unknown): string | null {
+  const s = str(v);
+  if (!s) return s;
+  let out = s;
+  if (/%[0-9A-Fa-f]{2}/.test(s)) {
+    try { out = decodeURIComponent(s); } catch { out = s; }
+  }
+
+  return out.normalize('NFC');
+}
+
 export function toImport(j: unknown): LedgerImport {
   const o = obj(obj(j).import);
   const p = o.preview ? obj(o.preview) : null;
@@ -492,7 +507,7 @@ export function toImport(j: unknown): LedgerImport {
     id: str(o.id) ?? '',
     status: IMPORT_STATUS.includes(o.status as ImportStatus) ? (o.status as ImportStatus) : 'failed',
     source: o.source === 'sheet' ? 'sheet' : 'file',
-    fileName: str(o.fileName),
+    fileName: fileNameOf(o.fileName),
     verdict: o.verdict === 'confirmed' || o.verdict === 'review' ? o.verdict : null,
     error: str(o.error),
     committed: num(o.committed),

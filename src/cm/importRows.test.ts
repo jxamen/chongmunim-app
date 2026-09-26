@@ -217,3 +217,14 @@ describe('묶기 — 행사 탭 · 앞말이 같은 항목', () => {
     expect(rows[5]).toEqual({ date: '2026-07-15', direction: 'out', amount: 60000, categoryName: '식비', eventName: '가을 체육대회', memo: '점심' });
   });
 });
+
+describe('올린 파일 이름', () => {
+  it('퍼센트로 싼 한글(NFD) 이름을 풀어 NFC 로', async () => {
+    const { fileNameOf } = await import('./model');
+    const raw = encodeURIComponent('모임장부.xlsx'.normalize('NFD'));
+    expect(fileNameOf(raw)).toBe('모임장부.xlsx');
+    expect(fileNameOf('회계장부.xlsx')).toBe('회계장부.xlsx');
+    expect(fileNameOf('100%완료.xlsx')).toBe('100%완료.xlsx');
+    expect(fileNameOf(null)).toBeNull();
+  });
+});
