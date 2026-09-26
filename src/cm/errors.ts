@@ -60,6 +60,7 @@ const TEXT: Record<string, string> = {
   bad_sheet_url: '구글 시트 링크가 아니에요. 시트의 「공유 › 링크 복사」로 받은 주소를 붙여 주세요',
   sheet_private: '시트를 열 수 없어요. 공유를 「링크가 있는 모든 사용자」로 바꾸거나, 파일로 내려받아 올려 주세요',
   sheet_unreachable: '구글 시트에 닿지 않아요. 잠시 뒤 다시 해 주세요',
+  one_sheet: '탭은 한 번에 하나만 고를 수 있어요. 다른 탭은 파일을 다시 올려 골라 주세요',
   bad_sheets: '고른 탭을 파일에서 찾지 못했어요. 새로 고침한 뒤 다시 골라 주세요',
   import_closed: '이미 넣었거나 그만둔 가져오기예요',
   import_not_done: '아직 넣지 않은 가져오기예요',
