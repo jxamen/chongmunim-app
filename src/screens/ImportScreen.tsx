@@ -92,7 +92,7 @@ export function ImportScreen({ id }: { id: string }) {
             </Txt>
           </Card>
           {/* 취소는 잘 보이게 — 진한 테두리(대표님 9/26 「분석중에 취소 기능도」) */}
-          <Btn label="취소" tone="ghost" style={{ borderWidth: 1.5, borderColor: T.ink }} onPress={() => { void cancel(); }} />
+          <Btn label="취소" tone="ghost" strong onPress={() => { void cancel(); }} />
         </Body>
       ) : imp.status === 'failed' ? (
         <Body>
@@ -129,7 +129,7 @@ function Choose({ imp, onChosen, onCancel }: { imp: LedgerImport; onChosen: () =
   const { group, fail } = useApp();
   const T = useT();
   // 기본은 모두 켬 — 필요 없는 탭만 끈다
-  const [on, setOn] = useState<string[]>(() => imp.sheets.map((x) => x.name));
+  const [on, setOn] = useState<string[]>(() => imp.sheets.filter((x) => !x.hidden).map((x) => x.name)); // 엑셀에서 숨긴 탭은 꺼 둔 채로 시작
   const [busy, setBusy] = useState(false);
 
   const read = async () => {
@@ -178,7 +178,7 @@ function Choose({ imp, onChosen, onCancel }: { imp: LedgerImport; onChosen: () =
         })}
       </Card>
       <Btn label={on.length ? `${on.length}개 탭 읽기` : '읽을 탭을 골라 주세요'} disabled={on.length === 0} loading={busy} onPress={() => { void read(); }} />
-      <Btn label="취소" tone="ghost" style={{ borderWidth: 1.5, borderColor: T.ink }} onPress={onCancel} />
+      <Btn label="취소" tone="ghost" strong onPress={onCancel} />
     </Body>
   );
 }
@@ -344,7 +344,7 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
         <Btn label={sum.count ? `${sum.count}건 장부에 넣기` : '넣을 줄을 골라 주세요'} disabled={sum.count === 0} loading={busy}
           onPress={() => setConfirm(true)} />
         {sum.noDate ? <Txt size="tiny" tone="warn" style={{ textAlign: 'center' }}>고른 줄 중 {sum.noDate}건은 날짜가 없어 빠져요</Txt> : null}
-        <Btn label="취소" tone="ghost" style={{ borderWidth: 1.5, borderColor: T.ink }} onPress={onCancel} />
+        <Btn label="취소" tone="ghost" strong onPress={onCancel} />
       </Body>
 
       <Ask open={confirm} mood="stack" title={`${sum.count}건을 넣을까요?`}

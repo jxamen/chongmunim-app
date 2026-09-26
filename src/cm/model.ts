@@ -475,7 +475,7 @@ export type LedgerImport = {
   preview: ImportPreview | null;
   currentOpening: { amount: number; date: string | null } | null;
   /** 파일의 탭 — choosing 일 때만 온다. rows 는 대략 줄 수 */
-  sheets: { name: string; rows: number | null }[];
+  sheets: { name: string; rows: number | null; hidden: boolean }[];
 };
 
 const IMPORT_STATUS: ImportStatus[] = ['choosing', 'reading', 'ready', 'failed', 'done', 'undone', 'canceled'];
@@ -499,7 +499,7 @@ export function toImport(j: unknown): LedgerImport {
     preview: p ? toPreview(p) : null,
     currentOpening: co ? { amount: num(co.amount), date: ymd(co.date) } : null,
     // 탭 고르기 필드 이름은 서버 확정본에 맞춰 여기서만 바꾼다(sheets[].name · rows)
-    sheets: arr(o.sheets).map((x) => ({ name: str(obj(x).name) ?? '', rows: idOrNull(obj(x).rows) })).filter((x) => x.name !== ''),
+    sheets: arr(o.sheets).map((x) => ({ name: str(obj(x).name) ?? '', rows: idOrNull(obj(x).rows), hidden: bool(obj(x).hidden) })).filter((x) => x.name !== ''),
   };
 }
 

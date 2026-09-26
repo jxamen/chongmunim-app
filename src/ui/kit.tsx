@@ -155,24 +155,26 @@ export function Pill({ label }: { label: string }) {
  * 인자를 받는 함수를 `onPress` 에 **직접 넘기지 않는다**(용돈캡슐 kit 규칙) — 터치 이벤트가 첫 인자로 들어간다.
  * 그래서 인자 없는 함수만 받는다.
  */
-export function Btn({ label, onPress, tone = 'main', loading, disabled, style, small }: {
+export function Btn({ label, onPress, tone = 'main', loading, disabled, style, small, strong }: {
   label: string; onPress: () => void; tone?: 'main' | 'ghost' | 'danger'; loading?: boolean; disabled?: boolean;
   style?: StyleProp<ViewStyle>; small?: boolean;
+  /** ghost 를 진한 글자 · 진한 테두리로 — 눈에 띄어야 하는 취소(2026-09-26 대표님이 옅은 「그만두기」를 못 찾으심) */
+  strong?: boolean;
 }) {
   const T = useT();
   const off = !!(disabled || loading);
   const bg = tone === 'ghost' ? T.white : off ? T.dim : tone === 'danger' ? T.danger : T.deep;
-  const fg = tone === 'ghost' ? (off ? T.dim : T.sub) : T.white;
+  const fg = tone === 'ghost' ? (off ? T.dim : strong ? T.ink : T.sub) : T.white;
 
   return (
     <Pressable
       onPress={() => { if (!off) onPress(); }}
       accessibilityRole="button" disabled={off}
       style={({ pressed }) => [s.btn, small && s.btnSmall, { backgroundColor: bg },
-        tone === 'ghost' && { borderWidth: 1, borderColor: T.line }, pressed && !off && s.pressed, style]}
+        tone === 'ghost' && { borderWidth: strong ? 1.5 : 1, borderColor: strong ? T.ink : T.line }, pressed && !off && s.pressed, style]}
     >
       {loading ? <ActivityIndicator color={fg} /> : (
-        <Text style={{ color: fg, fontSize: small ? F.small : F.body, fontWeight: tone === 'ghost' ? '600' : '800' }}>{label}</Text>
+        <Text style={{ color: fg, fontSize: small ? F.small : F.body, fontWeight: tone === 'ghost' && !strong ? '600' : '800' }}>{label}</Text>
       )}
     </Pressable>
   );

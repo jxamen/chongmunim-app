@@ -96,9 +96,9 @@ describe('가져오기 — 서버 표를 고르고 고칠 줄로', () => {
 
 describe('탭 고르기(choosing) — 서버가 여러 탭 파일이면', () => {
   it('상태와 탭 목록을 읽고, 이름 없는 탭은 버린다. 모르는 상태는 failed', () => {
-    const x = toImport({ import: { id: 'imp-2', status: 'choosing', sheets: [{ name: '9월', rows: 40 }, { name: '요약', rows: null }, { rows: 3 }, 'x'] } });
+    const x = toImport({ import: { id: 'imp-2', status: 'choosing', sheets: [{ name: '9월', rows: 40 }, { name: '요약', rows: null, hidden: true }, { rows: 3 }, 'x'] } });
     expect(x.status).toBe('choosing');
-    expect(x.sheets).toEqual([{ name: '9월', rows: 40 }, { name: '요약', rows: null }]);
+    expect(x.sheets).toEqual([{ name: '9월', rows: 40, hidden: false }, { name: '요약', rows: null, hidden: true }]);
     expect(toImport({ import: { id: 'imp-3', status: 'reading' } }).sheets).toEqual([]);
     expect(toImport({ import: { id: 'imp-4', status: 'thinking' } }).status).toBe('failed');
   });
