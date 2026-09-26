@@ -126,6 +126,8 @@ export const importSheet = async (gid: number, sheetUrl: string) => {
   return toImport(await api.upload(g(gid, 'imports'), form));
 };
 export const ledgerImport = async (gid: number, id: string) => toImport(await api.get(g(gid, `imports/${id}`)));
+/** 여러 탭 파일(choosing) — 고른 탭만 읽기 시작한다(서버가 reading 으로) */
+export const chooseSheets = (gid: number, id: string, names: string[]) => api.post(g(gid, `imports/${id}/sheets`), { names });
 export const commitImport = (gid: number, id: string, rows: CommitRow[], opening: { amount: number; date: string | null } | null) =>
   api.post<{ committed: number; newCategories: number; newEvents: number }>(g(gid, `imports/${id}/commit`), opening ? { rows, opening } : { rows });
 export const undoImport = (gid: number, id: string) => api.post<{ voided: number }>(g(gid, `imports/${id}/undo`));

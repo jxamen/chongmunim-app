@@ -130,8 +130,9 @@ export function HomeScreen() {
         {/* 가져오는 장부 파일 — 분석이 끝나면 여기서 알린다(기획 「가져오기는 관문이 아니라 보너스」) */}
         {h.import ? (
           <Soft pill={h.import.status === 'ready' && h.import.rows !== null ? `${h.import.rows}건` : undefined}
-            title={h.import.status === 'ready' ? '가져온 장부를 확인해 주세요' : '장부 파일을 읽고 있어요'}
-            sub={h.import.status === 'ready' ? `${h.import.fileName ?? '구글 시트'} · 확인한 줄만 넣어요` : '끝나면 여기서 알려 드려요 · 그동안 장부를 그대로 쓰셔도 돼요'}
+            title={h.import.status === 'ready' ? '가져온 장부를 확인해 주세요' : h.import.status === 'choosing' ? '가져올 탭을 골라 주세요' : '장부 파일을 읽고 있어요'}
+            sub={h.import.status === 'ready' ? `${h.import.fileName ?? '구글 시트'} · 확인한 줄만 넣어요`
+              : h.import.status === 'choosing' ? `${h.import.fileName ?? '구글 시트'} · 고른 탭만 읽어요` : '끝나면 여기서 알려 드려요 · 그동안 장부를 그대로 쓰셔도 돼요'}
             onPress={() => open({ kind: 'import', id: h.import!.id })} />
         ) : null}
 

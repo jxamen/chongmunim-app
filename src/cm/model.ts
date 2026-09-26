@@ -115,7 +115,7 @@ export type Home = {
   recent: Entry[];
   categories: Names;
   /** 가져오는 장부 파일 — 읽는 중이거나 확인을 기다리는 것(총무·관리자에게만 온다) */
-  import: { id: string; status: 'reading' | 'ready'; fileName: string | null; rows: number | null } | null;
+  import: { id: string; status: 'choosing' | 'reading' | 'ready'; fileName: string | null; rows: number | null } | null;
   /** 로컬 알림(`remind.ts`)이 쓸 셈 — 총무·관리자에게만 온다 */
   remind: { uncategorized: number; reconciled: boolean; duesUnpaid: number | null; events: { name: string; endsOn: string }[]; birthdays: string[] } | null;
   /** 다가오는 생일(14일 안) — 총무·관리자 · 구독 모임에만 온다 */
@@ -156,7 +156,7 @@ function toRemind(r: J): NonNullable<Home['remind']> {
 
 function toPendingImport(v: unknown): Home['import'] {
   const i = obj(v);
-  const status = i.status === 'reading' || i.status === 'ready' ? i.status : null;
+  const status = i.status === 'choosing' || i.status === 'reading' || i.status === 'ready' ? i.status : null;
   if (!status || !str(i.id)) return null;
 
   return { id: str(i.id) as string, status, fileName: str(i.fileName), rows: idOrNull(i.rows) };
@@ -443,7 +443,8 @@ export function toTidy(j: unknown): Tidy {
 
 /* ── 장부 파일 가져오기 ── */
 
-export type ImportStatus = 'reading' | 'ready' | 'failed' | 'done' | 'undone' | 'canceled';
+/** choosing = 여러 탭 파일, 읽을 탭을 고르기 기다림(서버 곧 — 없으면 바로 reading) */
+export type ImportStatus = 'choosing' | 'reading' | 'ready' | 'failed' | 'done' | 'undone' | 'canceled';
 
 /** 확인 표 한 줄 — 서버 `LedgerPreview` 가 워커 결과를 이 모임 말로 옮긴 것. `pick` 은 기본 선택일 뿐이다 */
 export type ImportRow = {
@@ -473,9 +474,11 @@ export type LedgerImport = {
   verdict: 'confirmed' | 'review' | null; error: string | null; committed: number; createdAt: string;
   preview: ImportPreview | null;
   currentOpening: { amount: number; date: string | null } | null;
+  /** 파일의 탭 — choosing 일 때만 온다. rows 는 대략 줄 수 */
+  sheets: { name: string; rows: number | null }[];
 };
 
-const IMPORT_STATUS: ImportStatus[] = ['reading', 'ready', 'failed', 'done', 'undone', 'canceled'];
+const IMPORT_STATUS: ImportStatus[] = ['choosing', 'reading', 'ready', 'failed', 'done', 'undone', 'canceled'];
 const dirOrNull = (v: unknown): Direction | null => (v === 'in' || v === 'out' ? v : null);
 const ymd = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
 
@@ -495,6 +498,8 @@ export function toImport(j: unknown): LedgerImport {
     createdAt: str(o.createdAt) ?? '',
     preview: p ? toPreview(p) : null,
     currentOpening: co ? { amount: num(co.amount), date: ymd(co.date) } : null,
+    // 탭 고르기 필드 이름은 서버 확정본에 맞춰 여기서만 바꾼다(sheets[].name · rows)
+    sheets: arr(o.sheets).map((x) => ({ name: str(obj(x).name) ?? '', rows: idOrNull(obj(x).rows) })).filter((x) => x.name !== ''),
   };
 }
 

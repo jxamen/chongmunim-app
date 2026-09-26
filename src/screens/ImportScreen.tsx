@@ -1,6 +1,7 @@
 /**
  * 쓰던 장부 파일 가져오기 — 확인 표(사용자 결정 2026-09-22 「b로 해」, 기획 「통째로 읽히게 하고 싶다면」).
  *
+ *   탭 고르기 → 여러 탭 파일이면 읽을 탭부터 고른다(서버 status 'choosing' 일 때만 — 대표님 9/26 「필요 없는 탭도 있었는데」)
  *   읽는 중   → 맥 워커가 푸는 동안 3초마다 묻는다. **나가도 된다** — 끝나면 홈 띠로 알린다(기획 「기다리는 동안 앱이 멈춰 있으면 안 된다」)
  *   못 읽음   → 이유와 대안(붙여넣기 · 기초 잔액)을 같이(「조용히 끝내는 것도 금물」)
  *   확인 표   → 원본 합계와 맞는지, 겹친 줄·이미 있는 줄·날짜 없는 줄은 꺼 둔 채로. 원본 항목 이름 단위로 이 모임 항목에 맞추고,
@@ -15,7 +16,7 @@ import { amountInput, readAmount, won } from '../cm/format';
 import { codeOf, errorText } from '../cm/errors';
 import type { Direction, ImportCheck, LedgerImport } from '../cm/model';
 import {
-  byMonth, created, draftsFrom, mapCategory, summary, targetOf, toCommit, toggle, update, type CategoryTarget, type Draft,
+  byMonth, created, draftsFrom, mapCategory, pickSheet, sheetsOf, summary, targetOf, toCommit, toggle, update, type CategoryTarget, type Draft,
 } from '../cm/importRows';
 import { Amount, Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
@@ -28,6 +29,7 @@ const PAGE = 150;
 
 export function ImportScreen({ id }: { id: string }) {
   const { group, back, say, fail, bump, setTab } = useApp();
+  const T = useT();
   const [imp, setImp] = useState<LedgerImport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -57,7 +59,7 @@ export function ImportScreen({ id }: { id: string }) {
     if (!group) return;
     try {
       await cm.cancelImport(group.id, id);
-      say('가져오기를 그만뒀어요');
+      say('가져오기를 취소했어요');
       bump();
       back();
     } catch (e) {
@@ -78,7 +80,9 @@ export function ImportScreen({ id }: { id: string }) {
   return (
     <View style={{ flex: 1 }}>
       <Head title="장부 가져오기" onClose={back} />
-      {imp.status === 'reading' ? (
+      {imp.status === 'choosing' ? (
+        <Choose imp={imp} onChosen={() => setTick((t) => t + 1)} onCancel={() => { void cancel(); }} />
+      ) : imp.status === 'reading' ? (
         <Body>
           <Card style={{ alignItems: 'center', gap: S.sm, paddingVertical: S.xl }}>
             <Mascot mood="search" size={96} />
@@ -87,7 +91,8 @@ export function ImportScreen({ id }: { id: string }) {
               {`「${title}」의 날짜·항목·금액을 풀고 있어요.\n보통 1~3분, 긴 장부는 더 걸려요.\n나가도 돼요 — 끝나면 홈에서 알려 드려요.`}
             </Txt>
           </Card>
-          <Btn label="그만두기" tone="ghost" onPress={() => { void cancel(); }} />
+          {/* 취소는 잘 보이게 — 진한 테두리(대표님 9/26 「분석중에 취소 기능도」) */}
+          <Btn label="취소" tone="ghost" style={{ borderWidth: 1.5, borderColor: T.ink }} onPress={() => { void cancel(); }} />
         </Body>
       ) : imp.status === 'failed' ? (
         <Body>
@@ -118,6 +123,66 @@ export function ImportScreen({ id }: { id: string }) {
   );
 }
 
+/* ── 탭 고르기 ── */
+
+function Choose({ imp, onChosen, onCancel }: { imp: LedgerImport; onChosen: () => void; onCancel: () => void }) {
+  const { group, fail } = useApp();
+  const T = useT();
+  // 기본은 모두 켬 — 필요 없는 탭만 끈다
+  const [on, setOn] = useState<string[]>(() => imp.sheets.map((x) => x.name));
+  const [busy, setBusy] = useState(false);
+
+  const read = async () => {
+    if (!group) return;
+    setBusy(true);
+    try {
+      await cm.chooseSheets(group.id, imp.id, imp.sheets.filter((x) => on.includes(x.name)).map((x) => x.name));
+      onChosen();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Body>
+      <Card style={{ gap: S.sm }}>
+        <View style={[k.row, { gap: 10 }]}>
+          <Mascot mood="thinking" size={52} />
+          <View style={k.grow}>
+            <Txt bold size="head">가져올 탭을 골라 주세요</Txt>
+            <Txt size="tiny" tone="sub" numberOfLines={1}>{imp.fileName ?? '구글 시트'}</Txt>
+          </View>
+        </View>
+        <Txt size="tiny" tone="sub">필요 없는 탭(요약 · 메모 등)은 빼면 더 빨리, 겹치지 않게 읽어요</Txt>
+      </Card>
+      <Card style={{ paddingVertical: 2 }}>
+        {imp.sheets.map((x, n) => {
+          const picked = on.includes(x.name);
+
+          return (
+            <View key={x.name}>
+              {n ? <Sep /> : null}
+              <Pressable onPress={() => setOn((xs) => (picked ? xs.filter((y) => y !== x.name) : [...xs, x.name]))}
+                accessibilityRole="checkbox" accessibilityState={{ checked: picked }} style={[k.listrow, { gap: 10 }]}>
+                <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: picked ? T.deep : T.line, backgroundColor: picked ? T.deep : T.white,
+                  alignItems: 'center', justifyContent: 'center' }}>
+                  {picked ? <Txt size="tiny" bold tone="white">✓</Txt> : null}
+                </View>
+                <Txt bold numberOfLines={1} style={[k.grow, { opacity: picked ? 1 : 0.55 }]}>{x.name}</Txt>
+                {x.rows !== null ? <Txt size="small" tone="sub">{`약 ${x.rows}줄`}</Txt> : null}
+              </Pressable>
+            </View>
+          );
+        })}
+      </Card>
+      <Btn label={on.length ? `${on.length}개 탭 읽기` : '읽을 탭을 골라 주세요'} disabled={on.length === 0} loading={busy} onPress={() => { void read(); }} />
+      <Btn label="취소" tone="ghost" style={{ borderWidth: 1.5, borderColor: T.ink }} onPress={onCancel} />
+    </Body>
+  );
+}
+
 /* ── 확인 표 ── */
 
 function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: LedgerImport) => void; onCancel: () => void }) {
@@ -127,6 +192,9 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
   const p = imp.preview!;
   const cats = useLoad((gid) => cm.categories(gid));
   const [drafts, setDrafts] = useState<Draft[]>(() => draftsFrom(p));
+  // 탭별 켜기/끄기 — 탭이 둘 이상일 때만(CSV · PDF 는 탭이 없다)
+  const sheets = useMemo(() => sheetsOf(drafts), [drafts]);
+  const [offSheets, setOffSheets] = useState<string[]>([]);
   const [shown, setShown] = useState(PAGE);
   const [editing, setEditing] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -195,6 +263,28 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
 
         {p.checks.length ? <Soft tone="warn" title="원본과 다른 곳" sub={p.checks.map(checkText).join('\n')} /> : null}
 
+        {sheets.length > 1 ? (
+          <Card style={{ gap: S.sm }}>
+            <View>
+              <Txt bold>탭 고르기</Txt>
+              <Txt size="tiny" tone="sub">필요 없는 탭은 눌러서 통째로 빼요</Txt>
+            </View>
+            <View style={[k.row, k.wrap, { gap: 6 }]}>
+              {sheets.map((x) => {
+                const off = offSheets.includes(x.name);
+
+                return (
+                  <Chip key={x.name} label={`${x.name} ${x.count}줄`} tone={off ? 'dim' : 'on'}
+                    onPress={() => {
+                      setOffSheets((xs) => (off ? xs.filter((y) => y !== x.name) : [...xs, x.name]));
+                      setDrafts((ds) => pickSheet(ds, p.rows, x.name, off));
+                    }} />
+                );
+              })}
+            </View>
+          </Card>
+        ) : null}
+
         {p.opening ? (
           <Card style={{ gap: S.sm }}>
             <View style={[k.row, { gap: S.sm }]}>
@@ -254,7 +344,7 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
         <Btn label={sum.count ? `${sum.count}건 장부에 넣기` : '넣을 줄을 골라 주세요'} disabled={sum.count === 0} loading={busy}
           onPress={() => setConfirm(true)} />
         {sum.noDate ? <Txt size="tiny" tone="warn" style={{ textAlign: 'center' }}>고른 줄 중 {sum.noDate}건은 날짜가 없어 빠져요</Txt> : null}
-        <Btn label="그만두기" tone="ghost" onPress={onCancel} />
+        <Btn label="취소" tone="ghost" style={{ borderWidth: 1.5, borderColor: T.ink }} onPress={onCancel} />
       </Body>
 
       <Ask open={confirm} mood="stack" title={`${sum.count}건을 넣을까요?`}

@@ -76,6 +76,21 @@ export function update(ds: Draft[], i: number, patch: Partial<Pick<Draft, 'date'
   return ds.map((d) => (d.i === i ? { ...d, ...patch } : d));
 }
 
+/** 탭(원본 시트)별 줄 수 — 나온 차례대로. 탭 이름이 없는 줄(CSV·PDF)은 세지 않는다 */
+export function sheetsOf(ds: Draft[]): { name: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const d of ds) if (d.source.sheet) map.set(d.source.sheet, (map.get(d.source.sheet) ?? 0) + 1);
+
+  return [...map.entries()].map(([name, count]) => ({ name, count }));
+}
+
+/** 탭 하나를 통째로 — 끄면 모두 뺀다, 켜면 서버 기본 선택으로(겹침 · 이미 있음 · 날짜 없음은 꺼 둔 채) */
+export function pickSheet(ds: Draft[], base: ImportRow[], sheet: string, on: boolean): Draft[] {
+  const first = new Map(base.map((r) => [r.i, r.pick]));
+
+  return ds.map((d) => (d.source.sheet === sheet ? { ...d, pick: on ? first.get(d.i) === true : false } : d));
+}
+
 /** 고른 줄의 수·합. `noDate` 는 골랐지만 날짜가 없어 넣지 못하는 줄 */
 export function summary(ds: Draft[]): { count: number; in: number; out: number; noDate: number } {
   const s = { count: 0, in: 0, out: 0, noDate: 0 };

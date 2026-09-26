@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toImport } from './model';
-import { byMonth, created, draftsFrom, ledgerExt, mapCategory, sheetFileId, summary, targetOf, toCommit, toggle, update } from './importRows';
+import { byMonth, created, draftsFrom, ledgerExt, mapCategory, pickSheet, sheetFileId, sheetsOf, summary, targetOf, toCommit, toggle, update } from './importRows';
 
 // 서버 응답(LedgerPreview) 모양 그대로 — 테스트 「확인 표는 겹친 줄과 이미 있는 줄을 빼고…」와 같은 장부
 const server = {
@@ -74,6 +74,33 @@ describe('가져오기 — 서버 표를 고르고 고칠 줄로', () => {
 
   it('달별로 — 날짜순, 날짜 없는 줄은 맨 끝', () => {
     expect(byMonth(ds).map((m) => [m.key, m.rows.map((r) => r.i)])).toEqual([['2026-08', [9]], ['2026-09', [0, 1, 5]], ['', [6, 8]]]);
+  });
+
+  it('탭별로 — 끄면 그 탭 줄을 모두 빼고, 켜면 서버 기본 선택으로 돌아간다', () => {
+    expect(sheetsOf(ds)).toEqual([{ name: '9월', count: 4 }, { name: '가을체육대회', count: 1 }, { name: '8월', count: 1 }]);
+    const off = pickSheet(ds, imp.preview!.rows, '9월', false);
+    expect(off.filter((d) => d.source.sheet === '9월').every((d) => !d.pick)).toBe(true);
+    expect(summary(off)).toEqual({ count: 1, in: 0, out: 50000, noDate: 0 });
+    // 고친 줄(날짜 없던 6)을 켜 뒀어도 탭을 다시 켜면 서버 기본값 — 날짜 없는 줄은 꺼 둔 채
+    const on = pickSheet(toggle(off, 6), imp.preview!.rows, '9월', true);
+    expect(on.find((d) => d.i === 6)!.pick).toBe(false);
+    expect(summary(on)).toEqual(summary(ds));
+    // 겹친 줄만 있는 탭은 켜도 꺼진 채
+    expect(pickSheet(ds, imp.preview!.rows, '가을체육대회', true).find((d) => d.i === 8)!.pick).toBe(false);
+  });
+
+  it('탭 이름이 없는 파일(CSV·PDF)은 탭이 없다', () => {
+    expect(sheetsOf(ds.map((d) => ({ ...d, source: { ...d.source, sheet: null } })))).toEqual([]);
+  });
+});
+
+describe('탭 고르기(choosing) — 서버가 여러 탭 파일이면', () => {
+  it('상태와 탭 목록을 읽고, 이름 없는 탭은 버린다. 모르는 상태는 failed', () => {
+    const x = toImport({ import: { id: 'imp-2', status: 'choosing', sheets: [{ name: '9월', rows: 40 }, { name: '요약', rows: null }, { rows: 3 }, 'x'] } });
+    expect(x.status).toBe('choosing');
+    expect(x.sheets).toEqual([{ name: '9월', rows: 40 }, { name: '요약', rows: null }]);
+    expect(toImport({ import: { id: 'imp-3', status: 'reading' } }).sheets).toEqual([]);
+    expect(toImport({ import: { id: 'imp-4', status: 'thinking' } }).status).toBe('failed');
   });
 });
 
