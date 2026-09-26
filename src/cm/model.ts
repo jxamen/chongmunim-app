@@ -457,7 +457,8 @@ export type ImportRow = {
   /** sheet = 다른 시트에 같은 거래가 또 있음(한 번만 센다) · ledger = 이미 장부에 같은 날·같은 금액 */
   dup: 'sheet' | 'ledger' | null; dupOf: number | null; pick: boolean;
 };
-export type ImportCheck = { code: string; sheet: string | null; side: Direction | null; expected: number | null; got: number | null };
+/** range = 못 읽은 행 범위(「12~70」, chunk_unread 때만) */
+export type ImportCheck = { code: string; sheet: string | null; side: Direction | null; expected: number | null; got: number | null; range: string | null };
 export type ImportPreview = {
   verdict: 'confirmed' | 'review'; checks: ImportCheck[]; rows: ImportRow[];
   categories: { direction: Direction; name: string; categoryId: number | null; count: number; sum: number }[];
@@ -515,7 +516,8 @@ function toPreview(p: J): ImportPreview {
     checks: arr(p.checks).map((x) => {
       const k = obj(x);
 
-      return { code: str(k.code) ?? '', sheet: str(k.sheet), side: dirOrNull(k.side), expected: idOrNull(k.expected), got: idOrNull(k.got) };
+      // 워커는 검사 이름을 name 으로 싣기도 한다(chunk_unread — 2026-09-26 qwen) — code 가 없으면 name
+      return { code: str(k.code) ?? str(k.name) ?? '', sheet: str(k.sheet), side: dirOrNull(k.side), expected: idOrNull(k.expected), got: idOrNull(k.got), range: typeof k.rows === 'string' ? k.rows : null };
     }),
     rows: arr(p.rows).map((x): ImportRow | null => {
       const r = obj(x);

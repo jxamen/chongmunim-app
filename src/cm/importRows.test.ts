@@ -125,3 +125,14 @@ describe('구글 시트 링크 — 파일 id', () => {
     expect(sheetFileId('http://example.com')).toBeNull();
   });
 });
+
+describe('원본과 다른 곳 — 못 읽은 조각', () => {
+  it('워커가 name 으로 싣은 chunk_unread 와 행 범위를 읽는다', () => {
+    const x = toImport({ import: { id: 'imp-4', status: 'ready', preview: { verdict: 'review', rows: [], checks: [
+      { name: 'chunk_unread', sheet: '겨울수련회', rows: '12~70' },
+      { code: 'total_mismatch', sheet: '9월', side: 'out', expected: 1000, got: 900 },
+    ] } } });
+    expect(x.preview?.checks[0]).toMatchObject({ code: 'chunk_unread', sheet: '겨울수련회', range: '12~70' });
+    expect(x.preview?.checks[1]).toMatchObject({ code: 'total_mismatch', range: null });
+  });
+});

@@ -377,6 +377,8 @@ function checkText(c: ImportCheck): string {
   if (c.code === 'closing_mismatch') return `${where}차기이월 ${won(c.expected ?? 0)}원 · 계산하면 ${won(c.got ?? 0)}원`;
   if (c.code === 'rows_unaccounted') return `${where}금액이 있는데 못 읽은 줄이 있어요`;
   if (c.code === 'too_many_rows') return '줄이 너무 많아 앞부분만 읽었어요';
+  // 끝까지 못 읽어 빈칸으로 넘긴 조각 — 그 탭만 다시 올리면 된다(2026-09-26)
+  if (c.code === 'chunk_unread') return `${where}${c.range ? c.range + '행을' : '일부 줄을'} 읽지 못했어요 — 이 탭만 골라 다시 올려 주세요`;
 
   return where + '원본과 다른 곳이 있어요';
 }
