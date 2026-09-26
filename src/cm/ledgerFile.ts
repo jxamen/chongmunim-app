@@ -23,10 +23,10 @@ export async function pickLedgerFile(): Promise<PickedLedger | null> {
   if (ext === 'xls') throw new ApiError('old_excel', 0);
   if (!ext) throw new ApiError('bad_file', 0);
 
-  return { name: a.name, ext, size: typeof a.size === 'number' ? a.size : null, form: () => formFor(a, ext) };
+  return { name: a.name, ext, size: typeof a.size === 'number' ? a.size : null, form: () => formFor(a) };
 }
 
-async function formFor(a: DocumentPicker.DocumentPickerAsset, ext: LedgerExt): Promise<FormData> {
+async function formFor(a: DocumentPicker.DocumentPickerAsset): Promise<FormData> {
   const form = new FormData();
   if (Platform.OS === 'web') {
     if (!a.file) throw new ApiError('file_missing', 0);
@@ -37,8 +37,12 @@ async function formFor(a: DocumentPicker.DocumentPickerAsset, ext: LedgerExt): P
   const { File, Paths } = await import('expo-file-system');
   let file = new File(a.uri);
   if (!file.exists || file.size === 0) throw new ApiError('file_missing', 0);
-  // 서버는 올라온 이름의 확장자로 형식을 본다 — 캐시 사본 이름이 원래 이름과 다르면 원래 이름으로 한 번 더 옮겨 둔다
-  if (!file.name.toLowerCase().endsWith('.' + ext)) {
+  /*
+   | 서버는 올라온 이름의 확장자로 형식을 보고, 그 이름을 화면 제목으로 쓴다 — 캐시 사본 이름이 원래 이름과 다르면
+   | 원래 이름으로 한 번 더 옮겨 둔다. 아이폰 캐시 사본은 확장자는 맞고 이름이 UUID 라(「15D30376-….xlsx」, 2026-09-26 앱빌드)
+   | 확장자만 보면 UUID 가 그대로 올라갔다.
+   */
+  if (file.name !== a.name) {
     const named = new File(Paths.cache, a.name);
     if (named.exists) named.delete();
     await file.copy(named);
