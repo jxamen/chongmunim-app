@@ -5,7 +5,7 @@
  *   읽는 중   → 맥 워커가 푸는 동안 3초마다 묻는다. **나가도 된다** — 끝나면 홈 띠로 알린다(기획 「기다리는 동안 앱이 멈춰 있으면 안 된다」)
  *   못 읽음   → 이유와 대안(붙여넣기 · 기초 잔액)을 같이(「조용히 끝내는 것도 금물」)
  *   확인 표   → 원본 합계와 맞는지, 겹친 줄·이미 있는 줄·날짜 없는 줄은 꺼 둔 채로. 원본 항목 이름 단위로 이 모임 항목에 맞추고,
- *               줄을 눌러 날짜·금액·내용을 고친다. **고른 줄만** 넣는다
+ *               줄을 눌러 날짜·금액·내용을 고친다. **고른 줄만** 넣는다. 줄은 「행사 › 항목 › 세부」로 묶어 보인다(대표님 9/26)
  *   넣음      → 한 번에 되돌리기(지우지 않고 void — 장부 규칙 그대로)
  */
 import React, { useEffect, useMemo, useState } from 'react';
@@ -16,7 +16,8 @@ import { amountInput, readAmount, won } from '../cm/format';
 import { codeOf, errorText } from '../cm/errors';
 import type { Direction, ImportCheck, LedgerImport } from '../cm/model';
 import {
-  byMonth, created, draftsFrom, mapCategory, pickSheet, sheetsOf, summary, targetOf, toCommit, toggle, update, type CategoryTarget, type Draft,
+  bundle, bundlesOf, catsOf, created, draftsFrom, linkEvents, mapCategory, pickSheet, sheetsOf, summary, targetOf, toCommit, toggle, update,
+  type CategoryTarget, type Draft,
 } from '../cm/importRows';
 import { Amount, Ask, Body, Btn, Card, Chip, Choices, Failed, Field, Head, Loading, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
@@ -192,11 +193,16 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
   const kb = useKeyboardPad();
   const p = imp.preview!;
   const cats = useLoad((gid) => cm.categories(gid));
-  const [drafts, setDrafts] = useState<Draft[]>(() => draftsFrom(p));
+  const evs = useLoad((gid) => cm.events(gid));
+  // 묶기 — 행사 탭은 그 행사로, 앞말이 같은 항목은 앞말 하나로(대표님 9/26)
+  const [drafts, setDrafts] = useState<Draft[]>(() => bundle(draftsFrom(p)));
+  // 이 모임에 같은 이름 행사가 있으면 그 행사로
+  useEffect(() => { if (evs.data) setDrafts((ds) => linkEvents(ds, evs.data!)); }, [evs.data]);
   // 탭별 켜기/끄기 — 탭이 둘 이상일 때만(CSV · PDF 는 탭이 없다)
   const sheets = useMemo(() => sheetsOf(drafts), [drafts]);
   const [offSheets, setOffSheets] = useState<string[]>([]);
-  const [shown, setShown] = useState(PAGE);
+  // 펼친 묶음 → 보이는 줄 수
+  const [open, setOpen] = useState<Record<string, number>>({});
   const [editing, setEditing] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -205,7 +211,9 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
 
   const sum = summary(drafts);
   const made = created(drafts);
-  const months = useMemo(() => byMonth(drafts), [drafts]);
+  const groups = useMemo(() => bundlesOf(drafts, (eid) => evs.data?.find((e) => e.id === eid)?.name ?? p.events.find((e) => e.eventId === eid)?.name ?? null),
+    [drafts, evs.data, p.events]);
+  const catRows = useMemo(() => catsOf(p.categories, drafts), [p.categories, drafts]);
   const firstDate = useMemo(() => drafts.filter((d) => d.pick && d.date).map((d) => d.date as string).sort()[0] ?? null, [drafts]);
   const openingDate = p.opening?.date ?? (firstDate ? firstDate.slice(0, 8) + '01' : null);
   const catList = (cats.data ?? []).filter((c) => !c.hidden);
@@ -228,8 +236,6 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
     }
   };
 
-  let drawn = 0;
-
   return (
     <View style={{ flex: 1 }}>
       <Body bottom={kb > 0 ? kb + 24 : 140}>
@@ -238,16 +244,17 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
           <View style={[k.row, { gap: 10 }]}>
             <Mascot mood={p.verdict === 'confirmed' ? 'celebrate' : 'thinking'} size={52} />
             <View style={k.grow}>
-              <Txt bold size="head">기록 {p.counts.rows}건을 찾았어요</Txt>
-              <Txt size="tiny" tone="sub" numberOfLines={1}>{imp.fileName ?? '구글 시트'}</Txt>
+              {/* 요약은 켜 둔 줄 기준 — 탭 · 줄을 끄면 줄어든다. 원본 합계 판정은 서버 값 그대로 */}
+              <Txt bold size="head">{`고른 기록 ${sum.count}건`}</Txt>
+              <Txt size="tiny" tone="sub" numberOfLines={1}>{`${imp.fileName ?? '구글 시트'} · 찾은 기록 ${p.counts.rows}건`}</Txt>
             </View>
           </View>
           <Sep />
           <View style={[k.row, { justifyContent: 'space-between' }]}>
-            <Txt size="small" tone="sub">수입</Txt><Txt size="small" bold style={[k.amt, { color: T.pos }]}>{won(p.totals.in)}</Txt>
+            <Txt size="small" tone="sub">수입</Txt><Txt size="small" bold style={[k.amt, { color: T.pos }]}>{won(sum.in)}</Txt>
           </View>
           <View style={[k.row, { justifyContent: 'space-between' }]}>
-            <Txt size="small" tone="sub">지출</Txt><Txt size="small" bold style={k.amt}>{won(p.totals.out)}</Txt>
+            <Txt size="small" tone="sub">지출</Txt><Txt size="small" bold style={k.amt}>{won(sum.out)}</Txt>
           </View>
           {p.verdict === 'confirmed'
             ? <Chip label="원본 합계와 맞아요" tone="tint" style={{ alignSelf: 'flex-start' }} />
@@ -302,13 +309,13 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
           </Card>
         ) : null}
 
-        {p.categories.length ? (
+        {catRows.length ? (
           <Card style={{ gap: S.md }}>
             <View>
               <Txt bold>항목 맞추기</Txt>
               <Txt size="tiny" tone="sub">원본 항목 이름마다 한 번만 고르면 그 이름의 줄이 모두 따라가요</Txt>
             </View>
-            {p.categories.map((c) => (
+            {catRows.map((c) => (
               <CategoryMap key={c.direction + c.name} source={c.name} direction={c.direction} count={c.count}
                 target={targetOf(drafts, c.direction, c.name)} options={catList.filter((x) => x.kind === c.direction).map((x) => ({ id: x.id, label: x.name }))}
                 onChange={(to) => setDrafts((ds) => mapCategory(ds, c.direction, c.name, to))} />
@@ -316,30 +323,38 @@ function Review({ imp, onDone, onCancel }: { imp: LedgerImport; onDone: (x: Ledg
           </Card>
         ) : null}
 
+        {/* 「행사 › 항목 › 세부 · 세부」 묶음 — 눌러서 펼친다 */}
         <Card style={{ paddingVertical: 2 }}>
-          {months.map((m) => {
-            if (drawn >= shown) return null;
-            const rows = m.rows.slice(0, Math.max(0, shown - drawn));
-            drawn += rows.length;
+          {groups.map((b, n) => {
+            const at = open[b.key] ?? 0;
+            const s = summary(b.rows);
 
             return (
-              <View key={m.key || 'none'}>
-                <Txt size="tiny" tone="sub" bold style={{ paddingTop: 12, paddingBottom: 2 }}>
-                  {m.key ? `${m.key.slice(0, 4)}년 ${Number(m.key.slice(5, 7))}월` : '날짜 없음 — 눌러서 날짜를 적으면 넣을 수 있어요'}
-                </Txt>
-                {rows.map((d) => (
+              <View key={b.key}>
+                {n ? <Sep /> : null}
+                <Pressable onPress={() => setOpen((o) => ({ ...o, [b.key]: at ? 0 : PAGE }))}
+                  accessibilityRole="button" accessibilityState={{ expanded: at > 0 }} style={[k.listrow, { gap: 10 }]}>
+                  <View style={k.grow}>
+                    <Txt bold numberOfLines={2}>{b.label}</Txt>
+                    <Txt size="tiny" tone="sub">
+                      {[`${b.rows.filter((d) => d.pick).length}/${b.rows.length}줄`, s.in ? `수입 ${won(s.in)}원` : null, s.out ? `지출 ${won(s.out)}원` : null].filter(Boolean).join(' · ')}
+                    </Txt>
+                  </View>
+                  <Txt size="small" tone="deep" bold>{at ? '접기' : '펼치기'}</Txt>
+                </Pressable>
+                {b.rows.slice(0, at).map((d) => (
                   <RowLine key={d.i} d={d} category={d.categoryId !== null ? catName(d.categoryId) : d.categoryName}
                     onToggle={() => { if (!d.pick && !d.date) setEditing(d.i); else setDrafts((ds) => toggle(ds, d.i)); }}
                     onEdit={() => setEditing(d.i)} />
                 ))}
+                {at && b.rows.length > at ? (
+                  <Pressable onPress={() => setOpen((o) => ({ ...o, [b.key]: at + PAGE }))} style={{ paddingVertical: 14, alignItems: 'center' }}>
+                    <Txt size="small" tone="deep" bold>{`${b.rows.length - at}건 더 보기`}</Txt>
+                  </Pressable>
+                ) : null}
               </View>
             );
           })}
-          {drafts.length > shown ? (
-            <Pressable onPress={() => setShown((n) => n + PAGE)} style={{ paddingVertical: 14, alignItems: 'center' }}>
-              <Txt size="small" tone="deep" bold>{`${drafts.length - shown}건 더 보기`}</Txt>
-            </Pressable>
-          ) : null}
         </Card>
 
         <Btn label={sum.count ? `${sum.count}건 장부에 넣기` : '넣을 줄을 골라 주세요'} disabled={sum.count === 0} loading={busy}

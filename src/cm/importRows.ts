@@ -30,7 +30,11 @@ export type Draft = {
   categoryId: number | null; categoryName: string | null;
   eventId: number | null; eventName: string | null;
   memo: string | null; merchant: string | null;
-  /** 원본에 적혀 있던 것 — 고쳐도 남겨 둔다(원본과 대조, 이름 단위로 맞추기) */
+  /** 이름 단위로 맞출 원본 항목 — 보통 원본 그대로, 묶이면 앞말(「아웃팅 치킨」 → 「아웃팅」) */
+  cat: string | null;
+  /** 묶여서 떨어진 뒷말(「치킨」) — 메모 맨 앞에도 붙어 있다 */
+  detail: string | null;
+  /** 원본에 적혀 있던 것 — 고쳐도 남겨 둔다(원본과 대조) */
   source: { category: string | null; event: string | null; sheet: string | null; ref: string | null };
   dup: ImportRow['dup'];
 };
@@ -45,7 +49,7 @@ export function draftsFrom(p: ImportPreview): Draft[] {
     i: r.i, pick: r.pick, date: r.date, direction: r.direction, amount: r.amount,
     categoryId: r.categoryId, categoryName: r.categoryId === null ? r.category : null,
     eventId: r.eventId, eventName: r.eventId === null ? r.event : null,
-    memo: r.memo, merchant: r.merchant,
+    memo: r.memo, merchant: r.merchant, cat: r.category, detail: null,
     source: { category: r.category, event: r.event, sheet: r.sheet, ref: r.ref },
     dup: r.dup,
   }));
@@ -55,14 +59,14 @@ export type CategoryTarget = { id: number } | { name: string } | null;
 
 /** 원본 항목 이름 하나를 통째로 — 이 모임 항목(`{id}`), 새로 만들기(`{name}`), 미분류(null) */
 export function mapCategory(ds: Draft[], direction: Direction, sourceName: string, to: CategoryTarget): Draft[] {
-  return ds.map((d) => (d.direction === direction && d.source.category === sourceName
+  return ds.map((d) => (d.direction === direction && d.cat === sourceName
     ? { ...d, categoryId: to && 'id' in to ? to.id : null, categoryName: to && 'name' in to ? to.name : null }
     : d));
 }
 
 /** 원본 항목 이름이 지금 어디로 가는가 — 첫 줄을 본다(이름 단위로 맞추므로 같다) */
 export function targetOf(ds: Draft[], direction: Direction, sourceName: string): CategoryTarget {
-  const d = ds.find((x) => x.direction === direction && x.source.category === sourceName);
+  const d = ds.find((x) => x.direction === direction && x.cat === sourceName);
   if (!d) return null;
 
   return d.categoryId !== null ? { id: d.categoryId } : d.categoryName ? { name: d.categoryName } : null;
@@ -141,4 +145,97 @@ export function byMonth(ds: Draft[]): { key: string; rows: Draft[] }[] {
   }
 
   return [...map.entries()].map(([key, rows]) => ({ key, rows }));
+}
+
+/* ── 묶기(대표님 9/26 「아웃팅 치킨, 아웃팅 피자는 아웃팅 안에 세부로」 「여름 수련회 주제로 한번에 싹 묶여야」) ── */
+
+/** 달 · 기간 이름 — 「9월」「2026.03」「3월 회비」「2026년」「1분기」 */
+const PERIOD = /(^|\D)(0?[1-9]|1[0-2])\s*월|^\s*\d{2,4}\s*[.\-/년]\s*\d{1,2}|^[\d\s.\-/년월]+$|분기|반기/;
+/** 표 이름 — 행사가 아닌 탭(「요약」「합계」「Sheet1」…) */
+const TABLE = /요약|합계|결산|전체|목록|^(sheet|시트)\s*\d*$/i;
+
+/** 탭 이름이 행사(주제)인가 — 달 · 기간 · 표 이름이 아니면 행사 */
+export function isTopicSheet(name: string): boolean {
+  const n = name.trim();
+
+  return n !== '' && !PERIOD.test(n) && !TABLE.test(n);
+}
+
+/** 「아웃팅 치킨」 → 앞말 · 뒷말. 앞말이 달 이름 · 숫자뿐이면 나누지 않는다 */
+function splitCat(c: string | null): { head: string; tail: string } | null {
+  const m = c ? /^(\S+)\s+(.+)$/.exec(c.trim()) : null;
+
+  return m && !/^[\d.\-/]+$/.test(m[1]) && !PERIOD.test(m[1]) ? { head: m[1], tail: m[2] } : null;
+}
+
+/**
+ * 가져온 줄을 묶는다(처음 한 번).
+ * ① 행사 탭이면 그 탭 줄은 모두 그 행사로 — 원본에 행사가 적힌 줄은 그것 그대로
+ * ② 앞말이 같고 뒷말이 다른 항목이 둘 이상이면 항목은 앞말 하나로, 뒷말은 메모 맨 앞에
+ */
+export function bundle(ds: Draft[]): Draft[] {
+  const names = new Map<string, Set<string>>();
+  for (const d of ds) {
+    const x = splitCat(d.source.category);
+    if (x) names.set(d.direction + '|' + x.head, (names.get(d.direction + '|' + x.head) ?? new Set<string>()).add(x.tail));
+  }
+
+  return ds.map((d) => {
+    let r = d;
+    const sheet = d.source.sheet?.trim();
+    if (sheet && isTopicSheet(sheet) && d.eventId === null && !d.eventName && !d.source.event) r = { ...r, eventName: sheet };
+    const x = splitCat(d.source.category);
+    if (x && (names.get(d.direction + '|' + x.head)?.size ?? 0) >= 2) {
+      r = { ...r, cat: x.head, detail: x.tail, categoryId: null, categoryName: x.head, memo: r.memo ? `${x.tail} · ${r.memo}` : x.tail };
+    }
+
+    return r;
+  });
+}
+
+/** 이 모임에 같은 이름 행사가 있으면 그 id 로 */
+export function linkEvents(ds: Draft[], events: { id: number; name: string }[]): Draft[] {
+  const ids = new Map(events.map((e) => [e.name.trim(), e.id]));
+
+  return ds.map((d) => {
+    const id = d.eventId === null && d.eventName ? ids.get(d.eventName.trim()) : undefined;
+
+    return id !== undefined ? { ...d, eventId: id, eventName: null } : d;
+  });
+}
+
+/** 항목 맞추기 목록 — 서버 목록을 묶인 이름으로 합친다 */
+export function catsOf(cs: ImportPreview['categories'], ds: Draft[]): ImportPreview['categories'] {
+  const to = new Map(ds.map((d) => [d.direction + '|' + d.source.category, d.cat]));
+  const map = new Map<string, ImportPreview['categories'][number]>();
+  for (const c of cs) {
+    const name = to.get(c.direction + '|' + c.name) ?? c.name;
+    const x = map.get(c.direction + '|' + name);
+    map.set(c.direction + '|' + name, x
+      ? { ...x, count: x.count + c.count, sum: x.sum + c.sum, categoryId: null }
+      : { ...c, name, categoryId: name === c.name ? c.categoryId : null });
+  }
+
+  return [...map.values()];
+}
+
+export type Bundle = { key: string; label: string; direction: Direction; rows: Draft[] };
+
+/** 확인 표 묶음 — 「행사 › 항목 › 세부 · 세부」, 나온 차례대로. 묶음 안은 날짜순(날짜 없는 줄은 끝) */
+export function bundlesOf(ds: Draft[], eventName: (id: number) => string | null = () => null): Bundle[] {
+  const map = new Map<string, { event: string | null; cat: string | null; direction: Direction; details: string[]; rows: Draft[] }>();
+  for (const d of ds) {
+    const event = d.eventId !== null ? eventName(d.eventId) ?? '행사' : d.eventName;
+    const key = `${d.eventId ?? ''}|${d.eventName ?? ''}|${d.direction}|${d.cat ?? ''}`;
+    const b = map.get(key) ?? { event, cat: d.cat, direction: d.direction, details: [], rows: [] };
+    if (d.detail && !b.details.includes(d.detail)) b.details.push(d.detail);
+    b.rows.push(d);
+    map.set(key, b);
+  }
+
+  return [...map.entries()].map(([key, b]) => ({
+    key, direction: b.direction,
+    label: [b.event, b.cat ?? '항목 없음', b.details.join(' · ') || null].filter(Boolean).join(' › '),
+    rows: byMonth(b.rows).flatMap((m) => m.rows),
+  }));
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { toImport } from './model';
-import { byMonth, created, draftsFrom, ledgerExt, mapCategory, pickSheet, sheetFileId, sheetsOf, summary, targetOf, toCommit, toggle, update } from './importRows';
+import {
+  bundle, bundlesOf, byMonth, catsOf, created, draftsFrom, isTopicSheet, ledgerExt, linkEvents, mapCategory, pickSheet, sheetFileId, sheetsOf, summary, targetOf, toCommit, toggle, update,
+} from './importRows';
 
 // 서버 응답(LedgerPreview) 모양 그대로 — 테스트 「확인 표는 겹친 줄과 이미 있는 줄을 빼고…」와 같은 장부
 const server = {
@@ -134,5 +136,84 @@ describe('원본과 다른 곳 — 못 읽은 조각', () => {
     ] } } });
     expect(x.preview?.checks[0]).toMatchObject({ code: 'chunk_unread', sheet: '겨울수련회', range: '12~70' });
     expect(x.preview?.checks[1]).toMatchObject({ code: 'total_mismatch', range: null });
+  });
+});
+
+describe('묶기 — 행사 탭 · 앞말이 같은 항목', () => {
+  const row = (i: number, category: string | null, memo: string | null, extra: object = {}) => ({
+    i, date: `2026-07-${String(10 + i).padStart(2, '0')}`, direction: 'out', amount: 10000 * (i + 1), category, categoryId: null, memo, merchant: null,
+    event: null, eventId: null, sheet: '여름 수련회 ', ref: `C${i}`, dup: null, dupOf: null, pick: true, ...extra,
+  });
+  const imp = toImport({ import: { id: 'imp-5', status: 'ready', preview: { verdict: 'confirmed', rows: [
+    row(0, '아웃팅 치킨', '교촌'),
+    row(1, '아웃팅 피자', null),
+    row(2, '숙소 1박', null),
+    row(3, '9월 회비', null),
+    row(4, '9월 찬조', null),
+    row(5, '식비', '점심', { event: '가을 체육대회' }),
+    row(6, '아웃팅 치킨', null, { direction: 'in' }),
+  ], categories: [
+    { direction: 'out', name: '아웃팅 치킨', categoryId: 4, count: 1, sum: 10000 },
+    { direction: 'out', name: '아웃팅 피자', categoryId: null, count: 1, sum: 20000 },
+    { direction: 'out', name: '숙소 1박', categoryId: null, count: 1, sum: 30000 },
+  ] } } });
+  const ds = bundle(draftsFrom(imp.preview!));
+  const at = (i: number) => ds.find((d) => d.i === i)!;
+
+  it('달 · 표 이름 탭은 행사가 아니다', () => {
+    for (const n of ['9월', ' 12월 ', '2026.03', '2026-3', '2026년 3월', '3월 회비', '2026', '2026년', '1분기', '상반기', '요약', '9월 합계', '결산', '전체', '회원 목록', 'Sheet1', '시트2']) {
+      expect(isTopicSheet(n)).toBe(false);
+    }
+    for (const n of ['여름 수련회', '가을체육대회', '송년회 2026', '신년 하례']) expect(isTopicSheet(n)).toBe(true);
+  });
+
+  it('① 행사 탭이면 그 탭 줄은 그 행사로(앞뒤 공백 정리) — 원본 행사가 적힌 줄은 그대로', () => {
+    expect(at(2)).toMatchObject({ eventId: null, eventName: '여름 수련회' });
+    expect(at(5)).toMatchObject({ eventName: '가을 체육대회' });
+    const month = bundle(draftsFrom(toImport({ import: { id: 'x', status: 'ready', preview: { rows: [row(0, '식비', null, { sheet: '7월' })] } } }).preview!));
+    expect(month[0].eventName).toBeNull();
+  });
+
+  it('② 앞말이 같은 항목이 둘 이상이면 앞말로 — 뒷말은 메모 맨 앞. 하나뿐 · 달 이름 · 다른 방향은 그대로', () => {
+    expect(at(0)).toMatchObject({ cat: '아웃팅', detail: '치킨', categoryId: null, categoryName: '아웃팅', memo: '치킨 · 교촌' });
+    expect(at(1)).toMatchObject({ cat: '아웃팅', detail: '피자', categoryName: '아웃팅', memo: '피자' });
+    expect(at(2)).toMatchObject({ cat: '숙소 1박', detail: null, categoryName: '숙소 1박', memo: null });
+    expect(at(3)).toMatchObject({ cat: '9월 회비', categoryName: '9월 회비' });
+    expect(at(6)).toMatchObject({ cat: '아웃팅 치킨', memo: null });
+  });
+
+  it('이 모임에 같은 이름 행사가 있으면 그 id', () => {
+    const linked = linkEvents(ds, [{ id: 31, name: '여름 수련회' }]);
+    expect(linked.find((d) => d.i === 2)).toMatchObject({ eventId: 31, eventName: null });
+    expect(linked.find((d) => d.i === 5)).toMatchObject({ eventId: null, eventName: '가을 체육대회' });
+    expect(created(linked).events).toEqual(['가을 체육대회']);
+  });
+
+  it('확인 표 — 「행사 › 항목 › 세부 · 세부」 묶음, 항목 맞추기는 묶인 이름 단위', () => {
+    const linked = linkEvents(ds, [{ id: 31, name: '여름 수련회' }]);
+    const bs = bundlesOf(linked, (id) => (id === 31 ? '여름 수련회' : null));
+    expect(bs.map((b) => [b.label, b.rows.map((r) => r.i)])).toEqual([
+      ['여름 수련회 › 아웃팅 › 치킨 · 피자', [0, 1]],
+      ['여름 수련회 › 숙소 1박', [2]],
+      ['여름 수련회 › 9월 회비', [3]],
+      ['여름 수련회 › 9월 찬조', [4]],
+      ['가을 체육대회 › 식비', [5]],
+      ['여름 수련회 › 아웃팅 치킨', [6]],
+    ]);
+    expect(summary(bs[0].rows)).toMatchObject({ count: 2, out: 30000 });
+    expect(catsOf(imp.preview!.categories, ds)).toEqual([
+      { direction: 'out', name: '아웃팅', categoryId: null, count: 2, sum: 30000 },
+      { direction: 'out', name: '숙소 1박', categoryId: null, count: 1, sum: 30000 },
+    ]);
+    const mapped = mapCategory(ds, 'out', '아웃팅', { id: 9 });
+    expect(targetOf(mapped, 'out', '아웃팅')).toEqual({ id: 9 });
+    expect([0, 1, 2].map((i) => mapped.find((d) => d.i === i)!.categoryId)).toEqual([9, 9, null]);
+  });
+
+  it('넣을 줄 모양은 그대로 — 항목 · 행사 · 메모', () => {
+    const rows = toCommit(linkEvents(ds, [{ id: 31, name: '여름 수련회' }]));
+    expect(rows[0]).toEqual({ date: '2026-07-10', direction: 'out', amount: 10000, categoryName: '아웃팅', eventId: 31, memo: '치킨 · 교촌' });
+    expect(rows[1]).toEqual({ date: '2026-07-11', direction: 'out', amount: 20000, categoryName: '아웃팅', eventId: 31, memo: '피자' });
+    expect(rows[5]).toEqual({ date: '2026-07-15', direction: 'out', amount: 60000, categoryName: '식비', eventName: '가을 체육대회', memo: '점심' });
   });
 });
