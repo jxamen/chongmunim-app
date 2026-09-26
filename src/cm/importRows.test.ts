@@ -229,3 +229,15 @@ describe('올린 파일 이름', () => {
     expect(fileNameOf(null)).toBeNull();
   });
 });
+
+describe('올린 파일 이름 — 싼 채로 잘린 것', () => {
+  it('끝의 반쪽 퍼센트 조각은 버리고 앞을 푼다', async () => {
+    const { fileNameOf } = await import('./model');
+    const full = encodeURIComponent('여름수련회_장부.xlsx'.normalize('NFD'));
+    // 서버가 120자에서 자른 모양 — 글자 하나의 앞 바이트만 남음
+    const cut = full.slice(0, full.indexOf('_') + 1) + '%E1%84';
+    expect(fileNameOf(cut)).toBe('여름수련회_');
+    expect(fileNameOf(full.slice(0, full.indexOf('_') + 1) + '%E')).toBe('여름수련회_');
+    expect(fileNameOf('100%완료.xlsx')).toBe('100%완료.xlsx');
+  });
+});

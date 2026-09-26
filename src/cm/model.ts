@@ -490,13 +490,28 @@ const ymd = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{
 export function plainName(s: string): string {
   let out = s;
   for (let n = 0; n < 3 && /%[0-9A-Fa-f]{2}/.test(out); n++) {
-    let next = out;
-    try { next = decodeURIComponent(out); } catch { break; }
-    if (next === out) break;
+    const next = decodeTail(out);
+    if (next === null || next === out) break;
     out = next;
   }
 
   return out.normalize('NFC');
+}
+
+/**
+ * 퍼센트 풀기 — 서버가 싼 채로 120자에서 잘라 끝에 반쪽 조각(「…%E」 · 글자 하나의 앞 바이트만)이 남은 이름이 있다(2026-09-26 패키지api).
+ * 그대로 풀면 통째로 실패하므로 풀릴 때까지 마지막 「%」 부터 잘라 낸다(최대 세 바이트 · 한 글자). 끝내 안 되면 null.
+ */
+function decodeTail(s: string): string | null {
+  let t = s;
+  for (let n = 0; n < 4; n++) {
+    try { return decodeURIComponent(t); } catch { /* 끝 조각을 잘라 다시 */ }
+    const cut = t.lastIndexOf('%');
+    if (cut < 0) return null;
+    t = t.slice(0, cut);
+  }
+
+  return null;
 }
 
 export function fileNameOf(v: unknown): string | null {
