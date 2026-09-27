@@ -24,7 +24,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { amountInput, kstNow, readAmount, readWhen, whenLong, won } from '../cm/format';
-import { isManager, type Category, type ClubEvent } from '../cm/model';
+import { isManager, spentByPatch, type Category, type ClubEvent, type SpentBy } from '../cm/model';
 import { chipOrder, suggestEvent } from '../cm/rules';
 import { codeOf, errorText } from '../cm/errors';
 import {
@@ -37,6 +37,7 @@ import { Ask, Body, Btn, Card, Chip, Choices, Field, Head, Sep, Soft, Tabs, Text
 import { Mascot } from '../ui/Mascot';
 import { BankField } from '../ui/BankField';
 import { DateField } from '../ui/DateField';
+import { SpentByField } from '../ui/SpentByField';
 import { ScanIntro } from '../ui/ScanIntro';
 import * as storage from '../storage';
 import { F, S, useT } from '../ui/theme';
@@ -87,6 +88,8 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   const [direction, setDirection] = useState<'out' | 'in'>('out');
   const [form, setForm] = useState<ShotForm>(emptyForm(today));
   const [manualTouched, setManualTouched] = useState(false);
+  // 쓴 사람(영수증 요청) — 총무·관리자의 지출만. 'manual' 또는 카드 key
+  const [spent, setSpent] = useState<Record<string, SpentBy>>({});
   // 회원의 받을 계좌 — 여러 장이어도 한 번
   const [bankName, setBankName] = useState(group?.me.bankName ?? '');
   const [bankAccount, setBankAccount] = useState(group?.me.bankAccount ?? '');
@@ -271,9 +274,9 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
   };
 
   type SendBody = NonNullable<ReturnType<typeof shotBody>> | Omit<NonNullable<ReturnType<typeof shotBody>>, 'receiptId'>;
-  const sendOne = async (body: SendBody, dir: 'in' | 'out', once: boolean) => {
+  const sendOne = async (body: SendBody, dir: 'in' | 'out', once: boolean, by: SpentBy = null) => {
     if (!group) return;
-    if (manager) await cm.addEntry(group.id, { direction: dir, ...body });
+    if (manager) await cm.addEntry(group.id, { direction: dir, ...body, ...(dir === 'out' ? spentByPatch(null, by) : {}) });
     else await cm.addRequest(group.id, once ? { ...body, bank: bank() } : body);
   };
 
@@ -289,7 +292,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
       await keepBank(once);
       for (const { key, body } of list) {
         try {
-          await sendOne(body, 'out', once);
+          await sendOne(body, 'out', once, spent[key] ?? null);
           done.add(key);
         } catch (e) {
           const code = codeOf(e);
@@ -334,7 +337,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
       await sendOne({
         amount, occurredAt, merchant: form.merchant.trim() || null,
         categoryId: skip ? null : form.categoryId, eventId: skip ? null : form.eventId, memo: skip ? null : form.memo.trim() || null,
-      }, direction, once);
+      }, direction, once, spent.manual ?? null);
       say(manager ? (skip ? '장부에 적었어요 · 항목은 나중에 정리해요' : '장부에 적었어요') : '지급 요청을 보냈어요 · 총무님이 확인하면 알려 드려요');
       track(manager ? 'entry_add' : 'request_add', { receipt: false, skip });
       bump();
@@ -441,6 +444,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
           <>
             {shots.map((s) => (
               <ShotCard key={s.key} shot={s} single={shots.length === 1} manager={manager} categories={categoriesOf('out')} events={openEvents}
+                spentBy={spent[s.key] ?? null} onSpentBy={(v) => setSpent((m) => ({ ...m, [s.key]: v }))}
                 onPatch={(fn) => patch(s.key, fn)} onRemove={() => remove(s.key)} onAddCat={() => setAddCatFor(s.key)}
                 onDateChange={(d) => patch(s.key, (x) => (x.eventTouched ? x : { ...x, form: { ...x.form, eventId: suggestEvent(evsRef.current, ymd(d)) } }))} />
             ))}
@@ -455,6 +459,7 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
 
         {step === 'manual' ? (
           <ManualForm form={form} setForm={(f) => { setForm(f); }} direction={direction} manager={manager} note={note}
+            spentBy={spent.manual ?? null} onSpentBy={(v) => setSpent((m) => ({ ...m, manual: v }))}
             onDirection={(d) => { setDirection(d); setForm((f) => ({ ...f, categoryId: null })); }}
             categories={categoriesOf(direction)} events={openEvents} onAddCat={() => setAddCatFor('manual')}
             onEvent={(id) => { setManualTouched(true); setForm((f) => ({ ...f, eventId: id })); }}
@@ -541,8 +546,8 @@ export function RecordScreen({ start }: { start: 'scan' | 'album' | 'manual' | '
 
 /* ── 확인 카드 — 영수증 한 장 ── */
 
-function ShotCard({ shot, single, manager, categories, events, onPatch, onRemove, onAddCat, onDateChange }: {
-  shot: Shot; single: boolean; manager: boolean; categories: Category[]; events: ClubEvent[];
+function ShotCard({ shot, single, manager, categories, events, spentBy, onSpentBy, onPatch, onRemove, onAddCat, onDateChange }: {
+  shot: Shot; single: boolean; manager: boolean; categories: Category[]; events: ClubEvent[]; spentBy: SpentBy; onSpentBy: (v: SpentBy) => void;
   onPatch: (fn: (s: Shot) => Shot) => void; onRemove: () => void; onAddCat: () => void; onDateChange: (d: string) => void;
 }) {
   const T = useT();
@@ -655,6 +660,7 @@ function ShotCard({ shot, single, manager, categories, events, onPatch, onRemove
               onChange={(id) => set({ categoryId: id === f.categoryId ? null : id })}
               extra={manager ? <Chip label="+ 직접 입력" tone="dim" onPress={onAddCat} /> : undefined} />
           </View>
+          {manager ? <SpentByField value={spentBy} onChange={onSpentBy} /> : null}
           {memoOpen || f.memo ? (
             <Field label="내용" value={f.memo} onChangeText={(v) => set({ memo: v })} placeholder="예) 체육대회 단체 티셔츠 25장" multiline maxLength={200} />
           ) : (
@@ -676,8 +682,9 @@ function ShotCard({ shot, single, manager, categories, events, onPatch, onRemove
 
 /* ── 영수증 없이 적기 — 읽은 값이 없으니 칸을 채운다 ── */
 
-function ManualForm({ form, setForm, direction, manager, note, onDirection, categories, events, onAddCat, onEvent, onDate }: {
+function ManualForm({ form, setForm, direction, manager, note, spentBy, onSpentBy, onDirection, categories, events, onAddCat, onEvent, onDate }: {
   form: ShotForm; setForm: (f: ShotForm) => void; direction: 'in' | 'out'; manager: boolean; note: string | null;
+  spentBy: SpentBy; onSpentBy: (v: SpentBy) => void;
   onDirection: (d: 'in' | 'out') => void; categories: Category[]; events: ClubEvent[]; onAddCat: () => void;
   onEvent: (id: number | null) => void; onDate: (d: string) => void;
 }) {
@@ -719,6 +726,8 @@ function ManualForm({ form, setForm, direction, manager, note, onDirection, cate
           onChange={(id) => set({ categoryId: id === form.categoryId ? null : id })}
           extra={manager ? <Chip label="+ 직접 입력" tone="dim" onPress={onAddCat} /> : undefined} />
       </View>
+
+      {manager && direction === 'out' ? <SpentByField value={spentBy} onChange={onSpentBy} /> : null}
 
       <Field label="내용" value={form.memo} onChangeText={(v) => set({ memo: v })} placeholder="예) 체육대회 단체 티셔츠 25장" multiline maxLength={200} />
     </>

@@ -12,12 +12,13 @@ import { isPro } from '../cm/plan';
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
 import { sheetFileId } from '../cm/importRows';
-import type { BudgetLine, Category, Entry, RosterItem } from '../cm/model';
+import { spentByPatch, type BudgetLine, type Category, type Entry, type RosterItem, type SpentBy } from '../cm/model';
 import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { BankField } from '../ui/BankField';
 import { DateField } from '../ui/DateField';
+import { SpentByField } from '../ui/SpentByField';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -37,6 +38,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
   const [categoryId, setCategoryId] = useState<number | null>(entry.categoryId);
   const [eventId, setEventId] = useState<number | null>(entry.eventId);
   const [memo, setMemo] = useState(entry.memo ?? '');
+  const [spentBy, setSpentBy] = useState<SpentBy>(entry.spentBy);
   const [voidOpen, setVoidOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,6 +53,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
       await cm.editEntry(group.id, entry.id, {
         ...(dues ? {} : { amount: amountValue, occurredAt: when }),
         merchant: merchant.trim() || null, categoryId, eventId, memo: memo.trim() || null,
+        ...(entry.direction === 'out' ? spentByPatch(entry.spentBy, spentBy) : {}),
       });
       say('고쳤어요 · 바꾼 기록은 남아요');
       bump();
@@ -101,6 +104,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
           </View>
         ) : null}
         <Field label="내용" value={memo} onChangeText={setMemo} multiline maxLength={200} />
+        {entry.direction === 'out' ? <SpentByField value={spentBy} onChange={setSpentBy} /> : null}
         {entry.receiptId ? <Btn label="영수증 보기" tone="ghost" small onPress={() => open({ kind: 'receipt', id: entry.receiptId! })} /> : null}
         <View style={[k.row, { gap: S.sm }]}>
           <Btn label="지우기" tone="ghost" style={{ width: 96 }} onPress={() => setVoidOpen(true)} />

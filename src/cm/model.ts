@@ -81,7 +81,41 @@ export type Entry = {
   id: number; direction: Direction; amount: number; occurredAt: string; merchant: string | null;
   categoryId: number | null; eventId: number | null; memo: string | null; receiptId: string | null;
   source: string; by: string | null; edited: string[]; eventChecked: boolean;
+  /** 쓴 사람(영수증 요청한 사람) — 지출만. 옛 기록 · 이 칸을 모르는 서버면 null */
+  spentBy: SpentBy;
 };
+
+/** 쓴 사람 — 명단에서 골랐으면 memberId, 직접 적었으면 이름만(memberId null) */
+export type SpentBy = { memberId: number | null; name: string } | null;
+export const SPENT_BY_MAX = 40;
+
+export function toSpentBy(v: unknown): SpentBy {
+  if (v === null || typeof v !== 'object') return null;
+  const o = obj(v);
+  const name = (str(o.name) ?? '').trim();
+  const id = idOrNull(o.memberId);
+
+  return name ? { memberId: id !== null && id > 0 ? id : null, name } : null;
+}
+
+/** 서버로 보내는 칸 — 서버 칸 이름은 여기 한 곳에만 */
+export type SpentByBody = { spentByMemberId: number | null; spentByName: string | null };
+
+/** 명단 id 면 이름은 null, 직접 적으면 이름만(40자), 비우면 둘 다 null */
+export function spentByBody(p: SpentBy): SpentByBody {
+  if (p?.memberId) return { spentByMemberId: p.memberId, spentByName: null };
+  const name = (p?.name ?? '').trim().slice(0, SPENT_BY_MAX);
+
+  return { spentByMemberId: null, spentByName: name || null };
+}
+
+/** 보낼 것 — 처음(before)과 같으면 안 보낸다(적기는 before null: 비우면 안 보낸다) */
+export function spentByPatch(before: SpentBy, after: SpentBy): Partial<SpentByBody> {
+  const a = spentByBody(before);
+  const b = spentByBody(after);
+
+  return a.spentByMemberId === b.spentByMemberId && a.spentByName === b.spentByName ? {} : b;
+}
 
 export function toEntry(v: unknown): Entry {
   const o = obj(v);
@@ -91,6 +125,7 @@ export function toEntry(v: unknown): Entry {
     merchant: str(o.merchant), categoryId: idOrNull(o.categoryId), eventId: idOrNull(o.eventId), memo: str(o.memo),
     receiptId: str(o.receiptId), source: str(o.source) ?? 'manual', by: str(o.by),
     edited: arr(o.edited).filter((x): x is string => typeof x === 'string'), eventChecked: bool(o.eventChecked),
+    spentBy: toSpentBy(o.spentBy),
   };
 }
 const entries = (v: unknown): Entry[] => arr(v).map(toEntry).filter((e) => e.id > 0);

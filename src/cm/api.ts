@@ -8,7 +8,7 @@ import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
   toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
- toRecipients, toClosing, toClosings, toPendingJob, toPendingJobs } from './model';
+ toRecipients, toClosing, toClosings, toPendingJob, toPendingJobs, type SpentByBody } from './model';
 import type { CommitRow } from './importRows';
 import { toPush } from './pushText';
 
@@ -50,7 +50,7 @@ export const exportYear = async (gid: number, y: number) => toExport(await api.g
 export type EntryInput = {
   direction: Direction; amount?: number; occurredAt?: string; merchant?: string | null;
   categoryId?: number | null; eventId?: number | null; memo?: string | null; receiptId?: string;
-};
+} & Partial<SpentByBody>;   // 쓴 사람 — 지출만
 export const addEntry = async (gid: number, b: EntryInput) => toEntry((await api.post<{ entry: unknown }>(g(gid, 'entries'), b)).entry);
 export const editEntry = async (gid: number, id: number, b: Partial<Omit<EntryInput, 'direction' | 'receiptId'>> & { eventChecked?: boolean }) =>
   toEntry((await api.put<{ entry: unknown }>(g(gid, `entries/${id}`), b)).entry);

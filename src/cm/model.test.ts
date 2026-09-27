@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toDues, toEntry, toGroup, toHome, toMonth, toReceipt, toRequests, toTidy, toYear } from './model';
+import { spentByBody, spentByPatch, toDues, toEntry, toGroup, toHome, toMonth, toReceipt, toRequests, toTidy, toYear } from './model';
 import { codeOf, errorCode, errorText } from './errors';
 
 describe('서버 응답이 어긋나도 화면이 멈추지 않는다(05 §5-6)', () => {
@@ -84,5 +84,30 @@ describe('오류 → 할 수 있는 일', () => {
     expect(errorText('처음 보는 코드')).toBe('잠시 뒤 다시 해 주세요');
     expect(codeOf({ code: 'network' })).toBe('network');
     expect(codeOf(new Error('x'))).toBe('unknown');
+  });
+});
+
+describe('쓴 사람(영수증 요청)', () => {
+  it('받을 때 — 없거나 어긋나면 null, 이름이 있어야 한다', () => {
+    expect(toEntry({ id: 1 }).spentBy).toBeNull();
+    expect(toEntry({ id: 1, spentBy: null }).spentBy).toBeNull();
+    expect(toEntry({ id: 1, spentBy: 'x' }).spentBy).toBeNull();
+    expect(toEntry({ id: 1, spentBy: { memberId: 5, name: '' } }).spentBy).toBeNull();
+    expect(toEntry({ id: 1, spentBy: { memberId: 5, name: '김민수' } }).spentBy).toEqual({ memberId: 5, name: '김민수' });
+    expect(toEntry({ id: 1, spentBy: { memberId: null, name: ' 이모 ' } }).spentBy).toEqual({ memberId: null, name: '이모' });
+  });
+  it('보낼 때 — 명단 id 면 이름은 null, 직접 적으면 이름만(40자), 비우면 둘 다 null', () => {
+    expect(spentByBody({ memberId: 5, name: '김민수' })).toEqual({ spentByMemberId: 5, spentByName: null });
+    expect(spentByBody({ memberId: null, name: ' 이모 ' })).toEqual({ spentByMemberId: null, spentByName: '이모' });
+    expect(spentByBody({ memberId: null, name: '가'.repeat(50) }).spentByName).toHaveLength(40);
+    expect(spentByBody({ memberId: null, name: '  ' })).toEqual({ spentByMemberId: null, spentByName: null });
+    expect(spentByBody(null)).toEqual({ spentByMemberId: null, spentByName: null });
+  });
+  it('안 바꾸면 안 보낸다', () => {
+    expect(spentByPatch(null, null)).toEqual({});
+    expect(spentByPatch({ memberId: 5, name: '김민수' }, { memberId: 5, name: '김민수' })).toEqual({});
+    expect(spentByPatch(null, { memberId: 5, name: '김민수' })).toEqual({ spentByMemberId: 5, spentByName: null });
+    expect(spentByPatch({ memberId: 5, name: '김민수' }, null)).toEqual({ spentByMemberId: null, spentByName: null });
+    expect(spentByPatch({ memberId: 5, name: '김민수' }, { memberId: null, name: '김민수' })).toEqual({ spentByMemberId: null, spentByName: '김민수' });
   });
 });

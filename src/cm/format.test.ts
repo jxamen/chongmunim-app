@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MINUS, amountInput, barPercent, dayShort, entrySub, entryTitle, isNight, kstNow, monthChip, monthWord, plusMinus, readAmount, readWhen, shiftMonth,
+  MINUS, amountInput, barPercent, dayShort, entrySub, entryTitle, spentByLine, isNight, kstNow, monthChip, monthWord, plusMinus, readAmount, readWhen, shiftMonth,
   signed, whenLong, won, mdInput, mdWord,
 } from './format';
 
@@ -97,6 +97,10 @@ describe('장부 한 줄 — 시안 1 의 말', () => {
     expect(entrySub({ occurredAt: '2026-09-20 10:00:00', categoryId: 1, source: 'receipt', by: '김태훈' }, cats)).toBe('9월 20일 · 식비');
     expect(entrySub({ occurredAt: '2026-09-18 10:00:00', categoryId: 1, source: 'request', by: '이수진' }, cats)).toBe('9월 18일 · 식비 · 이수진');
     expect(entrySub({ occurredAt: '2026-09-21 00:00:00', categoryId: 2, source: 'dues', by: null }, cats)).toBe('9월 21일');
+    expect(entrySub({ occurredAt: '2026-09-20 10:00:00', categoryId: 1, source: 'manual', by: '김태훈', spentBy: { name: '김민수' } }, cats)).toBe('9월 20일 · 식비 · 김민수 님 영수증');
+    expect(entrySub({ occurredAt: '2026-09-18 10:00:00', categoryId: null, source: 'request', by: '이수진', spentBy: { name: '이수진' } }, cats)).toBe('9월 18일 · 이수진 님 영수증');
+    expect(spentByLine({ name: '이모' })).toBe('이모 님 영수증');
+    expect(spentByLine(null)).toBe('');
   });
 });
 

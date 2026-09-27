@@ -179,12 +179,16 @@ export function entryTitle(e: { source: string; merchant: string | null; memo: s
   return e.merchant || e.memo || (e.categoryId ? cats[e.categoryId] : '') || (e.direction === 'in' ? '수입' : '지출');
 }
 
-/** 장부 한 줄의 부제 — 「9월 20일 · 식비」 · 지급 요청이면 쓴 사람 이름도 */
-export function entrySub(e: { occurredAt: string; categoryId: number | null; source: string; by: string | null },
+/** 쓴 사람(영수증 요청) 한 줄 — 「김민수 님 영수증」, 없으면 빈 글자 */
+export const spentByLine = (s: { name: string } | null | undefined): string => (s && s.name ? `${s.name} 님 영수증` : '');
+
+/** 장부 한 줄의 부제 — 「9월 20일 · 식비」 · 쓴 사람이 있으면 「○○ 님 영수증」, 없고 지급 요청이면 요청한 사람 이름 */
+export function entrySub(e: { occurredAt: string; categoryId: number | null; source: string; by: string | null; spentBy?: { name: string } | null },
   cats: Record<number, string>): string {
   const bits = [dayLabel(e.occurredAt)];
   if (e.categoryId && cats[e.categoryId] && e.source !== 'dues') bits.push(cats[e.categoryId]);
-  if (e.source === 'request' && e.by) bits.push(e.by);
+  if (e.spentBy) bits.push(spentByLine(e.spentBy));
+  else if (e.source === 'request' && e.by) bits.push(e.by);
 
   return bits.filter(Boolean).join(' · ');
 }
