@@ -91,6 +91,8 @@ export function EventScreen({ id }: { id: number }) {
             ))}
         </Card>
 
+        {/* 만든 행사의 이름 · 날짜 · 예산 고치기(2026-09-27 대표님 「행사 수정이 안됌」) — 묶인 장부 기록은 그대로 */}
+        {manager ? <Btn label="행사 고치기" tone="ghost" small onPress={() => open({ kind: 'eventEdit', id: ev.id })} /> : null}
         <Btn label="정산서 공유" small onPress={() => { void share(); }} />
         {/* 마감 — 결산을 굳혀 회원에게 보내고 행사 기록을 잠근다(행사 칸에서도 빠진다). 풀면 다시 열린다 */}
         <CloseBar kind="event" refKey={String(ev.id)} label="행사" />
@@ -101,6 +103,54 @@ export function EventScreen({ id }: { id: number }) {
           { label: '저장', onPress: () => { setBudgetOpen(false); void update({ budget: readAmount(budget) ?? 0 }); } }]}>
         <Field value={budget} onChangeText={(v) => setBudget(amountInput(v))} keyboardType="number-pad" placeholder="600,000" right={<Txt tone="sub">원</Txt>} autoFocus />
       </Ask>
+    </View>
+  );
+}
+
+/** 행사 고치기 — 이름 · 날짜 · 예산(2026-09-27 대표님). 행사에 묶인 장부 기록은 건드리지 않는다 */
+export function EventEditScreen({ id }: { id: number }) {
+  const { group, back, bump, fail, say } = useApp();
+  const { data, error, reload } = useLoad((gid) => cm.event(gid, id), [id]);
+  const [form, setForm] = useState<{ name: string; date: string; endDate: string; budget: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (!data) {
+    return <View style={{ flex: 1 }}><Head title="행사 고치기" onClose={back} />{error ? <Failed text={error} onRetry={reload} /> : <Loading />}</View>;
+  }
+  const ev = data.event;
+  const f = form ?? { name: ev.name, date: ev.startsOn ?? '', endDate: ev.endsOn ?? '', budget: ev.budget ? won(ev.budget) : '' };
+  const put = (x: Partial<typeof f>) => setForm({ ...f, ...x });
+
+  const save = async () => {
+    if (!group) return;
+    setBusy(true);
+    try {
+      const ymd = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+      await cm.updateEvent(group.id, id, { name: f.name.trim(), startsOn: ymd(f.date), endsOn: ymd(f.endDate), budget: readAmount(f.budget) ?? 0 });
+      say('행사를 고쳤어요');
+      bump();
+      back();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Head title="행사 고치기" onClose={back} />
+      <Body>
+        <Field label="행사 이름" value={f.name} onChangeText={(v) => put({ name: v })} placeholder="예) 가을 체육대회" maxLength={40} />
+        <View style={[k.row, { gap: S.sm }]}>
+          <DateField label="시작" style={k.grow} value={f.date} onChange={(v) => put({ date: v, endDate: f.endDate && v && f.endDate < v ? '' : f.endDate })} />
+          <DateField label="끝(선택)" style={k.grow} value={f.endDate} onChange={(v) => put({ endDate: v })} optional min={f.date || undefined} placeholder="하루 행사면 비워요" />
+        </View>
+        <Field label="행사 예산(없으면 비워 두세요)" value={f.budget} onChangeText={(v) => put({ budget: amountInput(v) })} keyboardType="number-pad"
+          placeholder="600,000" right={<Txt tone="sub">원</Txt>} />
+        <Txt size="tiny" tone="dim">이 행사에 묶인 기록은 그대로 두고 이름 · 날짜 · 예산만 바꿔요.</Txt>
+        <Btn label="저장" loading={busy} disabled={!f.name.trim()} onPress={() => { void save(); }} />
+      </Body>
     </View>
   );
 }

@@ -5,7 +5,7 @@ import React from 'react';
 import type { Page } from '../store';
 import { RecordScreen } from './RecordScreen';
 import { RequestsScreen } from './RequestsScreen';
-import { EventNewScreen, EventScreen } from './EventScreen';
+import { EventEditScreen, EventNewScreen, EventScreen } from './EventScreen';
 import { ComposeScreen, NoticeScreen } from './NoticeScreens';
 import { TidyScreen } from './TidyScreen';
 import { GroupsScreen } from './GroupsScreen';
@@ -22,6 +22,7 @@ export function PageView({ page }: { page: Page }) {
     case 'requests': return <RequestsScreen />;
     case 'event': return <EventScreen id={page.id} />;
     case 'eventNew': return <EventNewScreen />;
+    case 'eventEdit': return <EventEditScreen id={page.id} />;
     case 'notice': return <NoticeScreen id={page.id} />;
     case 'compose': return <ComposeScreen draftId={page.draftId} audience={page.audience} />;
     case 'tidy': return <TidyScreen />;

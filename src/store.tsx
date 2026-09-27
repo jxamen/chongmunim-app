@@ -36,6 +36,7 @@ export type Page =
   | { kind: 'requests' }
   | { kind: 'event'; id: number }
   | { kind: 'eventNew' }
+  | { kind: 'eventEdit'; id: number }
   | { kind: 'notice'; id: number }
   | { kind: 'compose'; draftId?: number; audience?: Audience }
   | { kind: 'tidy' }

@@ -93,7 +93,7 @@ export const addEvent = async (gid: number, b: { name: string; startsOn?: string
   return { ...toEventDetail(j), push: toPush((j as { push?: unknown }).push) };
 };
 export const event = async (gid: number, id: number) => toEventDetail(await api.get(g(gid, `events/${id}`)));
-export const updateEvent = async (gid: number, id: number, b: { name?: string; budget?: number; status?: 'open' | 'closed' }) =>
+export const updateEvent = async (gid: number, id: number, b: { name?: string; startsOn?: string | null; endsOn?: string | null; budget?: number; status?: 'open' | 'closed' }) =>
   toEventDetail(await api.put(g(gid, `events/${id}`), b));
 
 /* ── 예산 · 항목 ── */
