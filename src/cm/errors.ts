@@ -33,6 +33,7 @@ const TEXT: Record<string, string> = {
   bad_date: '날짜를 다시 확인해 주세요',
   bad_category: '항목을 다시 골라 주세요',
   bad_event: '행사를 다시 골라 주세요',
+  bad_member: '명단에 없는 회원이에요. 다시 골라 주세요',
   receipt_used: '이미 장부에 올린 영수증이에요',
   receipt_not_found: '영수증을 찾을 수 없어요. 다시 찍어 주세요',
   receipt_file_missing: '사진을 읽지 못했어요. 다시 찍어 주세요',

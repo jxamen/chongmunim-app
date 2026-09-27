@@ -10,7 +10,8 @@ const data: ExportData = {
   eventRows: [{ id: 5, name: '가을 체육대회', budget: 600000, in: 0, out: 32400 }],
   entries: [
     toEntry({ id: 1, direction: 'in', amount: 40000, occurredAt: '2026-09-18 00:00:00', merchant: '이수진', categoryId: 2, memo: '9월 회비', source: 'dues' }),
-    toEntry({ id: 2, direction: 'out', amount: 32400, occurredAt: '2026-09-20 14:14:02', merchant: '=GS25, "수유점"', categoryId: 1, eventId: 5, receiptId: 'r1' }),
+    toEntry({ id: 2, direction: 'out', amount: 32400, occurredAt: '2026-09-20 14:14:02', merchant: '=GS25, "수유점"', categoryId: 1, eventId: 5, receiptId: 'r1',
+      by: '김태훈', spentBy: { memberId: 7, name: '박민호' } }),
   ],
 };
 
@@ -25,6 +26,12 @@ describe('엑셀(CSV)', () => {
   it('지출은 음수 숫자 그대로 — 엑셀이 더할 수 있다', () => {
     expect(csv).toContain(',지출,-32400,');
     expect(csv).not.toContain("'-32400");
+  });
+  it('「기록」 옆에 「쓴 사람」 — 없으면 빈칸', () => {
+    const lines = csv.trim().split('\r\n');
+    expect(lines[0]).toContain('메모,기록,쓴 사람,영수증');
+    expect(lines[2]).toMatch(/,9월 회비,,,$/);
+    expect(lines[3]).toMatch(/,김태훈,박민호,있음$/);
   });
   it('이월로 시작해 잔액으로 끝난다', () => {
     const lines = csv.trim().split('\r\n');

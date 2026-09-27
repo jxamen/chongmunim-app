@@ -21,18 +21,18 @@ function cell(v: string | number | null | undefined): string {
 }
 
 export function toCsv(d: ExportData): string {
-  const rows: (string | number | null)[][] = [['날짜', '구분', '금액', '상호·내용', '항목', '행사', '메모', '기록', '영수증']];
-  rows.push([`${d.year}-01-01`, '이월', d.carryIn, '전년도에서 넘어온 돈', '', '', '', '', '']);
+  const rows: (string | number | null)[][] = [['날짜', '구분', '금액', '상호·내용', '항목', '행사', '메모', '기록', '쓴 사람', '영수증']];
+  rows.push([`${d.year}-01-01`, '이월', d.carryIn, '전년도에서 넘어온 돈', '', '', '', '', '', '']);
   let bal = d.carryIn;
   for (const e of d.entries) {
     bal += e.direction === 'in' ? e.amount : -e.amount;
     rows.push([
       e.occurredAt.slice(0, 16), e.direction === 'in' ? '수입' : '지출', e.direction === 'in' ? e.amount : -e.amount,
       e.merchant ?? '', e.categoryId ? d.categories[e.categoryId] ?? '' : '', e.eventId ? d.events[e.eventId] ?? '' : '',
-      e.memo ?? '', e.by ?? '', e.receiptId ? '있음' : '',
+      e.memo ?? '', e.by ?? '', e.spentBy?.name ?? '', e.receiptId ? '있음' : '',
     ]);
   }
-  rows.push(['', '잔액', bal, '', '', '', '', '', '']);
+  rows.push(['', '잔액', bal, '', '', '', '', '', '', '']);
 
   return BOM + rows.map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
