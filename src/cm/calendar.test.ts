@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { monthGrid, parseYmd, shiftYm, ymdLabel } from './calendar';
+import { monthGrid, parseYmd, shiftYm, weeksOf, ymdLabel } from './calendar';
 
 describe('달력', () => {
   it('2026년 9월 — 1일이 화요일이라 앞에 8월 30·31일, 42칸', () => {
@@ -21,5 +21,15 @@ describe('달력', () => {
     expect(ymdLabel('2026-09-22')).toBe('2026년 9월 22일 (화)');
     expect(ymdLabel('2026-09-22', 2026)).toBe('9월 22일 (화)');
     expect(ymdLabel('2025-12-31', 2026)).toBe('2025년 12월 31일 (수)');
+  });
+});
+
+describe('달력 줄', () => {
+  it('42칸을 일~토 7칸씩 여섯 줄로 — 2026년 9월 27일은 넷째 줄 첫 칸(일요일)', () => {
+    const weeks = weeksOf(monthGrid(2026, 9));
+    expect(weeks).toHaveLength(6);
+    expect(weeks.every((w) => w.length === 7)).toBe(true);
+    expect(weeks[0].map((c) => c.day)).toEqual([30, 31, 1, 2, 3, 4, 5]);
+    expect(weeks[4][0].ymd).toBe('2026-09-27');
   });
 });

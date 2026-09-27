@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { kstNow } from '../cm/format';
-import { monthGrid, parseYmd, shiftYm, ymdLabel } from '../cm/calendar';
+import { monthGrid, parseYmd, shiftYm, weeksOf, ymdLabel } from '../cm/calendar';
 import { Btn, Text, Txt, s } from './kit';
 import { F, S, useT } from './theme';
 
@@ -56,22 +56,30 @@ export function DateField({ label, value, onChange, placeholder = '날짜 고르
                 <Text key={d} style={{ flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: '700', color: i === 0 ? T.danger : T.sub }}>{d}</Text>
               ))}
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {monthGrid(ym[0], ym[1]).map((c, i) => {
-                const on = c.ymd === value;
-                const off = !!min && c.ymd < min;
+            {/*
+              한 주씩 줄로 묶어 칸마다 flex 1 — 폭을 `100/7 %` 로 주고 감싸기(wrap)를 하면 아이폰에서 소수점 반올림으로
+              일곱째(토요일) 칸이 다음 줄로 넘어가 요일이 밀렸다(2026-09-26 대표님 「달력 이상해」)
+            */}
+            <View>
+            {weeksOf(monthGrid(ym[0], ym[1])).map((week) => (
+              <View key={week[0].ymd} style={s.row}>
+                {week.map((c, i) => {
+                  const on = c.ymd === value;
+                  const off = !!min && c.ymd < min;
 
-                return (
-                  <Pressable key={c.ymd} disabled={off} onPress={() => pick(c.ymd)} accessibilityRole="button" accessibilityLabel={c.ymd}
-                    style={{ width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <View style={[{ width: 38, height: 38, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-                      on && { backgroundColor: T.deep }, !on && c.ymd === today && { borderWidth: 1.5, borderColor: T.deep }]}>
-                      <Text style={{ fontSize: F.body, fontWeight: on ? '900' : '600',
-                        color: on ? T.white : off ? T.line : !c.inMonth ? T.dim : i % 7 === 0 ? T.danger : T.ink }}>{c.day}</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
+                  return (
+                    <Pressable key={c.ymd} disabled={off} onPress={() => pick(c.ymd)} accessibilityRole="button" accessibilityLabel={c.ymd}
+                      style={{ flex: 1, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <View style={[{ width: 38, height: 38, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+                        on && { backgroundColor: T.deep }, !on && c.ymd === today && { borderWidth: 1.5, borderColor: T.deep }]}>
+                        <Text style={{ fontSize: F.body, fontWeight: on ? '900' : '600',
+                          color: on ? T.white : off ? T.line : !c.inMonth ? T.dim : i === 0 ? T.danger : T.ink }}>{c.day}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
             </View>
             <View style={[s.row, { gap: S.sm }]}>
               {optional && value ? <Btn label="지우기" tone="ghost" small style={s.grow} onPress={() => pick('')} /> : null}

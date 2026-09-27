@@ -32,6 +32,14 @@ export function monthGrid(y: number, m: number): Cell[] {
   return cells;
 }
 
+/** 칸을 한 주(일~토 7칸)씩 줄로 — 화면이 줄마다 7칸을 나눠 그린다 */
+export function weeksOf<T>(cells: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < cells.length; i += 7) out.push(cells.slice(i, i + 7));
+
+  return out;
+}
+
 /** 달 옮기기 — [2026, 12] + 1 → [2027, 1] */
 export function shiftYm(y: number, m: number, by: number): [number, number] {
   const t = y * 12 + (m - 1) + by;
