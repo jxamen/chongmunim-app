@@ -14,6 +14,8 @@ import { API_BASE, PUBLIC_KEY } from './config';
 import { resendIfDropped } from './resend';
 import { expiresSession } from './deadSession';
 import { errorCode } from './cm/errors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deviceHeader } from './deviceHeader';
 
 export type Member = {
   id: number | string;
@@ -52,6 +54,8 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
    | 앱마다 들고 있던 ota() 를 이것으로 바꿨다 — 스토어 판 그대로 켠 기기에 내장 판 id 를 싣던 것을 패키지가 고쳤다(2.5.1)
    */
   const headers: Record<string, string> = { 'X-App-Token': PUBLIC_KEY, Accept: 'application/json', ...otaHeaders() };
+  // 회원 ↔ 기기 연결 — 로그인 · 가입 · auth/me 에만 퍼널 기기 ID(deviceHeader.ts)
+  Object.assign(headers, await deviceHeader(path, (k) => AsyncStorage.getItem(k)));
   const form = typeof FormData !== 'undefined' && body instanceof FormData;
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   // 실어 보낸 세션 — 401 을 만료로 볼지는 이것으로 가른다(expiresSession)
