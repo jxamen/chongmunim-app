@@ -37,6 +37,7 @@
       ]
     },
     "plugins": [
+      "@jcurve/ads",
       [
         "expo-splash-screen",
         {
@@ -56,8 +57,7 @@
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "extraMavenRepos": [
-              "https://devrepo.kakao.com/nexus/content/groups/public/",
-              "https://jitpack.io"
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
             ],
             "extraProguardRules": "# 카카오 로그인이 R8 난독화에서 앱을 죽인다(용돈캡슐 app.json 과 같은 규칙, 2026-09-18 꼬꼬농장 실기기 확인)\n-keepattributes Signature\n-keepattributes Exceptions\n-keepattributes *Annotation*\n-keepattributes InnerClasses\n-keepattributes EnclosingMethod\n-keepclassmembers,allowshrinking,allowobfuscation interface * { @retrofit2.http.* <methods>; }\n-dontwarn retrofit2.**\n-keep class com.kakao.sdk.**.model.* { <fields>; }\n-keep class * extends com.google.gson.TypeAdapter\n-keepclassmembers class * { @com.google.gson.annotations.SerializedName <fields>; }\n-dontwarn com.kakao.sdk.**\n-keep,allowobfuscation,allowshrinking interface retrofit2.Call\n-keep,allowobfuscation,allowshrinking class retrofit2.Response\n-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation\n-keepattributes AnnotationDefault",
             "gradleProperties": {
