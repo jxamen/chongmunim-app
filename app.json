@@ -128,7 +128,7 @@
     ],
     "extra": {
       "appSlug": "chongmunim",
-      "appleAppId": "",
+      "appleAppId": "6814784833",
       "androidPackage": "kr.co.jcurve.chongmunim",
       "apiBase": "https://api.j-curve.co.kr/v1/chongmunim",
       "legalBase": "https://api.j-curve.co.kr/v1/chongmunim/cm/legal",
