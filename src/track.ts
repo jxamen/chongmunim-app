@@ -8,6 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createFunnel, createTrack } from '@jcurve/auth';
 import { API_BASE, PUBLIC_KEY } from './config';
+import { tiktokTrack } from './tiktok';
 
 export const funnel = createFunnel({
   base: API_BASE,
@@ -17,4 +18,13 @@ export const funnel = createFunnel({
   keys: { device: 'cm.device', installRef: 'cm.installRef' },
 });
 
-export const track = createTrack({ funnel });
+const sendTrack = createTrack({ funnel });
+
+/*
+ | 틱톡 광고 전환도 여기서 함께 보낸다(`src/tiktok.ts` — 가입 완료 `signup_done` → Registration).
+ | 틱톡이 받는 이름이 아니면 아무것도 하지 않고, 모듈이 없는 빌드에서도 조용히 넘어간다.
+ */
+export const track: typeof sendTrack = ((name: string, params?: Parameters<typeof sendTrack>[1]) => {
+  sendTrack(name, params);
+  try { tiktokTrack(name, params as Record<string, unknown> | undefined); } catch { /* 계측이 앱을 막지 않는다 */ }
+}) as typeof sendTrack;

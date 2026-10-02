@@ -11,6 +11,9 @@ web-build/
 .DS_Store
 ios/
 android/
+# 로컬 Expo 모듈의 네이티브 코드는 저장소에 둔다(prebuild 가 만드는 맨 위 ios · android 만 뺀다)
+!modules/*/ios/
+!modules/*/android/
 public/canvaskit.wasm
 design/receipt_mascot_30_transparent.zip
 
