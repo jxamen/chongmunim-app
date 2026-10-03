@@ -13,7 +13,6 @@ export const DEVICE_KEYS = [
   'cm.device',         // 퍼널 식별용 임시 ID(회원 ID 가 아니다) — @jcurve/auth createFunnel
   'cm.installRef',     // 설치 출처를 보냈다 — @jcurve/auth createFunnel
   'cm.theme',          // 테마 — mint · coral · sky(설정에서 고른다, 기기마다)
-  'cm.updateNotice',   // 새 버전이 오면 띠로 알린다 — 끄면 '0'(끄면 스스로 적용, @jcurve/updates 2.2)
   'cm.notifyAsked',    // 알림 권한을 실제로 물어봤다
   'cm.notifyConfig',   // 어드민 로컬 알림 문구(content/config/notify) — 뒤로 가는 순간엔 못 받아서 들고 있는다
   'cm.remindOff',      // 「장부 챙김 알림(이 폰)」을 껐다 — '1'

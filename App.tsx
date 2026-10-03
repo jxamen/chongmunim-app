@@ -11,7 +11,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
-import { applyUpdate, canApplyNow } from '@jcurve/updates';
 import { AppProvider, useApp, type Page, type Tab } from './src/store';
 import { F, PALETTES, S, ThemeProvider, shadow, useT } from './src/ui/theme';
 import { PRETENDARD } from './src/ui/font';
@@ -142,7 +141,7 @@ const TABS: { id: Tab; label: string; Icon: (p: { color: string }) => React.Reac
 ];
 
 function Main() {
-  const { tab, setTab, pages, back, open, updateReady, updateNotice, group, showPlan } = useApp();
+  const { tab, setTab, pages, back, open, group, showPlan } = useApp();
   const T = useT();
   const insets = useSafeAreaInsets();
   const pad = tabBottomPad(Platform.OS, insets.bottom, S.sm);
@@ -203,14 +202,6 @@ function Main() {
         </View>
       )}
 
-      {/* 새 버전 띠 — 받아 둔 것이 있고, 알려 주기를 켰고, 로그인 중이 아니고, 키보드가 없을 때(@jcurve/updates 2.2) */}
-      {updateReady && updateNotice && canApplyNow() && !keyboard && !top ? (
-        <Pressable onPress={() => { applyUpdate(); }} accessibilityRole="button"
-          style={[s.band, { bottom: 84 + pad, backgroundColor: T.ink }]}>
-          <Text style={s.bandText}>새 버전이 준비됐어요 · 지금 적용 ›</Text>
-        </Pressable>
-      ) : null}
-
       {/*
         겹쳐 뜨는 화면 — 바깥을 **절대 위치 틀**로 감싼다. SwipeBack 은 안쪽에 제스처 루트(flex 1)를 두므로,
         그냥 두면 흐름 배치에 끼어 탭 화면과 높이를 반씩 나눠 가졌다(2026-09-22 웹 확인에서 화면 아래 절반에만 그려짐).
@@ -251,6 +242,4 @@ const s = StyleSheet.create({
   fabWrap: { flex: 1, alignItems: 'center' },
   fab: { width: 60, height: 60, borderRadius: 999, marginTop: -26, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#FFFFFF', ...shadow },
 
-  band: { position: 'absolute', left: S.lg, right: S.lg, height: 46, borderRadius: 999, alignItems: 'center', justifyContent: 'center', ...shadow },
-  bandText: { fontSize: F.small, fontWeight: '800', color: '#FFFFFF' },
 });

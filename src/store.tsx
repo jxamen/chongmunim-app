@@ -9,7 +9,7 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
-import { autoApply, onUpdateReady, startupSettled } from '@jcurve/updates';
+import { autoApply, startupSettled } from '@jcurve/updates';
 import * as storage from './storage';
 import {
   completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
@@ -71,9 +71,6 @@ type Ctx = {
   toast: string | null;
   say: (text: string) => void;
   fail: (e: unknown) => void;
-  updateReady: boolean;
-  updateNotice: boolean;
-  setUpdateNotice: (on: boolean) => void;
   signInWith: (p: Provider) => Promise<void>;
   guestStart: () => Promise<void>;
   finishSignup: (name: string) => Promise<void>;
@@ -126,13 +123,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pages, setPages] = useState<Page[]>([]);
   const [version, setVersion] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
-  const [updateReady, setUpdateReady] = useState(false);
-  const [updateNotice, setUpdateNoticeState] = useState(true);
   const [planAsk, setPlanAsk] = useState<PlanReason | null>(null);
 
   // 새 버전 적용 규칙(@jcurve/updates)이 읽는 지금 상태 — 렌더 밖에서 읽으므로 ref 로 둔다
-  const live = useRef({ phase, signedIn: false, pages: 0, notice: true });
-  live.current = { phase, signedIn: !!member, pages: pages.length, notice: updateNotice };
+  const live = useRef({ phase, signedIn: false, pages: 0, plan: false });
+  live.current = { phase, signedIn: !!member, pages: pages.length, plan: planAsk !== null };
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const say = useCallback((text: string) => {
@@ -157,11 +152,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setTheme = useCallback((t: ThemeName) => {
     setThemeState(t);
     void storage.set('cm.theme', t);
-  }, []);
-
-  const setUpdateNotice = useCallback((on: boolean) => {
-    setUpdateNoticeState(on);
-    void storage.set('cm.updateNotice', on ? '1' : '0');
   }, []);
 
   /** 모임 하나로 들어간다 — 목록을 다시 받고 탭을 홈으로 */
@@ -310,16 +300,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const stopApply = autoApply({
       signedIn: () => live.current.signedIn,
       triedAuth: () => auth.hasTriedAuth(),
-      busy: () => live.current.phase === 'signup' || live.current.phase === 'groups' || auth.isAuthorizing(),
+      // 구독 안내 · 결제 창이 떠 있는 동안도 안전한 순간이 아니다 — 늘 자동이라 사람이 고를 틈이 없다(대표님 10-03)
+      busy: () => live.current.phase === 'signup' || live.current.phase === 'groups' || live.current.plan || auth.isAuthorizing(),
       atHome: () => live.current.phase === 'main' && live.current.pages === 0,
-      notice: () => live.current.notice,
+      // 띠 없이 늘 스스로 적용(대표님 10-03 「적용하기 없이 그냥 자동 적용」 「무조건 자동」)
+      notice: () => false,
     }, { resumeCheckMs: 10 * 60_000 });   // 뒤에 두고 가끔 여는 앱 — 다시 앞으로 올 때도 받는다(2.4, 로그인 중엔 건너뜀)
-    const stopBand = onUpdateReady(() => setUpdateReady(true));
 
     void (async () => {
       const t = await storage.get('cm.theme');
       if (isTheme(t)) setThemeState(t);
-      if ((await storage.get('cm.updateNotice')) === '0') setUpdateNoticeState(false);
       void fetchProviders().then((r) => setServerProviders(Array.isArray(r.providers) ? r.providers : [])).catch(() => undefined);
 
       const saved = await storage.getJson<Session>('cm.session');
@@ -346,7 +336,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     })();
 
-    return () => { alive = false; stopApply(); stopBand(); };
+    return () => { alive = false; stopApply(); };
     // 부팅은 한 번뿐이다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -474,11 +464,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<Ctx>(() => ({
     phase, member, busy, groups, group, theme, setTheme, tab, setTab, pages, open, back, version, bump, toast, say, fail,
-    updateReady, updateNotice, setUpdateNotice,
     signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, reland: landing, logout, withdraw,
     planAsk, showPlan, closePlan,
   }), [landing, phase, member, busy, groups, group, theme, setTheme, tab, pages, open, back, version, bump, toast, say, fail,
-    updateReady, updateNotice, setUpdateNotice, signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, logout, withdraw,
+    signInWith, guestStart, finishSignup, enterGroup, selectGroup, reloadGroup, logout, withdraw,
     planAsk, showPlan, closePlan]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

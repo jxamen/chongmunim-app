@@ -14,7 +14,7 @@ import { kstNow } from '../cm/format';
 import { isManager } from '../cm/model';
 import { APP_VERSION, LEGAL_BASE, publicLedgerUrl } from '../config';
 import { copy, shareText } from '../share';
-import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Toggle, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Card, Chip, Head, MenuRow, Radio, Sep, Soft, Text, Txt, s as k } from '../ui/kit';
 import { Hero } from '../ui/Hero';
 import { PlanCard } from './Plan';
 import { isPro } from '../cm/plan';
@@ -23,7 +23,7 @@ import { F, PALETTES, S, THEMES, THEME_LABEL, useT } from '../ui/theme';
 const ROLE: Record<string, string> = { owner: '총무', admin: '관리자', member: '회원' };
 
 export function SettingsScreen() {
-  const { group, theme, setTheme, open, say, fail, reloadGroup, reland, logout, withdraw, updateNotice, setUpdateNotice, member } = useApp();
+  const { group, theme, setTheme, open, say, fail, reloadGroup, reland, logout, withdraw, member } = useApp();
   const T = useT();
   const [ask, setAsk] = useState<null | 'rollover' | 'logout' | 'withdraw' | 'leave' | 'link'>(null);
   const [busy, setBusy] = useState(false);
@@ -118,8 +118,6 @@ export function SettingsScreen() {
 
         <Card style={{ paddingVertical: 2 }}>
           <MenuRow label="모임 바꾸기 · 새 모임" value={group.name} onPress={() => open({ kind: 'groups' })} />
-          <Sep />
-          <MenuRow label="새 버전 알려 주기" right={<Toggle on={updateNotice} onChange={setUpdateNotice} />} />
           <Sep />
           <MenuRow label="이용약관" onPress={() => { void WebBrowser.openBrowserAsync(`${LEGAL_BASE}/terms`).catch(() => undefined); }} />
           <Sep />
