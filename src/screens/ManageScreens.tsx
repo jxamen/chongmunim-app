@@ -12,13 +12,14 @@ import { isPro } from '../cm/plan';
 import { chipOrder, parsePasted } from '../cm/rules';
 import { pickLedgerFile } from '../cm/ledgerFile';
 import { sheetFileId } from '../cm/importRows';
-import { spentByPatch, type BudgetLine, type Category, type Entry, type RosterItem, type SpentBy } from '../cm/model';
+import { payPatch, spentByPatch, type BudgetLine, type Category, type Entry, type RosterItem, type SpentBy } from '../cm/model';
 import { notify, push, remindOn, setRemindOn } from '../push';
 import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Field, Head, Loading, MenuRow, Sep, Soft, Tabs, Toggle, Txt, s as k } from '../ui/kit';
 import { Mascot } from '../ui/Mascot';
 import { BankField } from '../ui/BankField';
 import { DateField } from '../ui/DateField';
 import { SpentByField } from '../ui/SpentByField';
+import { PayKindField, type PayValue } from '../ui/PayKindField';
 import { F, S, useT } from '../ui/theme';
 import { useKeyboardPad } from '../ui/keyboard';
 
@@ -39,6 +40,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
   const [eventId, setEventId] = useState<number | null>(entry.eventId);
   const [memo, setMemo] = useState(entry.memo ?? '');
   const [spentBy, setSpentBy] = useState<SpentBy>(entry.spentBy);
+  const [pay, setPay] = useState<PayValue>({ payKind: entry.payKind, payee: entry.payee });
   const [voidOpen, setVoidOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
       await cm.editEntry(group.id, entry.id, {
         ...(dues ? {} : { amount: amountValue, occurredAt: when }),
         merchant: merchant.trim() || null, categoryId, eventId, memo: memo.trim() || null,
-        ...(entry.direction === 'out' ? spentByPatch(entry.spentBy, spentBy) : {}),
+        ...(entry.direction === 'out' ? { ...spentByPatch(entry.spentBy, spentBy), ...payPatch(entry, pay) } : {}),
       });
       say('고쳤어요 · 바꾼 기록은 남아요');
       bump();
@@ -105,6 +107,7 @@ export function EntryScreen({ entry }: { entry: Entry }) {
         ) : null}
         <Field label="내용" value={memo} onChangeText={setMemo} multiline maxLength={200} />
         {entry.direction === 'out' ? <SpentByField value={spentBy} onChange={setSpentBy} /> : null}
+        {entry.direction === 'out' ? <PayKindField value={pay} onChange={setPay} suggest={spentBy} /> : null}
         {entry.receiptId ? <Btn label="영수증 보기" tone="ghost" small onPress={() => open({ kind: 'receipt', id: entry.receiptId! })} /> : null}
         <View style={[k.row, { gap: S.sm }]}>
           <Btn label="지우기" tone="ghost" style={{ width: 96 }} onPress={() => setVoidOpen(true)} />

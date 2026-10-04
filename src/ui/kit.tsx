@@ -203,9 +203,12 @@ export function Soft({ pill, title, sub, onPress, tone = 'tint', icon }: {
   );
 }
 
-/** 장부 한 줄(시안 .listrow) — 왼쪽 세로 줄 색이 수입(초록)·지출(테마색) */
-export function LedgerRow({ title, sub, value, direction, onPress, badge }: {
-  title: string; sub?: string; value: number; direction: 'in' | 'out'; onPress?: () => void; badge?: string;
+/**
+ * 장부 한 줄(시안 .listrow) — 왼쪽 세로 줄 색이 수입(초록)·지출(테마색).
+ * tag 는 제목 옆 작은 꼬리표(지급 여부 「직접 지출」 · 「지급 · 홍길동」, 2026-10-04) — badge(영수증과 다름)보다 옅게
+ */
+export function LedgerRow({ title, sub, value, direction, onPress, badge, tag }: {
+  title: string; sub?: string; value: number; direction: 'in' | 'out'; onPress?: () => void; badge?: string; tag?: string;
 }) {
   const T = useT();
 
@@ -216,6 +219,7 @@ export function LedgerRow({ title, sub, value, direction, onPress, badge }: {
         <View style={[s.row, { gap: 6 }]}>
           <Text numberOfLines={1} style={{ fontSize: F.body, fontWeight: '700', color: T.ink, flexShrink: 1 }}>{title}</Text>
           {badge ? <Chip label={badge} tone="warn" style={{ paddingVertical: 1, paddingHorizontal: 6 }} /> : null}
+          {tag ? <Chip label={tag} tone="tint" style={{ paddingVertical: 1, paddingHorizontal: 6, flexShrink: 0 }} /> : null}
         </View>
         {sub ? <Text numberOfLines={1} style={{ fontSize: F.tiny, color: T.sub, marginTop: 1 }}>{sub}</Text> : null}
       </View>

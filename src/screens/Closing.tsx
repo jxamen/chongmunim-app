@@ -12,10 +12,11 @@ import { View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { signed, won } from '../cm/format';
-import { isManager, type Closing } from '../cm/model';
+import { isManager, toEntry, type Closing } from '../cm/model';
 import { isPro } from '../cm/plan';
 import { pushLine } from '../cm/pushText';
 import { Ask, Body, Btn, Card, Failed, Head, KV, Loading, MenuRow, Sep, Soft, Toggle, Txt, s as k } from '../ui/kit';
+import { PaySummary } from '../ui/PaySummary';
 import { S } from '../ui/theme';
 
 /** 날짜 — 서버 UTC 「2026-09-30 11:00:00」 → 「9월 30일」 */
@@ -137,6 +138,8 @@ function Report({ c }: { c: Closing }) {
           <KV label="행사 수지" value={won(num(ev.in) - num(ev.out))} strong />
           {num(ev.budget) > 0 ? <KV label="행사 예산" value={`${won(num(ev.budget))} · ${num(ev.budgetPercent)}% 씀`} /> : null}
         </Card>
+        {/* 지급 여부 — 굳힌 줄에서 센다(이 칸이 생기기 전 결산 · 안 적은 결산은 안 보인다) */}
+        <PaySummary entries={entries.map(toEntry)} />
         <Txt size="tiny" tone="dim" style={{ textAlign: 'center' }}>{`기록 ${entries.length}건 · 들어온 돈 ${won(num(ev.in))}원 · 나간 돈 ${won(num(ev.out))}원`}</Txt>
       </>
     );
@@ -171,6 +174,7 @@ function Report({ c }: { c: Closing }) {
             </View>
           ))}
         </Card>
+        <PaySummary entries={groups.flatMap((g) => (Array.isArray((g as { entries?: unknown }).entries) ? (g as { entries: unknown[] }).entries : [])).map(toEntry)} />
       </>
     );
   }

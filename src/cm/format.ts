@@ -182,6 +182,46 @@ export function entryTitle(e: { source: string; merchant: string | null; memo: s
 /** 쓴 사람(영수증 요청) 한 줄 — 「김민수 님 영수증」, 없으면 빈 글자 */
 export const spentByLine = (s: { name: string } | null | undefined): string => (s && s.name ? `${s.name} 님 영수증` : '');
 
+/**
+ * 지급 여부 꼬리표(2026-10-04 대표님) — 「직접 지출」 · 「지급 · 홍길동」(받은 사람을 안 적었으면 「지급」), 모름이면 빈 글자.
+ * 수입 줄에는 없다
+ */
+export function payLine(e: { direction?: string; payKind?: 'direct' | 'payout' | null; payee?: { name: string } | null }): string {
+  if (e.direction === 'in' || !e.payKind) return '';
+  if (e.payKind === 'direct') return '직접 지출';
+
+  return e.payee && e.payee.name ? `지급 · ${e.payee.name}` : '지급';
+}
+
+export type PayTotals = {
+  /** 받은 사람마다 — 큰 것부터. 이름 없이 지급만 고른 것은 name null */
+  people: { name: string | null; count: number; sum: number }[];
+  payout: number; direct: number; unknown: number;
+};
+
+/**
+ * 정산 화면의 「지급 · 받은 사람별」 — 지출 줄만 센다. 명단 회원은 id 로 묶고(이름이 바뀌어도 한 사람), 명단에 없는 사람은 이름으로.
+ * 모름(옛 기록 · 안 고름)은 따로 센다 — 직접 지출로 치지 않는다
+ */
+export function payTotals(list: { direction: string; amount: number; payKind?: 'direct' | 'payout' | null; payee?: { memberId: number | null; name: string } | null }[]): PayTotals {
+  const by = new Map<string, { name: string | null; count: number; sum: number }>();
+  const t: PayTotals = { people: [], payout: 0, direct: 0, unknown: 0 };
+  for (const e of list) {
+    if (e.direction !== 'out') continue;
+    if (e.payKind === 'direct') { t.direct += e.amount; continue; }
+    if (e.payKind !== 'payout') { t.unknown += e.amount; continue; }
+    t.payout += e.amount;
+    const key = e.payee ? (e.payee.memberId ? `m${e.payee.memberId}` : `n${e.payee.name}`) : '-';
+    const row = by.get(key) ?? { name: e.payee?.name || null, count: 0, sum: 0 };
+    row.count++;
+    row.sum += e.amount;
+    by.set(key, row);
+  }
+  t.people = [...by.values()].sort((a, b) => (a.name === null ? 1 : 0) - (b.name === null ? 1 : 0) || b.sum - a.sum);
+
+  return t;
+}
+
 /** 장부 한 줄의 부제 — 「9월 20일 · 식비」 · 쓴 사람이 있으면 「○○ 님 영수증」, 없고 지급 요청이면 요청한 사람 이름 */
 export function entrySub(e: { occurredAt: string; categoryId: number | null; source: string; by: string | null; spentBy?: { name: string } | null },
   cats: Record<number, string>): string {

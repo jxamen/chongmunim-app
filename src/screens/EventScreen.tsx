@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { amountInput, dayShort, entrySub, entryTitle, kstNow, plusMinus, readAmount, signed, won } from '../cm/format';
+import { amountInput, dayShort, entrySub, entryTitle, kstNow, payLine, plusMinus, readAmount, signed, won } from '../cm/format';
 import { isManager, type EventDetail } from '../cm/model';
 import { eventShareText } from '../cm/export';
 import { shareText } from '../share';
@@ -16,6 +16,7 @@ import { Ask, Body, Btn, Card, Chip, Empty, Failed, Field, Head, KV, LedgerRow, 
 import { Gauge } from '../ui/skia';
 import { Mascot } from '../ui/Mascot';
 import { CloseBar } from './Closing';
+import { PaySummary } from '../ui/PaySummary';
 import { pushLine } from '../cm/pushText';
 import { DateField } from '../ui/DateField';
 import { F, S, useT } from '../ui/theme';
@@ -86,10 +87,14 @@ export function EventScreen({ id }: { id: number }) {
               <View key={e.id}>
                 {i > 0 ? <Sep /> : null}
                 <LedgerRow title={entryTitle(e, names)} sub={entrySub(e, names).replace(/^(\d+)월 (\d+)일/, '$1/$2')} value={e.amount} direction={e.direction}
-                  badge={e.edited.length ? '영수증과 다름' : undefined} onPress={manager ? () => open({ kind: 'entry', entry: e }) : undefined} />
+                  badge={e.edited.length ? '영수증과 다름' : undefined} tag={payLine(e) || undefined}
+                  onPress={manager ? () => open({ kind: 'entry', entry: e }) : undefined} />
               </View>
             ))}
         </Card>
+
+        {/* 지급 여부 — 받은 사람별 지급 · 직접 지출(2026-10-04 대표님). 하나도 안 적었으면 안 보인다 */}
+        <PaySummary entries={d.entries} />
 
         {/* 만든 행사의 이름 · 날짜 · 예산 고치기(2026-09-27 대표님 「행사 수정이 안됌」) — 묶인 장부 기록은 그대로 */}
         {manager ? <Btn label="행사 고치기" tone="ghost" small onPress={() => open({ kind: 'eventEdit', id: ev.id })} /> : null}

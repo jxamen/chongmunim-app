@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MINUS, amountInput, barPercent, dayShort, entrySub, entryTitle, spentByLine, isNight, kstNow, monthChip, monthWord, plusMinus, readAmount, readWhen, shiftMonth,
-  signed, whenLong, won, mdInput, mdWord,
+  signed, whenLong, won, mdInput, mdWord, payLine, payTotals,
 } from './format';
 
 describe('금액 — 시안 표기 그대로', () => {
@@ -117,5 +117,32 @@ describe('생일 — 월·일만', () => {
     expect(mdWord('02-30')).toBeNull();
     expect(mdWord('13-01')).toBeNull();
     expect(mdWord(null)).toBeNull();
+  });
+});
+
+describe('지급 여부(2026-10-04) — 꼬리표 · 받은 사람별', () => {
+  it('꼬리표 — 직접 지출 · 지급 · 홍길동 · 모름과 수입은 빈 글자', () => {
+    expect(payLine({ direction: 'out', payKind: 'direct', payee: null })).toBe('직접 지출');
+    expect(payLine({ direction: 'out', payKind: 'payout', payee: { name: '홍길동' } })).toBe('지급 · 홍길동');
+    expect(payLine({ direction: 'out', payKind: 'payout', payee: null })).toBe('지급');
+    expect(payLine({ direction: 'out', payKind: null })).toBe('');
+    expect(payLine({ direction: 'in', payKind: 'payout', payee: { name: '홍길동' } })).toBe('');
+  });
+  it('받은 사람별 — 명단 회원은 id 로 묶고, 이름 없는 지급은 맨 뒤, 직접 지출 · 모름은 따로', () => {
+    const t = payTotals([
+      { direction: 'out', amount: 426000, payKind: 'payout', payee: { memberId: 3, name: '홍길동' } },
+      { direction: 'out', amount: 10000, payKind: 'payout', payee: { memberId: 3, name: '홍길동' } },
+      { direction: 'out', amount: 500000, payKind: 'payout', payee: null },
+      { direction: 'out', amount: 20000, payKind: 'payout', payee: { memberId: null, name: '외부 강사' } },
+      { direction: 'out', amount: 50000, payKind: 'direct', payee: null },
+      { direction: 'out', amount: 7000, payKind: null, payee: null },
+      { direction: 'in', amount: 99000, payKind: 'payout', payee: { memberId: 3, name: '홍길동' } },
+    ]);
+    expect(t.people).toEqual([
+      { name: '홍길동', count: 2, sum: 436000 },
+      { name: '외부 강사', count: 1, sum: 20000 },
+      { name: null, count: 1, sum: 500000 },
+    ]);
+    expect([t.payout, t.direct, t.unknown]).toEqual([956000, 50000, 7000]);
   });
 });

@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { entrySub, entryTitle, mdWord, signed, won } from '../cm/format';
+import { entrySub, entryTitle, mdWord, payLine, signed, won } from '../cm/format';
 import { isManager } from '../cm/model';
 import { isPro } from '../cm/plan';
 import { setRemindSnapshot } from '../push';
@@ -179,7 +179,7 @@ export function HomeScreen() {
             <View key={e.id}>
               {i > 0 ? <Sep /> : null}
               <LedgerRow title={entryTitle(e, h.categories)} sub={entrySub(e, h.categories)} value={e.amount} direction={e.direction}
-                badge={e.edited.length ? '영수증과 다름' : undefined}
+                badge={e.edited.length ? '영수증과 다름' : undefined} tag={payLine(e) || undefined}
                 onPress={manager ? () => open({ kind: 'entry', entry: e }) : undefined} />
             </View>
           ))}

@@ -1,6 +1,7 @@
 /**
  * 쓴 사람(영수증 요청) 칸 — 지출에만(2026-09-27 대표님 「영수증 요청한 사람 등록」). 선택이라 비워 둬도 된다.
  * 누르면 모임 명단(앱 안 쓰는 회원 포함)에서 고르고, 없으면 이름을 직접 적는다(40자).
+ * 지급 여부의 「받은 사람」(2026-10-04)도 같은 칸이다 — 제목 · 보이는 말만 바꿔 쓴다(PersonField).
  */
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -12,6 +13,13 @@ import { Ask, Choices, Field, Text, Txt, s } from './kit';
 import { F, useT } from './theme';
 
 export function SpentByField({ value, onChange }: { value: SpentBy; onChange: (v: SpentBy) => void }) {
+  return <PersonField title="쓴 사람(영수증 요청)" line={spentByLine} value={value} onChange={onChange} />;
+}
+
+/** 명단에서 한 사람 고르기(없으면 이름 적기) — 쓴 사람 · 받은 사람이 같이 쓴다 */
+export function PersonField({ title, line, empty = '선택 · 비워 둬도 돼요', value, onChange }: {
+  title: string; line: (v: NonNullable<SpentBy>) => string; empty?: string; value: SpentBy; onChange: (v: SpentBy) => void;
+}) {
   const T = useT();
   const [open, setOpen] = useState(false);
   const [own, setOwn] = useState('');
@@ -20,16 +28,16 @@ export function SpentByField({ value, onChange }: { value: SpentBy; onChange: (v
 
   return (
     <View style={{ gap: 6 }}>
-      <Txt bold>쓴 사람(영수증 요청)</Txt>
+      <Txt bold>{title}</Txt>
       <Pressable onPress={() => { setOwn(value && !value.memberId ? value.name : ''); setOpen(true); }} accessibilityRole="button"
         style={[s.input, { borderColor: T.line, backgroundColor: T.white }]}>
         <Text style={[s.inputText, { fontSize: F.body, color: value ? T.ink : T.dim }]} numberOfLines={1}>
-          {value ? spentByLine(value) : '선택 · 비워 둬도 돼요'}
+          {value ? line(value) : empty}
         </Text>
         <Txt tone="sub">▾</Txt>
       </Pressable>
 
-      <Ask open={open} title="쓴 사람(영수증 요청)" onClose={close}
+      <Ask open={open} title={title} onClose={close}
         buttons={[
           { label: '비우기', tone: 'ghost', onPress: () => { onChange(null); close(); } },
           { label: '확인', onPress: () => { if (own.trim()) onChange({ memberId: null, name: own.trim() }); close(); } },

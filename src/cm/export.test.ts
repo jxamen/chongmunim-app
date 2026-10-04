@@ -11,7 +11,7 @@ const data: ExportData = {
   entries: [
     toEntry({ id: 1, direction: 'in', amount: 40000, occurredAt: '2026-09-18 00:00:00', merchant: '이수진', categoryId: 2, memo: '9월 회비', source: 'dues' }),
     toEntry({ id: 2, direction: 'out', amount: 32400, occurredAt: '2026-09-20 14:14:02', merchant: '=GS25, "수유점"', categoryId: 1, eventId: 5, receiptId: 'r1',
-      by: '김태훈', spentBy: { memberId: 7, name: '박민호' } }),
+      by: '김태훈', spentBy: { memberId: 7, name: '박민호' }, payKind: 'payout', payee: { memberId: 7, name: '박민호' } }),
   ],
 };
 
@@ -27,11 +27,11 @@ describe('엑셀(CSV)', () => {
     expect(csv).toContain(',지출,-32400,');
     expect(csv).not.toContain("'-32400");
   });
-  it('「기록」 옆에 「쓴 사람」 — 없으면 빈칸', () => {
+  it('「기록」 옆에 「쓴 사람」, 맨 뒤에 「지급 여부」 — 없으면 빈칸', () => {
     const lines = csv.trim().split('\r\n');
-    expect(lines[0]).toContain('메모,기록,쓴 사람,영수증');
-    expect(lines[2]).toMatch(/,9월 회비,,,$/);
-    expect(lines[3]).toMatch(/,김태훈,박민호,있음$/);
+    expect(lines[0]).toContain('메모,기록,쓴 사람,영수증,지급 여부');
+    expect(lines[2]).toMatch(/,9월 회비,,,,$/);
+    expect(lines[3]).toMatch(/,김태훈,박민호,있음,지급 · 박민호$/);
   });
   it('이월로 시작해 잔액으로 끝난다', () => {
     const lines = csv.trim().split('\r\n');
@@ -89,5 +89,18 @@ describe('행사 정산서 — 카톡에 붙일 글', () => {
     expect(text).toContain('9/18 단체 티셔츠 25장 154,000');
     expect(text).toContain('수지 +142,000원');
     expect(text).toContain('73% 사용');
+    expect(text).not.toContain('지급');   // 지급 여부를 안 적은 행사는 예전 그대로
+  });
+  it('행사 정산서에 받은 사람별 지급 — 2026-10-04', () => {
+    const text = eventShareText({
+      event: { id: 5, name: '9월 아웃팅', startsOn: null, endsOn: null, status: 'open', budget: 0, in: 0, out: 476000, balance: -476000, budgetPercent: 0 },
+      incomes: [],
+      entries: [
+        toEntry({ id: 1, direction: 'out', amount: 426000, occurredAt: '2026-09-20 12:00:00', merchant: '맘스터치', payKind: 'payout', payee: { memberId: 3, name: '홍길동' } }),
+        toEntry({ id: 2, direction: 'out', amount: 50000, occurredAt: '2026-09-20 13:00:00', merchant: '카페', payKind: 'direct' }),
+      ],
+    }, {}, '토요등산회');
+    expect(text).toContain('지급 426,000원');
+    expect(text).toContain('  · 홍길동 1건 426,000');
   });
 });

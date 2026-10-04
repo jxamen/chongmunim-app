@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
-import { barPercent, dayShort, entryTitle, kstNow, monthWord, plusMinus, shiftMonth, signed, won } from '../cm/format';
+import { barPercent, dayShort, entryTitle, kstNow, monthWord, payLine, plusMinus, shiftMonth, signed, won } from '../cm/format';
 import { isManager, type Budget, type ClubEvent, type Month, type Year } from '../cm/model';
 import { reportHtml, toCsv } from '../cm/export';
 import { isPro } from '../cm/plan';
@@ -21,6 +21,7 @@ import {
 import { Gauge, YearBars } from '../ui/skia';
 import { Hero } from '../ui/Hero';
 import { CloseBar } from './Closing';
+import { PaySummary } from '../ui/PaySummary';
 import { MonthPicker, YearPicker } from '../ui/PeriodPicker';
 import { F, S, useT } from '../ui/theme';
 
@@ -141,7 +142,7 @@ function MonthTab({ ym, manager }: { ym: string; manager: boolean }) {
                       <Pressable key={e.id} disabled={!manager} onPress={() => open({ kind: 'entry', entry: e })}
                         style={[k.row, { justifyContent: 'space-between', paddingVertical: 7, gap: 8 }]}>
                         <Txt size="small" tone="sub" numberOfLines={1} style={k.grow}>
-                          {dayShort(e.occurredAt)} {entryTitle(e, cats)}{e.edited.length ? ' · 영수증과 다름' : ''}
+                          {dayShort(e.occurredAt)} {entryTitle(e, cats)}{e.edited.length ? ' · 영수증과 다름' : ''}{payLine(e) ? ` · ${payLine(e)}` : ''}
                         </Txt>
                         <Txt size="small" style={k.amt}>{won(e.amount)}</Txt>
                       </Pressable>
@@ -153,6 +154,9 @@ function MonthTab({ ym, manager }: { ym: string; manager: boolean }) {
           })}
         </Card>
       )}
+
+      {/* 지급 여부 — 받은 사람별(2026-10-04 대표님). 하나도 안 적은 달은 안 보인다 */}
+      <PaySummary entries={m.groups.flatMap((g) => g.entries)} />
 
       {manager && m.uncategorized > 0 ? (
         <Soft pill={String(m.uncategorized)} title="항목이 비어있는 기록" sub="정리하러 가기" onPress={() => open({ kind: 'tidy' })} />

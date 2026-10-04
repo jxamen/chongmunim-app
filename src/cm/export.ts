@@ -5,7 +5,7 @@
  * 서버를 배포할 일이 없게. RN 에 기대지 않는 순수 함수라 노드에서 시험한다(`export.test.ts`).
  */
 import type { EventDetail, ExportData, Names } from './model';
-import { dayShort, parts, signed, won } from './format';
+import { dayShort, parts, payLine, payTotals, signed, won } from './format';
 
 /** 엑셀에서 열었을 때 한글이 깨지지 않게 — UTF-8 BOM */
 const BOM = '﻿';
@@ -21,18 +21,19 @@ function cell(v: string | number | null | undefined): string {
 }
 
 export function toCsv(d: ExportData): string {
-  const rows: (string | number | null)[][] = [['날짜', '구분', '금액', '상호·내용', '항목', '행사', '메모', '기록', '쓴 사람', '영수증']];
-  rows.push([`${d.year}-01-01`, '이월', d.carryIn, '전년도에서 넘어온 돈', '', '', '', '', '', '']);
+  // 지급 여부(2026-10-04) — 「직접 지출」 · 「지급 · 홍길동」, 모름이면 빈칸. 맨 뒤에 붙여 옛 열 순서는 그대로
+  const rows: (string | number | null)[][] = [['날짜', '구분', '금액', '상호·내용', '항목', '행사', '메모', '기록', '쓴 사람', '영수증', '지급 여부']];
+  rows.push([`${d.year}-01-01`, '이월', d.carryIn, '전년도에서 넘어온 돈', '', '', '', '', '', '', '']);
   let bal = d.carryIn;
   for (const e of d.entries) {
     bal += e.direction === 'in' ? e.amount : -e.amount;
     rows.push([
       e.occurredAt.slice(0, 16), e.direction === 'in' ? '수입' : '지출', e.direction === 'in' ? e.amount : -e.amount,
       e.merchant ?? '', e.categoryId ? d.categories[e.categoryId] ?? '' : '', e.eventId ? d.events[e.eventId] ?? '' : '',
-      e.memo ?? '', e.by ?? '', e.spentBy?.name ?? '', e.receiptId ? '있음' : '',
+      e.memo ?? '', e.by ?? '', e.spentBy?.name ?? '', e.receiptId ? '있음' : '', payLine(e),
     ]);
   }
-  rows.push(['', '잔액', bal, '', '', '', '', '', '', '']);
+  rows.push(['', '잔액', bal, '', '', '', '', '', '', '', '']);
 
   return BOM + rows.map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
@@ -144,6 +145,12 @@ export function eventShareText(detail: EventDetail, categories: Names, groupName
   for (const e of detail.entries.filter((x) => x.direction === 'out').slice(0, 15)) {
     const what = e.merchant || e.memo || (e.categoryId ? categories[e.categoryId] : '') || '지출';
     lines.push(`  · ${dayShort(e.occurredAt)} ${what} ${won(e.amount)}`);
+  }
+  // 지급 여부 — 누구에게 얼마 지급했는지(2026-10-04 대표님). 하나도 안 적었으면 안 싣는다
+  const pay = payTotals(detail.entries);
+  if (pay.payout) {
+    lines.push(`지급 ${won(pay.payout)}원`);
+    for (const p of pay.people) lines.push(`  · ${p.name ?? '받은 사람 안 적음'} ${p.count}건 ${won(p.sum)}`);
   }
   lines.push('', `수지 ${signed(Math.abs(ev.balance), ev.balance >= 0 ? 'in' : 'out')}원`);
   if (ev.budget > 0) lines.push(`예산 ${won(ev.budget)}원 중 ${ev.budgetPercent}% 사용`);

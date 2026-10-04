@@ -83,6 +83,10 @@ export type Entry = {
   source: string; by: string | null; edited: string[]; eventChecked: boolean;
   /** 쓴 사람(영수증 요청한 사람) — 지출만. 옛 기록 · 이 칸을 모르는 서버면 null */
   spentBy: SpentBy;
+  /** 지급 여부(2026-10-04 대표님) — 지출만. 옛 기록 · 옛 서버면 null(모름: 아무것도 안 그린다) */
+  payKind: PayKind;
+  /** 지급이면 받은 사람(쓴 사람과 같은 모양) — 직접 지출 · 모름이면 null, 지급이어도 안 적었으면 null */
+  payee: SpentBy;
 };
 
 /** 쓴 사람 — 명단에서 골랐으면 memberId, 직접 적었으면 이름만(memberId null) */
@@ -117,6 +121,33 @@ export function spentByPatch(before: SpentBy, after: SpentBy): Partial<SpentByBo
   return a.spentByMemberId === b.spentByMemberId && a.spentByName === b.spentByName ? {} : b;
 }
 
+/**
+ * 지급 여부(2026-10-04 대표님 「영수증을 직접 등록 하더라도 지급을 한 건지 아니면 직접 지출을 한 건지 … 지급을 한 거면
+ * 누구에게 한 건지」) — direct: 모임 돈으로 가게에 바로 냄 · payout: 모임 돈을 사람에게 내줌(대신 낸 회원에게 돌려준 것 등).
+ * null 은 모름(옛 기록 · 고르지 않음). 지급 요청을 「지급완료」하면 서버가 지급 · 받은 사람 = 요청한 회원으로 적는다
+ */
+export type PayKind = 'direct' | 'payout' | null;
+export const toPayKind = (v: unknown): PayKind => (v === 'direct' || v === 'payout' ? v : null);
+
+/** 지급 여부를 서버로 보내는 칸 — 서버 칸 이름은 여기 한 곳에만 */
+export type PayBody = { payKind: PayKind; payeeMemberId: number | null; payeeName: string | null };
+
+/** 받은 사람은 지급일 때만(직접 지출 · 모름이면 비운다). 명단 id 면 이름은 null, 직접 적으면 이름만(40자) */
+export function payBody(kind: PayKind, payee: SpentBy): PayBody {
+  if (kind !== 'payout') return { payKind: kind, payeeMemberId: null, payeeName: null };
+  const b = spentByBody(payee);
+
+  return { payKind: 'payout', payeeMemberId: b.spentByMemberId, payeeName: b.spentByName };
+}
+
+/** 보낼 것 — 처음과 같으면 안 보낸다(적기는 before 모름: 안 고르면 안 보낸다 · 옛 서버도 모르는 칸을 안 받는다) */
+export function payPatch(before: { payKind: PayKind; payee: SpentBy }, after: { payKind: PayKind; payee: SpentBy }): Partial<PayBody> {
+  const a = payBody(before.payKind, before.payee);
+  const b = payBody(after.payKind, after.payee);
+
+  return a.payKind === b.payKind && a.payeeMemberId === b.payeeMemberId && a.payeeName === b.payeeName ? {} : b;
+}
+
 export function toEntry(v: unknown): Entry {
   const o = obj(v);
 
@@ -126,6 +157,8 @@ export function toEntry(v: unknown): Entry {
     receiptId: str(o.receiptId), source: str(o.source) ?? 'manual', by: str(o.by),
     edited: arr(o.edited).filter((x): x is string => typeof x === 'string'), eventChecked: bool(o.eventChecked),
     spentBy: toSpentBy(o.spentBy),
+    payKind: toPayKind(o.payKind),
+    payee: toPayKind(o.payKind) === 'payout' ? toSpentBy(o.payee) : null,
   };
 }
 const entries = (v: unknown): Entry[] => arr(v).map(toEntry).filter((e) => e.id > 0);

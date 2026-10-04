@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { spentByBody, spentByPatch, toDues, toEntry, toGroup, toHome, toMonth, toReceipt, toRequests, toTidy, toYear } from './model';
+import { payBody, payPatch, spentByBody, spentByPatch, toDues, toEntry, toGroup, toHome, toMonth, toReceipt, toRequests, toTidy, toYear } from './model';
 import { codeOf, errorCode, errorText } from './errors';
 
 describe('서버 응답이 어긋나도 화면이 멈추지 않는다(05 §5-6)', () => {
@@ -109,5 +109,29 @@ describe('쓴 사람(영수증 요청)', () => {
     expect(spentByPatch(null, { memberId: 5, name: '김민수' })).toEqual({ spentByMemberId: 5, spentByName: null });
     expect(spentByPatch({ memberId: 5, name: '김민수' }, null)).toEqual({ spentByMemberId: null, spentByName: null });
     expect(spentByPatch({ memberId: 5, name: '김민수' }, { memberId: null, name: '김민수' })).toEqual({ spentByMemberId: null, spentByName: '김민수' });
+  });
+});
+
+describe('지급 여부(2026-10-04)', () => {
+  it('받을 때 — 모르는 값 · 옛 서버는 모름(null), 받은 사람은 지급일 때만', () => {
+    expect(toEntry({ id: 1 }).payKind).toBeNull();
+    expect(toEntry({ id: 1 }).payee).toBeNull();
+    expect(toEntry({ id: 1, payKind: 'card' }).payKind).toBeNull();
+    expect(toEntry({ id: 1, payKind: 'direct', payee: { memberId: 5, name: '김민수' } }).payee).toBeNull();
+    expect(toEntry({ id: 1, payKind: 'payout', payee: { memberId: 5, name: '김민수' } }).payee).toEqual({ memberId: 5, name: '김민수' });
+    expect(toEntry({ id: 1, payKind: 'payout', payee: null })).toMatchObject({ payKind: 'payout', payee: null });
+  });
+  it('보낼 때 — 직접 지출 · 모름이면 받은 사람은 비운다, 명단 id 면 이름은 null', () => {
+    expect(payBody('direct', { memberId: 5, name: '김민수' })).toEqual({ payKind: 'direct', payeeMemberId: null, payeeName: null });
+    expect(payBody('payout', { memberId: 5, name: '김민수' })).toEqual({ payKind: 'payout', payeeMemberId: 5, payeeName: null });
+    expect(payBody('payout', { memberId: null, name: ' 이모 ' })).toEqual({ payKind: 'payout', payeeMemberId: null, payeeName: '이모' });
+    expect(payBody(null, null)).toEqual({ payKind: null, payeeMemberId: null, payeeName: null });
+  });
+  it('안 바꾸면 안 보낸다 — 적기에서 안 고르면 옛 서버에도 모르는 칸이 안 간다', () => {
+    const none = { payKind: null, payee: null } as const;
+    expect(payPatch(none, none)).toEqual({});
+    expect(payPatch({ payKind: 'payout', payee: { memberId: 5, name: '김민수' } }, { payKind: 'payout', payee: { memberId: 5, name: '김민수' } })).toEqual({});
+    expect(payPatch(none, { payKind: 'direct', payee: null })).toEqual({ payKind: 'direct', payeeMemberId: null, payeeName: null });
+    expect(payPatch({ payKind: 'payout', payee: { memberId: 5, name: '김민수' } }, none)).toEqual({ payKind: null, payeeMemberId: null, payeeName: null });
   });
 });
