@@ -12,12 +12,13 @@ import { AppState, Linking, Platform } from 'react-native';
 import { autoApply, onUpdateReady, startupSettled } from '@jcurve/updates';
 import * as storage from './storage';
 import {
-  completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
+  api, completeSignup, currentToken, fetchMe, fetchProviders, logoutServer, onSessionExpired, setGuestNow, setSession, withdrawServer,
   type AuthResult, type Member, type Session,
 } from './api';
+import { customValues } from './customValues';
 import { auth, createReturnWatch, isCancel, setServerProviders, signInGuest, type Provider } from './auth';
 import { isDeadSession } from './deadSession';
-import { funnel, track } from './track';
+import { funnel, tiktok, track } from './track';
 import { notify, primeRemind, push, resetRemind, scheduleRemind } from './push';
 import { billingLogin } from './billing';
 import * as receiptQueue from './receiptQueue';
@@ -134,6 +135,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const live = useRef({ phase, signedIn: false, pages: 0, notice: true });
   live.current = { phase, signedIn: !!member, pages: pages.length, notice: updateNotice };
 
+  /* 틱톡 — 로그인 · 가입 · 켤 때 세션 복원: 회원 ID 만으로 identify(`@jcurve/ads`, 같은 ID 는 한 번만) */
+  useEffect(() => {
+    if (member?.id != null) tiktok.identify(member.id);
+  }, [member?.id]);
+
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const say = useCallback((text: string) => {
     setToast(text);
@@ -244,6 +250,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [landing]);
 
   const clearLocal = useCallback(async () => {
+    tiktok.logout();
     setSession(null);
     void resetRemind();   // 남의 모임 알림이 이 폰에 남지 않게
     receiptQueue.reset();   // 보냈지만 기록 안 한 영수증도(저장 키는 clearAccount 가)
@@ -300,6 +307,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let alive = true;
     funnel.appOpen();
+    // 틱톡 SDK — 로그인 전 설치까지 잡으려고 켤 때 · 앞으로 올 때마다 어드민 값을 새로 읽는다(비면 꺼진 채).
+    // 총무님은 그동안 `content/config/custom` 을 읽지 않았다 — 틱톡 값만 읽으려고 같은 공개 조회(인증 없음)를 부른다
+    tiktok.boot(() => api.get<unknown>('content/config/custom', false).then(customValues));
     void notify.init();
     void primeRemind();
     push.init();
