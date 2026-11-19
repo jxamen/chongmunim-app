@@ -449,6 +449,7 @@ export function GroupEditScreen() {
   const [name, setName] = useState(group?.name ?? '');
   const [dues, setDues] = useState(group?.duesAmount ? won(group.duesAmount) : '');
   const [duesOn, setDuesOn] = useState((group?.duesAmount ?? 0) > 0);
+  const [lump, setLump] = useState(group?.duesLumpDiscount ? won(group.duesLumpDiscount) : '');
   const [opening, setOpening] = useState(group?.openingBalance ? won(group.openingBalance) : '');
   const [openingDate, setOpeningDate] = useState(group?.openingDate ?? '');
   const [busy, setBusy] = useState(false);
@@ -462,6 +463,7 @@ export function GroupEditScreen() {
   const openingDay = /^\d{4}-\d{2}-\d{2}$/.test(openingDate) ? openingDate : null;
   /* 적어 둔 것이 조용히 사라지지 않게 — 저장하지 않고 닫으면 묻는다(2026-09-23 A32 시험 「모임 이름이 저장되지 않는다」) */
   const edited = name.trim() !== group.name || (duesOn ? readAmount(dues) ?? 0 : 0) !== (group.duesAmount ?? 0)
+    || (duesOn ? readAmount(lump) ?? 0 : 0) !== (group.duesLumpDiscount ?? 0)
     || openingAmount !== (group.openingBalance ?? 0) || openingDay !== (group.openingDate ?? null);
 
   /* 작년 항목별 집행 — 시트에서 항목·금액 두 열을 복사해 붙인 것(기획 「붙여넣기가 핵심이다」) */
@@ -504,7 +506,7 @@ export function GroupEditScreen() {
     setBusy(true);
     try {
       await cm.updateGroup(group.id, {
-        name: name.trim(), duesAmount: duesOn ? readAmount(dues) ?? 0 : 0,
+        name: name.trim(), duesAmount: duesOn ? readAmount(dues) ?? 0 : 0, duesLumpDiscount: duesOn ? readAmount(lump) ?? 0 : 0,
         openingBalance: openingAmount, openingDate: openingDay,
       });
       await reloadGroup();
@@ -529,7 +531,11 @@ export function GroupEditScreen() {
           <Choices items={[{ id: 'on', label: '매달 회비 받기' }, { id: 'off', label: '회비 없음' }]} value={duesOn ? 'on' : 'off'}
             onChange={(id) => { setDuesOn(id === 'on'); if (id === 'off') setDues(''); }} />
           {duesOn ? (
-            <Field value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="예) 40,000" right={<Txt tone="sub">원</Txt>} />
+            <>
+              <Field value={dues} onChangeText={(v) => setDues(amountInput(v))} keyboardType="number-pad" placeholder="예) 40,000" right={<Txt tone="sub">원</Txt>} />
+              <Field label="1년 완납 일시불 할인(선택)" value={lump} onChangeText={(v) => setLump(amountInput(v))} keyboardType="number-pad" placeholder="예) 10,000" right={<Txt tone="sub">원</Txt>} />
+              <Txt size="tiny" tone="dim">1년치를 한 번에 내면 월 회비×12 에서 이만큼 빼고 받아요. 없으면 비워 두세요.</Txt>
+            </>
           ) : <Txt size="tiny" tone="dim">회비 칸에 납부 체크·미납 안내가 뜨지 않아요. 나중에 언제든 바꿀 수 있어요.</Txt>}
         </View>
         <Card style={{ gap: S.md }}>
