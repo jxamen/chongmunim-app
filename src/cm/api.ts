@@ -7,7 +7,7 @@
 import { api } from '../api';
 import {
   toBudget, toCategories, toDues, toEntry, toEventDetail, toEvents, toExport, toGroup, toGroups, toHome, toMonth, toNotice, toNotices,
-  toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type NotifyPrefs, type RequestStatus,
+  toImport, toReceipt, toRequests, toRoster, toTidy, toYear, type Audience, type Direction, type DuesPlan, type NotifyPrefs, type RequestStatus,
  toRecipients, toClosing, toClosings, toPendingJob, toPendingJobs, type SpentByBody } from './model';
 import type { CommitRow } from './importRows';
 import { toPush } from './pushText';
@@ -24,7 +24,7 @@ export const myGroups = async () => toGroups(await api.get('cm/groups'));
 export const createGroup = async (b: { name: string; myName?: string; duesAmount?: number }) => toGroup(await api.post('cm/groups', b));
 export const joinGroup = async (code: string, name?: string) => toGroup(await api.post('cm/groups/join', { code, name }));
 export const getGroup = async (gid: number) => toGroup(await api.get(g(gid)));
-export const updateGroup = async (gid: number, b: { name?: string; duesAmount?: number; openingBalance?: number; openingDate?: string | null }) =>
+export const updateGroup = async (gid: number, b: { name?: string; duesAmount?: number; duesLumpDiscount?: number; openingBalance?: number; openingDate?: string | null }) =>
   toGroup(await api.put(g(gid), b));
 export const roster = async (gid: number) => toRoster(await api.get(g(gid, 'members')));
 export const addMember = async (gid: number, name: string) => toRoster(await api.post(g(gid, 'members'), { name }));
@@ -135,7 +135,9 @@ export const cancelImport = (gid: number, id: string) => api.post(g(gid, `import
 
 /* ── 회비 ── */
 export const dues = async (gid: number, period?: string) => toDues(await api.get(g(gid, 'dues') + q({ period })));
-export const payDues = async (gid: number, memberId: number, period: string) => toDues(await api.post(g(gid, 'dues'), { memberId, period }));
+/** plan year = 그 달부터 1년 완납(월 회비×12 − 일시불 할인) · half = 그 달부터 6개월 분납 */
+export const payDues = async (gid: number, memberId: number, period: string, plan: DuesPlan = 'month') =>
+  toDues(await api.post(g(gid, 'dues'), plan === 'month' ? { memberId, period } : { memberId, period, plan }));
 export const cancelDues = async (gid: number, id: number) => toDues(await api.post(g(gid, `dues/${id}/cancel`)));
 export const remindDues = (gid: number, period: string) =>
   api.post<{ targets: number; accepted: number; noApp: number; noToken: number; muted: number }>(g(gid, 'dues/remind'), { period });

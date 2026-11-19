@@ -9,10 +9,10 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { useApp, useLoad } from '../store';
 import * as cm from '../cm/api';
 import { barPercent, dayShort, isNight, kstNow, monthWord, shiftMonth, won } from '../cm/format';
-import { isManager, type Dues, type DuesRow, type Notice, type RosterItem } from '../cm/model';
+import { isManager, type Dues, type DuesPlan, type DuesRow, type Notice, type RosterItem } from '../cm/model';
 import { copy, shareText } from '../share';
 import { track } from '../track';
-import { Ask, Body, Btn, Card, Chip, Empty, Failed, Head, Loading, Sep, Tabs, Text, Txt, s as k } from '../ui/kit';
+import { Ask, Body, Btn, Card, Chip, Choices, Empty, Failed, Head, Loading, Sep, Tabs, Text, Txt, s as k } from '../ui/kit';
 import { Gauge } from '../ui/skia';
 import { Hero } from '../ui/Hero';
 import { F, S, useT } from '../ui/theme';
@@ -83,12 +83,19 @@ export function ClubScreen() {
 
 /* ── 회비(총무·관리자) ── */
 
+const planWord: Record<DuesPlan, string> = { month: '이번 달', year: '1년 완납', half: '6개월 분납' };
+/** 받을 돈 — 1년 완납은 월 회비×12 에서 모임의 일시불 할인을 뺀다(서버와 같은 셈) */
+export const planAmount = (d: Pick<Dues, 'amount' | 'lumpDiscount'>, plan: DuesPlan) =>
+  plan === 'year' ? d.amount * 12 - d.lumpDiscount : plan === 'half' ? d.amount * 6 : d.amount;
+
 function DuesTab() {
   const { group, open, say, fail, bump, showPlan } = useApp();
   const T = useT();
   const [period, setPeriod] = useState(kstNow().ym);
   const { data, error, loading, reload } = useLoad((gid) => cm.dues(gid, period), [period]);
   const [pick, setPick] = useState<DuesRow | null>(null);
+  /* 납부 방식 — 한 달 · 1년 완납(일시) · 6개월 분납(2026-11-19 대표님 「1년 완납」 · 「일시불 할인」) */
+  const [plan, setPlan] = useState<DuesPlan>('month');
   const [remind, setRemind] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -121,8 +128,8 @@ function DuesTab() {
     setBusy(true);
     try {
       if (r.paid) await cm.cancelDues(group.id, r.paid.id);
-      else await cm.payDues(group.id, r.memberId, period);
-      say(r.paid ? `${r.name} 납부를 취소했어요` : `${r.name} 납부로 표시했어요 · 장부에도 적었어요`);
+      else await cm.payDues(group.id, r.memberId, period, plan);
+      say(r.paid ? `${r.name} 납부를 취소했어요` : `${r.name} ${planWord[plan]} 납부로 표시했어요 · 장부에도 적었어요`);
       bump();
     } catch (e) {
       fail(e);
@@ -170,12 +177,12 @@ function DuesTab() {
         {rows.map((r, i) => (
           <View key={r.memberId}>
             {i > 0 ? <Sep /> : null}
-            <Pressable onPress={() => { if (!r.exempt && d.amount > 0) setPick(r); }} style={[k.listrow, { gap: 8 }]}>
+            <Pressable onPress={() => { if (!r.exempt && d.amount > 0) { setPlan('month'); setPick(r); } }} style={[k.listrow, { gap: 8 }]}>
               <View style={k.grow}>
                 <Txt bold>{r.name}</Txt>
                 {!r.hasApp ? <Txt size="tiny" tone="dim">앱 없음</Txt> : null}
               </View>
-              <Chip label={r.exempt ? '면제' : r.paid ? '납부' : '미납'} tone={r.exempt ? 'dim' : r.paid ? 'tint' : 'warn'} />
+              <Chip label={r.exempt ? '면제' : r.paid ? (r.paid.months === 12 ? '1년 완납' : r.paid.months > 1 ? `${r.paid.months}개월` : '납부') : '미납'} tone={r.exempt ? 'dim' : r.paid ? 'tint' : 'warn'} />
               <Txt size="small" tone={r.paid ? 'sub' : 'dim'} style={{ width: 46, textAlign: 'right' }}>{r.paid ? dayShort(r.paid.paidOn) : '—'}</Txt>
             </Pressable>
           </View>
@@ -190,13 +197,19 @@ function DuesTab() {
       ) : null}
 
       <Ask open={!!pick} title={pick ? `${pick.name} · ${monthWord(period)} 회비` : ''} mood={pick?.paid ? 'thinking' : 'coin'}
-        body={pick?.paid ? `${dayShort(pick.paid.paidOn)}에 납부로 표시했어요. 취소하면 장부의 입금 줄도 지워져요.` : `${won(d.amount)}원을 받았으면 납부로 표시해요. 장부에 입금 한 줄이 같이 생겨요.`}
+        body={pick?.paid
+          ? `${dayShort(pick.paid.paidOn)}에 ${pick.paid.months > 1 ? `${pick.paid.months}개월치를 한 번에 ` : ''}납부로 표시했어요. 취소하면 ${pick.paid.months > 1 ? `${pick.paid.months}개월이 같이 취소되고 ` : ''}장부의 입금 줄도 지워져요.`
+          : `${won(planAmount(d, plan))}원을 받았으면 납부로 표시해요. ${plan === 'month' ? '' : `${monthWord(period)}부터 ${plan === 'year' ? 12 : 6}개월이 납부가 되고, `}장부에 입금 한 줄이 같이 생겨요.`}
         onClose={() => setPick(null)}
         buttons={[
           { label: '닫기', tone: 'ghost', onPress: () => setPick(null) },
           pick?.paid ? { label: busy ? '처리 중…' : '납부 취소', tone: 'danger', onPress: () => { if (pick) void toggle(pick); } }
             : { label: busy ? '처리 중…' : '납부로 표시', onPress: () => { if (pick) void toggle(pick); } },
-        ]} />
+        ]}>
+        {pick && !pick.paid ? (
+          <Choices items={(Object.keys(planWord) as DuesPlan[]).map((id) => ({ id, label: planWord[id] }))} value={plan} onChange={setPlan} />
+        ) : null}
+      </Ask>
 
       <Ask open={remind} title={`미납 ${d.unpaidCount}명에게 보낼까요?`} mood="phone"
         body={`한 사람씩 「${monthWord(period)} 회비 안내」 알림이 가요. 금액과 이름은 잠금 화면에 나오지 않아요.${isNight() ? '\n\n지금은 밤이에요. 아침에 보내는 편이 좋아요.' : ''}`}
