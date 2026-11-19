@@ -1,0 +1,9 @@
+{
+  "name": "jcurve-ota",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted expo-updates (protocol v1) on Cloudflare R2 for jcurve apps",
+  "bin": { "jcurve-ota": "bin/ota.mjs" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "aws4fetch": "^1.0.20" }
+}
