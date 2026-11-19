@@ -31,7 +31,9 @@ export type Me = { id: number; name: string; role: Role; bankName: string | null
   /** 생일 「MM-DD」(월·일만) */
   birthday: string | null };
 export type Group = {
-  id: number; name: string; owner: string | null; members: number; admins: number; categories: number; duesAmount: number; me: Me;
+  id: number; name: string; owner: string | null; members: number; admins: number; categories: number; duesAmount: number;
+  /** 1년 완납 일시불 할인(원) — 1년치를 한 번에 내면 월 회비×12 에서 뺀다. 옛 서버는 0 */
+  duesLumpDiscount: number; me: Me;
   inviteCode: string | null; publicToken: string | null; openingBalance: number; openingDate: string | null;
   /** 구독 — 옛 서버처럼 안 오면 pro(막지 않는다). freeMembers: 무료로 받을 수 있는 인원(총무 빼고) */
   plan: 'free' | 'pro'; freeMembers: number;
@@ -49,7 +51,7 @@ export function toGroup(j: unknown): Group {
 
   return {
     id: num(g.id), name: str(g.name) ?? '', owner: str(g.owner), members: num(g.members), admins: num(g.admins),
-    categories: num(g.categories), duesAmount: num(g.duesAmount),
+    categories: num(g.categories), duesAmount: num(g.duesAmount), duesLumpDiscount: num(g.duesLumpDiscount),
     me: {
       id: num(me.id), name: str(me.name) ?? '', role: role(me.role),
       bankName: str(me.bankName), bankAccount: str(me.bankAccount), bankHolder: str(me.bankHolder),
@@ -365,23 +367,25 @@ export const toCategories = (j: unknown): Category[] =>
 
 /* ── 회비 ── */
 
-export type DuesRow = { memberId: number; name: string; hasApp: boolean; exempt: boolean; paid: { id: number; amount: number; paidOn: string } | null };
+/** paid.months — 한 번에 낸 묶음의 달 수(1년 완납 12 · 6개월 분납 6 · 한 달 1). 묶음은 같이 취소된다 */
+export type DuesRow = { memberId: number; name: string; hasApp: boolean; exempt: boolean; paid: { id: number; amount: number; paidOn: string; months: number } | null };
+export type DuesPlan = 'month' | 'year' | 'half';
 export type Dues = {
-  period: string; amount: number; payers: number; paidCount: number; unpaidCount: number; collected: number; unpaidSum: number;
+  period: string; amount: number; lumpDiscount: number; payers: number; paidCount: number; unpaidCount: number; collected: number; unpaidSum: number;
   members: DuesRow[]; mine: { period: string; amount: number; paidOn: string }[];
 };
 export function toDues(j: unknown): Dues {
   const o = obj(j);
 
   return {
-    period: str(o.period) ?? '', amount: num(o.amount), payers: num(o.payers), paidCount: num(o.paidCount),
+    period: str(o.period) ?? '', amount: num(o.amount), lumpDiscount: num(o.lumpDiscount), payers: num(o.payers), paidCount: num(o.paidCount),
     unpaidCount: num(o.unpaidCount), collected: num(o.collected), unpaidSum: num(o.unpaidSum),
     members: arr(o.members).map((m) => {
       const x = obj(m);
       const p = x.paid ? obj(x.paid) : null;
 
       return { memberId: num(x.memberId), name: str(x.name) ?? '', hasApp: bool(x.hasApp), exempt: bool(x.exempt),
-        paid: p && num(p.id) > 0 ? { id: num(p.id), amount: num(p.amount), paidOn: str(p.paidOn) ?? '' } : null };
+        paid: p && num(p.id) > 0 ? { id: num(p.id), amount: num(p.amount), paidOn: str(p.paidOn) ?? '', months: Math.max(1, num(p.months)) } : null };
     }).filter((m) => m.memberId > 0),
     mine: arr(o.mine).map((m) => ({ period: str(obj(m).period) ?? '', amount: num(obj(m).amount), paidOn: str(obj(m).paidOn) ?? '' })),
   };
