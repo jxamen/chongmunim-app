@@ -67,6 +67,10 @@ describe('서버 응답이 어긋나도 화면이 멈추지 않는다(05 §5-6)'
     const d = toDues({ members: [{ memberId: 3, name: '김민수', paid: { id: 9, amount: 40000, paidOn: '2026-09-21' } }, { memberId: 4, paid: null }] });
     expect(d.members[0].paid?.amount).toBe(40000);
     expect(d.members[1].paid).toBeNull();
+    expect(d.members[0].paid?.months).toBe(1);   // 옛 서버는 묶음 칸이 없다 — 한 달
+    const y = toDues({ amount: 10000, lumpDiscount: 10000, members: [{ memberId: 3, paid: { id: 9, amount: 9167, paidOn: '26-11-19', months: 12 } }] });
+    expect(y.lumpDiscount).toBe(10000);
+    expect(y.members[0].paid?.months).toBe(12);
   });
 });
 
